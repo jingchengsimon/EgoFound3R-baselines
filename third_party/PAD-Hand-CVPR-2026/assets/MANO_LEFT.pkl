@@ -1,0 +1,1 @@
+/mnt/workspace/sjc/models/human/mano/MANO_LEFT.pkl
