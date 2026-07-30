@@ -1,0 +1,32 @@
+{
+    "name": "Tartan-T",
+    "dataset": "things",
+    "val_datasets": ["spring", "sintel", "kitti"],
+    "monitor": null,
+
+    "use_var": true,
+    "var_min": 0,
+    "var_max": 10,
+    "pretrain": "resnet34",
+    "radius": 4,
+    "dim": 512,
+    "num_blocks": 2,
+    "iters": 4,
+
+    "image_size": [864, 1920],
+    "scale": 1,
+    "effective_batch_size": 32,
+    "accumulate_grad_batches": 1,
+    "num_workers": 16,
+    "epsilon": 1e-8,
+    "lr": 7e-5,
+    "wdecay": 1e-5,
+    "dropout": 0,
+    "clip": 1.0,
+    "gamma": 0.85,
+    "num_steps": 120000,
+    "val_steps": 6000,
+    
+    "restore_ckpt": "ckpts/Tartan.ckpt",
+    "coarse_config": null
+}

@@ -1,0 +1,32 @@
+{
+    "name": "Tartan-T-TSKH-kitti",
+    "dataset": "kitti-full",
+    "val_datasets": ["spring", "sintel", "kitti"],
+    "monitor": null,
+
+    "use_var": true,
+    "var_min": 0,
+    "var_max": 10,
+    "pretrain": "resnet34",
+    "radius": 4,
+    "dim": 512,
+    "num_blocks": 2,
+    "iters": 8,
+
+    "image_size": [750, 1920],
+    "scale": 1,
+    "effective_batch_size": 32,
+    "accumulate_grad_batches": 1,
+    "num_workers": 16,
+    "epsilon": 1e-8,
+    "lr": 3e-5,
+    "wdecay": 1e-5,
+    "dropout": 0,
+    "clip": 1.0,
+    "gamma": 0.85,
+    "num_steps": 2500,
+    "val_steps": 250,
+    
+    "restore_ckpt": "ckpts/Tartan-T-TSKH.ckpt",
+    "coarse_config": null
+}

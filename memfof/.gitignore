@@ -1,0 +1,12 @@
+.idea/
+.vscode/
+.gradio/
+__pycache__/
+assets/
+build/
+ckpts/
+datasets/
+memfof.egg-info/
+submissions/
+venv/
+wandb/

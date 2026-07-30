@@ -1,0 +1,31 @@
+{
+    "name": "sintel",
+    "dataset": "sintel",
+    "val_datasets": ["sintel"],
+    "monitor": null,
+
+    "use_var": true,
+    "var_min": 0,
+    "var_max": 10,
+    "pretrain": "resnet34",
+    "radius": 4,
+    "dim": 512,
+    "num_blocks": 2,
+    "iters": 16,
+
+    "image_size": [872, 1920],
+    "scale": 1,
+    "effective_batch_size": 32,
+    "num_workers": 16,
+    "epsilon": 1e-8,
+    "lr": 3e-5,
+    "wdecay": 1e-5,
+    "dropout": 0,
+    "clip": 1.0,
+    "gamma": 0.85,
+    "num_steps": 12500,
+    "val_steps": 1250,
+    
+    "restore_ckpt": "ckpts/Tartan-T-TSKH-sintel.ckpt",
+    "coarse_config": null
+}
