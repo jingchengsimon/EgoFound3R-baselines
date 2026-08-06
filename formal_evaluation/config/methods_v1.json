@@ -1,0 +1,74 @@
+{
+  "manifest_version": "baseline_methods_v1",
+  "methods": {
+    "egofound3r": {
+      "group": ["hand", "scene", "contact"],
+      "source": "this repository",
+      "source_commit": "a695457ab3c17698a0b34c768e1902c3df1bfdc0",
+      "checkpoint_role": "validation-selected best checkpoint from completed main-worktree training",
+      "scale_type": "metric",
+      "native_outputs": ["camera_c2w", "intrinsics", "depth", "hand_joints_camera", "hand_markers_camera", "hand_presence_probability", "hand_visibility", "marker_visibility", "joint_contact_probability", "marker_contact_probability"]
+    },
+    "wilor": {
+      "group": ["hand"],
+      "source": "https://github.com/rolpotamias/WiLoR",
+      "source_commit": "fcb911312a38fa8badd30d9656a167485d61b8f9",
+      "checkpoint_id": "WiLoR/wilor_final.ckpt",
+      "scale_type": "metric_hand_camera",
+      "native_outputs": ["hand_joints_camera", "hand_vertices_camera", "hand_valid"]
+    },
+    "hawor": {
+      "group": ["hand"],
+      "source": "https://github.com/ThunderVVV/HaWoR",
+      "source_commit": "66c7d4108d58a716deccd192cb7645170cdc7bd7",
+      "checkpoint_id": "ThunderVVV/HaWoR",
+      "checkpoint_revision": "da6335f47f9806308992d5ae1002a4cc5f7252c2",
+      "scale_type": "metric_world_hand",
+      "native_outputs": ["camera_c2w", "hand_joints_world", "hand_vertices_world", "hand_valid"]
+    },
+    "vggt": {
+      "group": ["scene"],
+      "source": "https://github.com/facebookresearch/vggt",
+      "source_commit": "a288dd0f14786c93483e45524328726ab7b1b4ce",
+      "checkpoint_id": "facebook/VGGT-1B",
+      "checkpoint_revision": "860abec7937da0a4c03c41d3c269c366e82abdf9",
+      "scale_type": "relative",
+      "native_outputs": ["camera_c2w", "intrinsics", "depth", "depth_confidence", "world_points", "world_points_confidence"]
+    },
+    "pi3": {
+      "group": ["scene"],
+      "source": "https://github.com/yyfz/Pi3",
+      "source_commit": "9fa3ddb3f8d53041f8b2738df404f62223bbaa7b",
+      "checkpoint_id": "yyfz233/Pi3",
+      "checkpoint_revision": "ae722e7039287d0c8fde9f11f197f804f44b510c",
+      "scale_type": "relative",
+      "native_outputs": ["camera_c2w", "camera_points", "world_points", "world_points_confidence"]
+    },
+    "da3_large_1_1": {
+      "group": ["scene"],
+      "source": "https://github.com/ByteDance-Seed/Depth-Anything-3",
+      "source_commit": "3fe327a6abe2e5db95b54444ea95463dbfef5610",
+      "checkpoint_id": "depth-anything/DA3-LARGE-1.1",
+      "checkpoint_revision": "0e109ae307c5982f319a67cf6f9f99ccdc0ec97c",
+      "scale_type": "relative",
+      "native_outputs": ["camera_c2w", "intrinsics", "depth", "depth_confidence"]
+    },
+    "lingbot_map_long": {
+      "group": ["scene"],
+      "source": "https://github.com/robbyant/lingbot-map",
+      "source_commit": "c364ca9016e7be051333ae9c008e655fe52c0e8a",
+      "checkpoint_id": "robbyant/lingbot-map/lingbot-map-long.pt",
+      "checkpoint_revision": "204754b72bb24f561f8d7e7e1e4e4cd9e809adf9",
+      "scale_type": "relative",
+      "native_outputs": ["camera_c2w", "intrinsics", "depth", "depth_confidence"]
+    },
+    "vggt_omega": {
+      "group": ["scene"],
+      "source": "vendored in this repository",
+      "source_commit": "a695457ab3c17698a0b34c768e1902c3df1bfdc0",
+      "checkpoint_id": "VGGT-Omega/vggt_omega_1b_512.pt",
+      "scale_type": "relative",
+      "native_outputs": ["camera_c2w", "intrinsics", "depth", "depth_confidence"]
+    }
+  }
+}
