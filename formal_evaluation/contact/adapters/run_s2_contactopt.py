@@ -36,7 +36,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path, required=True, help="formal manifest JSON or preserved frame_index.jsonl")
+    parser.add_argument("--materialized-manifest", type=Path, help="write reconstructed formal manifest when --manifest is JSONL")
     parser.add_argument("--methods-config", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--phase", choices=("formal",), default="formal")
@@ -98,6 +99,54 @@ def _formal_windows(manifest: Mapping[str, object]) -> dict[str, tuple[str, list
     return result
 
 
+def _formal_windows_from_frame_index(path: Path) -> dict[str, tuple[str, list[str]]]:
+    """Restore the exact 2579 window membership retained in ``frame_index.jsonl``."""
+    grouped: dict[str, tuple[str, set[str]]] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        row = json.loads(line)
+        sequence = row.get("sequence")
+        frame_id = row.get("frame_id")
+        window_ids = row.get("window_ids")
+        if not isinstance(sequence, str) or frame_id is None or not isinstance(window_ids, list):
+            raise ValueError(f"invalid frame-index record: {row}")
+        for window_id in window_ids:
+            if not isinstance(window_id, str):
+                raise ValueError(f"invalid window id: {window_id!r}")
+            previous = grouped.get(window_id)
+            if previous is None:
+                grouped[window_id] = (sequence, {str(frame_id)})
+            elif previous[0] != sequence:
+                raise ValueError(f"window {window_id} spans sequences: {previous[0]} vs {sequence}")
+            else:
+                previous[1].add(str(frame_id))
+    result = {
+        window_id: (sequence, sorted(frame_ids, key=lambda frame_id: int(frame_id)))
+        for window_id, (sequence, frame_ids) in grouped.items()
+    }
+    if len(result) != 2579 or any(len(frame_ids) != 12 for _, frame_ids in result.values()):
+        bad = [window_id for window_id, (_, frame_ids) in result.items() if len(frame_ids) != 12]
+        raise ValueError(f"frame_index must restore 2579 12-frame windows; got {len(result)}, bad={bad[:3]}")
+    return result
+
+
+def _load_windows(path: Path, materialized_path: Path | None) -> dict[str, tuple[str, list[str]]]:
+    if path.suffix.lower() != ".jsonl":
+        return _formal_windows(load_manifest(path))
+    windows = _formal_windows_from_frame_index(path)
+    if materialized_path is not None:
+        sequences: dict[str, list[dict[str, object]]] = {}
+        for window_id, (sequence, frame_ids) in windows.items():
+            sequences.setdefault(sequence, []).append({"window_id": window_id, "frame_ids": frame_ids})
+        payload = {
+            "manifest_version": "h2o_formal_reconstructed_from_preserved_frame_index_v1",
+            "source_frame_index": str(path),
+            "formal_test": {"sequences": [{"sequence": sequence, "windows": windows} for sequence, windows in sequences.items()]},
+        }
+        materialized_path.parent.mkdir(parents=True, exist_ok=True)
+        materialized_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return windows
+
+
 def _joint_vertex_indices(record: Mapping[str, object]) -> np.ndarray:
     ho = record["ho_gt"]
     vertices = np.asarray(ho.hand_verts)
@@ -121,7 +170,7 @@ def main() -> None:
     args = _parse_args()
     if not torch.cuda.is_available():
         raise RuntimeError("S²Contact/ContactOpt formal prediction requires CUDA")
-    windows = _formal_windows(load_manifest(args.manifest))
+    windows = _load_windows(args.manifest, args.materialized_manifest)
     arrays_by_window = _new_window_arrays(windows)
     method_config = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"][args.baseline]
     Dataset, model = _load_baseline(args.baseline, args.source_root)
