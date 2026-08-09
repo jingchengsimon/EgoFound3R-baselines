@@ -26,6 +26,20 @@
       "scale_type": "metric_world_hand",
       "native_outputs": ["camera_c2w", "hand_joints_world", "hand_vertices_world", "hand_valid"]
     },
+    "s2contact": {
+      "group": ["contact"],
+      "source": "vendored S²Contact inference tree",
+      "checkpoint_id": "S2Contact/checkpoints/20211027-212322.pt",
+      "scale_type": "not_applicable",
+      "native_outputs": ["joint_contact_probability", "hand_valid"]
+    },
+    "contactopt": {
+      "group": ["contact"],
+      "source": "vendored ContactOpt inference tree",
+      "checkpoint_id": "ContactOpt/checkpoints/deepcontact_checkpoint.pt",
+      "scale_type": "not_applicable",
+      "native_outputs": ["joint_contact_probability", "hand_valid"]
+    },
     "vggt": {
       "group": ["scene"],
       "source": "https://github.com/facebookresearch/vggt",
