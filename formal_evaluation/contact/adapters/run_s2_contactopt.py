@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import sys
 import time
 from collections.abc import Mapping
@@ -48,6 +49,10 @@ def _parse_args() -> argparse.Namespace:
 
 def _load_baseline(baseline: str, source_root: Path):
     """Import each vendored package using the compatibility shims from old eval."""
+    # The original loaders unpickle ``HandObject`` classes that resolve MANO
+    # through ``mano/models/MANO_RIGHT.pkl`` relative to their repository.
+    # Match the old evaluator's ``cd <baseline-root>`` invocation.
+    os.chdir(source_root)
     sys.path.insert(0, str(source_root))
     import torch_cluster
     import torch_geometric.nn as tgn
