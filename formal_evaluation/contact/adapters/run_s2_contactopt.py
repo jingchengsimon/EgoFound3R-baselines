@@ -224,9 +224,14 @@ def main() -> None:
             cursor += size
     torch.cuda.synchronize(device)
     elapsed = time.perf_counter() - start
-    missing_windows = [window_id for window_id, arrays in arrays_by_window.items() if not arrays["hand_valid"][:, 1].all()]
-    if missing_windows:
-        raise RuntimeError(f"{args.baseline} cache 未覆盖 {len(missing_windows)} formal windows (e.g. {missing_windows[:3]})")
+    # This cache is right-hand-only.  A formal window may legitimately have no
+    # valid right-hand frame, so retain its all-false hand_valid mask.  The
+    # formal metric layer will report its undefined contact values as NaN and
+    # exclude them only from finite-only aggregates, rather than silently
+    # dropping the window or treating it as a failed inference.
+    no_right_prediction_windows = [
+        window_id for window_id, arrays in arrays_by_window.items() if not arrays["hand_valid"][:, 1].any()
+    ]
     for window_id, (sequence, frame_ids) in windows.items():
         arrays = arrays_by_window[window_id]
         write_comparison_output(
@@ -256,6 +261,8 @@ def main() -> None:
                 "device": str(device),
                 "cache_samples": len(dataset),
                 "matched_window_samples": matched_samples,
+                "no_right_prediction_window_count": len(no_right_prediction_windows),
+                "no_right_prediction_windows": no_right_prediction_windows,
             },
             native_metadata={"native_logits": "contact_hand, 10 distance-bin logits"},
         )
