@@ -1,0 +1,5 @@
+# Local macOS metadata and unversioned working materials.
+.DS_Store
+docs/
+outputs/
+scripts/
