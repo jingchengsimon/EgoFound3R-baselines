@@ -26,6 +26,27 @@
       "scale_type": "metric_world_hand",
       "native_outputs": ["camera_c2w", "hand_joints_world", "hand_vertices_world", "hand_valid"]
     },
+    "dyn_hamr": {
+      "group": ["hand"],
+      "source": "https://github.com/ZhengdiYu/Dyn-HaMR",
+      "checkpoint_role": "official Dyn-HaMR dependencies plus MANO; normalize native output before import",
+      "scale_type": "metric_world_hand",
+      "native_outputs": ["camera_c2w", "hand_joints_world", "hand_valid"]
+    },
+    "pad_hand": {
+      "group": ["hand"],
+      "source": "released PAD-Hand repository",
+      "checkpoint_role": "checkpoints/pad_hand.pt plus WiLoR detector/model checkpoints",
+      "scale_type": "metric_hand_camera",
+      "native_outputs": ["hand_joints_camera", "hand_valid"]
+    },
+    "reviv4d": {
+      "group": ["hand", "scene"],
+      "source": "https://github.com/lvsean/reviv4d",
+      "checkpoint_role": "released ReViV checkpoint set plus matching NVIDIA Cosmos tokenizer",
+      "scale_type": "relative",
+      "native_outputs": ["camera_c2w", "depth", "hand_joints_camera", "hand_valid"]
+    },
     "s2contact": {
       "group": ["contact"],
       "source": "vendored S²Contact inference tree",
