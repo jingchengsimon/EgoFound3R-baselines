@@ -48,7 +48,7 @@ def main() -> None:
 
     models.load_wilor = load_wilor_without_renderer
     sys.argv = [str(args.source_root / "wilor_inference.py"), "--video", args.video, "--output", args.output]
-    runpy.run_path(args.source_root / "wilor_inference.py", run_name="__main__")
+    runpy.run_path(str(args.source_root / "wilor_inference.py"), run_name="__main__")
 
 
 if __name__ == "__main__":
