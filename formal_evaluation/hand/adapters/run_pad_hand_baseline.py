@@ -38,7 +38,8 @@ def _run_wilor(args: argparse.Namespace, video: Path, native: Path) -> Path:
     result = native / "wilor.npz"
     subprocess.run([
         str(args.conda_executable), "run", "-n", args.wilor_env, "python",
-        str(args.source_root / "wilor_inference.py"), "--video", str(video), "--output", str(result),
+        str(Path(__file__).with_name("pad_wilor_inference.py")),
+        "--source-root", str(args.source_root), "--video", str(video), "--output", str(result),
     ], check=True)
     return result
 
