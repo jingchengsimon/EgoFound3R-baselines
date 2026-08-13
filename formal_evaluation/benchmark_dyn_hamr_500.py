@@ -111,8 +111,12 @@ def main() -> None:
     if any(image is None for image in images):
         raise RuntimeError("failed to decode selected H2O RGB frames")
     height, width = images[0].shape[:2]
-    if any(image.shape[:2] != (height, width) for image in images):
-        raise ValueError("Dyn-HaMR benchmark requires constant frame dimensions")
+    # The official video path emits a constant-resolution frame stream. H2O's
+    # selected raw sequence mixes two 16:9 encodings, so normalize to the first
+    # frame before timing, matching the already-verified official smoke path.
+    images = [image if image.shape[:2] == (height, width)
+              else cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+              for image in images]
 
     device = torch.device(args.device)
     torch.cuda.set_device(device)
@@ -215,6 +219,7 @@ def main() -> None:
         "frame_ids": [path.stem for path in frame_paths],
         "output_frames": 500, "model_input_frames": 500,
         "strategy": "one continuous 500-frame sequence; fresh tracker, SLAM and optimizer state per trial",
+        "input_preprocessing": f"decoded RGB normalized before timing to the first-frame size {width}x{height}, matching the official constant-resolution video path",
         "timing_boundary": "decoded RGB arrays in memory through YOLO, HaMeR, DROID-SLAM, official inter-stage conversion and Dyn-HaMR optimization; excludes checkpoint/model load, source image IO/decode, final result save, metrics and visualization",
         "checkpoint_and_model_load_seconds_excluded": load_seconds,
         "trial_seconds": trials, "median_seconds": median,
