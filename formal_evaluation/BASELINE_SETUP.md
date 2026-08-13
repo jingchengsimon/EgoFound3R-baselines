@@ -22,8 +22,12 @@ python formal_evaluation/validate_runtime_registry.py --method METHOD --strict
 - Dyn-HaMR: use `/mnt/workspace/sjc/envs/dyn_hamr/bin/python` and add Dyn's
   DROID Python directories plus the two HaWoR sm_90 extension directories from
   the registry to `PYTHONPATH`. A 128-frame H2O smoke completed HaMeR,
-  DROID-SLAM, camera export and reduced-iteration optimization. This validates
-  full evaluation, but it is not a loaded-once 500-frame speed runner.
+  DROID-SLAM, camera export and reduced-iteration optimization. For strict
+  timing, `benchmark_dyn_hamr_500.py` measures a fresh Dyn optimization from
+  prepared 500-frame tracks/cameras with MANO loaded once and all writes off.
+  HaMeR and DROID now also accept decoded in-memory frames and preloaded
+  networks; their stage times must be aggregated separately after DSW runtime
+  validation. Never label the optimization-only JSON as full RGB-pipeline FPS.
 - S²Contact/ContactOpt: `benchmark_contact_500.py` times real checkpoint
   forwards from prepared hand/object geometry already in GPU memory. The large
   H2O pickle files are input geometry, not cached model predictions. New
@@ -31,6 +35,12 @@ python formal_evaluation/validate_runtime_registry.py --method METHOD --strict
 - LingBot-Map: use `/mnt/workspace/sjc/envs/lingbot_map/bin/python`. The offline
   Torch and torchvision wheels and the exact long checkpoint are registered;
   the runner uses SDPA, so FlashInfer is optional.
+- PAD-Hand speed: `benchmark_pad_hand_500.py` runs detector, bundled WiLoR and
+  PAD refinement in one process with all three models loaded once. Launch it
+  with the registered WiLoR interpreter and expose only PAD's `openmesh`
+  site-packages directory through `PYTHONPATH`. For 500 outputs, PAD processes
+  32 non-overlapping 16-frame windows (512 PAD inputs); the final input frame is
+  repeated 12 times and the padded outputs are discarded.
 
 The three adapters below only prepare or convert inference outputs. They do not
 download licensed assets, submit jobs, or run formal metrics.

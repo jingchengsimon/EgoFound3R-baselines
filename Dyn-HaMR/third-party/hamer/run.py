@@ -141,7 +141,7 @@ def create_video_from_images(image_folder, output_video_path, fps=30):
 # PASS 1: Extract all raw bboxes using YOLO hand detector
 # ============================================================================
 
-def extract_raw_bboxes(img_paths, detector, vis_dir=None):
+def extract_raw_bboxes(img_paths, detector, vis_dir=None, images=None):
     """
     Pass 1: Extract raw hand bboxes using YOLO hand detector (like WiLoR).
     YOLO directly detects hand bboxes with left/right classification.
@@ -167,7 +167,7 @@ def extract_raw_bboxes(img_paths, detector, vis_dir=None):
     
     for frame_idx, img_path in enumerate(tqdm(sorted(img_paths), desc="Pass 1: Extracting hand bboxes")):
         img_path = str(img_path)
-        img_cv2 = cv2.imread(img_path)
+        img_cv2 = cv2.imread(img_path) if images is None else images[frame_idx]
         
         frame_data = {
             'frame_idx': frame_idx,
@@ -1391,7 +1391,7 @@ def convert_crop_coords_to_orig_img(bbox, keypoints, crop_size):
     return keypoints
 
 
-def run_hamer_on_cleaned_bboxes(raw_data, model, model_cfg, renderer, args):
+def run_hamer_on_cleaned_bboxes(raw_data, model, model_cfg, renderer, args, images=None):
     """Pass 3: Run HaMeR on cleaned bboxes."""
     print("\n" + "="*80)
     print("PASS 3: Running HaMeR on cleaned bboxes")
@@ -1403,7 +1403,7 @@ def run_hamer_on_cleaned_bboxes(raw_data, model, model_cfg, renderer, args):
     for frame_data in tqdm(raw_data, desc="Pass 3: Running HaMeR"):
         img_path = frame_data['img_path']
         frame_idx = frame_data['frame_idx']
-        img_cv2 = cv2.imread(img_path)
+        img_cv2 = cv2.imread(img_path) if images is None else images[frame_idx]
         img_fn = os.path.splitext(os.path.basename(img_path))[0]
         
         # Prepare bboxes

@@ -14,9 +14,9 @@ from torch.multiprocessing import Process
 
 
 class Droid:
-    def __init__(self, args):
+    def __init__(self, args, net=None):
         super(Droid, self).__init__()
-        self.load_weights(args.weights)
+        self.net = net if net is not None else self.load_network(args.weights)
         self.args = args
         self.disable_vis = args.disable_vis
 
@@ -42,11 +42,12 @@ class Droid:
         self.traj_filler = PoseTrajectoryFiller(self.net, self.video)
 
 
-    def load_weights(self, weights):
+    @staticmethod
+    def load_network(weights):
         """ load trained model weights """
 
         print(weights)
-        self.net = DroidNet()
+        net = DroidNet()
         state_dict = OrderedDict([
             (k.replace("module.", ""), v) for (k, v) in torch.load(weights).items()])
 
@@ -55,8 +56,8 @@ class Droid:
         state_dict["update.delta.2.weight"] = state_dict["update.delta.2.weight"][:2]
         state_dict["update.delta.2.bias"] = state_dict["update.delta.2.bias"][:2]
 
-        self.net.load_state_dict(state_dict)
-        self.net.to("cuda:0").eval()
+        net.load_state_dict(state_dict)
+        return net.to("cuda:0").eval()
 
     def track(self, tstamp, image, depth=None, intrinsics=None):
         """ main thread - update map """
@@ -86,4 +87,3 @@ class Droid:
 
         camera_trajectory = self.traj_filler(stream)
         return camera_trajectory.inv().data.cpu().numpy()
-

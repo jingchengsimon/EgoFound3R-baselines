@@ -274,17 +274,19 @@ class StageOptimizer(object):
             plt.boxplot(loss_vals, labels=times, showfliers=False)
             plt.savefig(f"{res_dir}/{loss_name}.png")
 
-    def run(self, obs_data, num_iters, out_dir, vis=None, writer=None):
+    def run(self, obs_data, num_iters, out_dir, vis=None, writer=None, save_io=True):
         self.cur_step = 0
         self.loss.cur_step = 0
         res_dir = os.path.join(out_dir, self.name)
-        os.makedirs(res_dir, exist_ok=True)
+        if save_io:
+            os.makedirs(res_dir, exist_ok=True)
         seq_name = obs_data["seq_name"][0]
         print("SEQ NAME", seq_name, "num_iters", num_iters)
 
         # try to load from checkpoint if exists
         device = obs_data["joints2d"].device
-        self.load_checkpoint(out_dir, device=device)
+        if save_io:
+            self.load_checkpoint(out_dir, device=device)
 
         if self.cur_step >= num_iters:
             Logger.log(f"Current optimizer {self}")
@@ -296,18 +298,19 @@ class StageOptimizer(object):
 
         # save initial results and vis
         print('go into save_results in optimizers.py run()')
-        self.save_results(res_dir, seq_name)
+        if save_io:
+            self.save_results(res_dir, seq_name)
 
         for i in range(self.cur_step, num_iters):
             Logger.log("ITER: %d" % (i))
 
-            if (i + 1) % self.save_every == 0:  # save before
+            if save_io and (i + 1) % self.save_every == 0:  # save before
                 self.save_checkpoint(out_dir)
                 self.save_results(res_dir, seq_name)
-            else:
+            elif save_io:
                 self.save_checkpoint(out_dir)
 
-            if (i + 1) % self.vis_every == 0:  # render
+            if save_io and (i + 1) % self.vis_every == 0:  # render
                 self.vis_result(res_dir, obs_data, vis)
 
             self.cur_step = i
@@ -319,7 +322,8 @@ class StageOptimizer(object):
             # early termination in case of nans
             if np.isnan(self.cur_loss):
                 # we need to backtrack
-                self.load_checkpoint(out_dir, device=device)
+                if save_io:
+                    self.load_checkpoint(out_dir, device=device)
                 print(self.cur_loss, self.kkk, self.ppp)
                 raise ValueError
 
@@ -344,9 +348,10 @@ class StageOptimizer(object):
 
         # final save and vis step
         self.cur_step = num_iters
-        self.save_checkpoint(out_dir)
-        self.save_results(res_dir, seq_name)
-        self.vis_result(res_dir, obs_data, vis)
+        if save_io:
+            self.save_checkpoint(out_dir)
+            self.save_results(res_dir, seq_name)
+            self.vis_result(res_dir, obs_data, vis)
         # self.save_meshes_all(res_dir, obs_data, seq_name)
 
     def optim_step(self, obs_data, i, writer=None):

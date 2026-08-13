@@ -80,7 +80,7 @@ def load_intrins(intrins_path, image_files, start=0, end=-1):
     return intrins
 
 
-def image_stream(image_files, intrins_all):
+def image_stream(image_files, intrins_all, images=None):
     """image generator"""
 
     N = len(image_files)
@@ -89,7 +89,7 @@ def image_stream(image_files, intrins_all):
     assert intrins_all.shape[1] >= 4
 
     for t, imfile in enumerate(image_files):
-        image = cv2.imread(imfile)
+        image = cv2.imread(imfile) if images is None else images[t]
         if image is None:
             print(imfile, "is none, exiting")
             sys.exit(1)
@@ -190,7 +190,7 @@ def get_keyframe_map(video_dict):
     )
 
 
-def get_frame_cameras(droid, img_paths, intrins_all):
+def get_frame_cameras(droid, img_paths, intrins_all, images=None):
     N = len(img_paths)
 
     t = droid.video.counter.value
@@ -200,7 +200,7 @@ def get_frame_cameras(droid, img_paths, intrins_all):
         with torch.no_grad():
             # localize all frames and get edges into keyframe graph
             # returns 7D tensor (3D trans, 4D quat)
-            c2w = droid.terminate(image_stream(img_paths, intrins_all))
+            c2w = droid.terminate(image_stream(img_paths, intrins_all, images))
         c2w = torch.from_numpy(c2w.astype(np.float32))
         return SE3(c2w).inv().matrix()
 
@@ -290,11 +290,24 @@ def save_cameras(map_dir, frame_w2c, intrins):
     save_camera_json(f"{map_dir}/frame_cameras.json", frame_c2w, intrins)
 
 
+def run_loaded(args, img_paths, intrins_all, images=None, net=None):
+    """Run DROID with decoded images and an optionally preloaded network."""
+    droid = None
+    for t, image, intrinsics in image_stream(img_paths, intrins_all, images):
+        if t < args.t0:
+            continue
+        if droid is None:
+            args.image_size = [image.shape[2], image.shape[3]]
+            droid = Droid(args, net=net)
+        droid.track(t, image, intrinsics=intrinsics)
+    if droid is None:
+        raise RuntimeError("DROID received no frames")
+    return get_frame_cameras(droid, img_paths, intrins_all, images), droid
+
+
 def main(args):
     args.stereo = False
     torch.multiprocessing.set_start_method("spawn")
-
-    droid = None
 
     img_paths = get_image_files(
         args.img_dir, args.stride, start=args.start, end=args.end
@@ -311,24 +324,12 @@ def main(args):
     )
     print("intrins shape", intrins_all.shape, "num images", len(img_paths))
 
-    for t, image, intrinsics in tqdm(image_stream(img_paths, intrins_all)):
-        if t < args.t0:
-            continue
-
-        if not args.disable_vis:
-            show_image(image[0])
-
-        if droid is None:
-            args.image_size = [image.shape[2], image.shape[3]]
-            droid = Droid(args)
-
-        droid.track(t, image, intrinsics=intrinsics)
+    frame_w2c, droid = run_loaded(args, img_paths, intrins_all)
 
     if args.map_dir is None:
         return
 
     # save cameras
-    frame_w2c = get_frame_cameras(droid, img_paths, intrins_all)
     save_cameras(args.map_dir, frame_w2c, intrins_all)
 
     # save keyframe cameras and points

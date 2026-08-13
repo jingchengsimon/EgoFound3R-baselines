@@ -65,7 +65,7 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     os.environ['PYTHONHASHSEED'] = str(seed)
 
-def run_opt(cfg, dataset, out_dir, device):
+def run_opt(cfg, dataset, out_dir, device, hand_model=None, save_io=True):
     a = time.time()
     args = cfg.data
     B = len(dataset)
@@ -81,7 +81,8 @@ def run_opt(cfg, dataset, out_dir, device):
     # save cameras
     cam_R, cam_t = dataset.cam_data.cam2world()
     intrins = dataset.cam_data.intrins
-    save_camera_json(f"cameras.json", cam_R, cam_t, intrins)
+    if save_io:
+        save_camera_json(f"cameras.json", cam_R, cam_t, intrins)
 
     # check whether the cameras are static
     # if static, cannot optimize scale
@@ -112,7 +113,8 @@ def run_opt(cfg, dataset, out_dir, device):
     # Instantiate MANO model
     mano_cfg = {k.lower(): v for k,v in dict(cfg.MANO).items()}
     print('initializing MANO model with cfgs:', mano_cfg)
-    hand_model = MANO(batch_size=B*T, pose2rot=True, **mano_cfg).to(device)
+    if hand_model is None:
+        hand_model = MANO(batch_size=B*T, pose2rot=True, **mano_cfg).to(device)
 
     ################################################################
     ######################## optimization ##########################
@@ -126,8 +128,9 @@ def run_opt(cfg, dataset, out_dir, device):
     base_model.to(device)
 
     # save initial results for later visualization
-    save_input_poses(dataset, os.path.join(out_dir, "hamer"), args.seq)
-    save_initial_predictions(base_model, os.path.join(out_dir, "init"), args.seq)
+    if save_io:
+        save_input_poses(dataset, os.path.join(out_dir, "hamer"), args.seq)
+        save_initial_predictions(base_model, os.path.join(out_dir, "init"), args.seq)
 
     opts = cfg.optim.options
     vis_scale = 0.25
@@ -142,12 +145,12 @@ def run_opt(cfg, dataset, out_dir, device):
         )
     print("OPTIMIZER OPTIONS:", opts)
 
-    writer = SummaryWriter(out_dir)
+    writer = SummaryWriter(out_dir) if save_io else None
 
     print('start optimization')
     a = time.time()
     optim = RootOptimizer(base_model, stage_loss_weights, **opts)
-    optim.run(obs_data, cfg.optim.root.num_iters, out_dir, vis, writer)
+    optim.run(obs_data, cfg.optim.root.num_iters, out_dir, vis, writer, save_io=save_io)
 
     args = cfg.optim.smooth
     print(args)
@@ -156,7 +159,7 @@ def run_opt(cfg, dataset, out_dir, device):
     optim = SmoothOptimizer(
         base_model, stage_loss_weights, opt_scale=args.opt_scale, **opts
     )
-    optim.run(obs_data, args.num_iters, out_dir, vis, writer)
+    optim.run(obs_data, args.num_iters, out_dir, vis, writer, save_io=save_io)
     c = time.time()
     print('Smooth optimization time: ', c - b)
 
@@ -167,6 +170,10 @@ def run_opt(cfg, dataset, out_dir, device):
         obs_data, hand_model, cfg, cfg.data, os.path.join(out_dir, 'prior'))
     d = time.time()
     print('prior optimization time: ', d-c)
+    if writer is not None:
+        writer.close()
+    return {"root_optimization": b - a, "smooth_optimization": c - b,
+            "prior": d - c}
 
 
 @hydra.main(version_base=None, config_path="confs", config_name="config.yaml")
