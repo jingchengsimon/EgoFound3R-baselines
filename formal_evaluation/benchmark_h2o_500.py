@@ -425,7 +425,7 @@ RUNNERS = {
 
 BLOCKED = {
     "hawor": "blocked: source-local DROID and Metric3D weights are absent; no source modification permitted",
-    "dyn_hamr": "blocked: no verified RGB-to-result official entrypoint in the vendored tree",
+    "dyn_hamr": "delegated: run formal_evaluation/benchmark_dyn_hamr_500.py; this legacy single-forward driver must not substitute an optimization-only measurement",
     "pad_hand": "blocked: no verified PAD-Hand runtime environment exists under /mnt/workspace/sjc/envs",
     "reviv4d": "blocked: /mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/decoder.jit is missing",
     "s2contact": "blocked: verified adapter consumes H2O contact cache, not preprocessed raw H2O RGB",

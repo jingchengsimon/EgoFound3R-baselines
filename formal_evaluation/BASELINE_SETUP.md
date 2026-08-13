@@ -22,12 +22,13 @@ python formal_evaluation/validate_runtime_registry.py --method METHOD --strict
 - Dyn-HaMR: use `/mnt/workspace/sjc/envs/dyn_hamr/bin/python` and add Dyn's
   DROID Python directories plus the two HaWoR sm_90 extension directories from
   the registry to `PYTHONPATH`. A 128-frame H2O smoke completed HaMeR,
-  DROID-SLAM, camera export and reduced-iteration optimization. For strict
-  timing, `benchmark_dyn_hamr_500.py` measures a fresh Dyn optimization from
-  prepared 500-frame tracks/cameras with MANO loaded once and all writes off.
-  HaMeR and DROID now also accept decoded in-memory frames and preloaded
-  networks; their stage times must be aggregated separately after DSW runtime
-  validation. Never label the optimization-only JSON as full RGB-pipeline FPS.
+  DROID-SLAM, camera export and reduced-iteration optimization. The sole speed
+  entry is `benchmark_dyn_hamr_500.py`: it accepts raw H2O RGB only and runs
+  loaded-once YOLO, HaMeR, DROID-SLAM and Dyn optimization for every warm-up
+  and trial. It reports only whole-pipeline trial times, median seconds and
+  500-output-frame FPS; it does not publish component-stage FPS. It rejects
+  frame counts other than 500 and has no tracks/cameras input, so a
+  prepared-cache stage benchmark cannot be mistaken for full FPS.
 - S²Contact/ContactOpt: `benchmark_contact_500.py` times real checkpoint
   forwards from prepared hand/object geometry already in GPU memory. The large
   H2O pickle files are input geometry, not cached model predictions. New

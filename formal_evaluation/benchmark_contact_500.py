@@ -45,6 +45,8 @@ def main() -> None:
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--mano-right", type=Path, required=True,
+                        help="absolute path to MANO_RIGHT.pkl")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--batch-size", type=int, default=32)
@@ -60,7 +62,7 @@ def main() -> None:
         raise RuntimeError("CUDA is required")
     sequence, frame_ids = _frames(args.data_root)
     wanted = {(sequence, int(frame_id)) for frame_id in frame_ids}
-    Dataset, model = _load_baseline(args.baseline, args.source_root)
+    Dataset, model = _load_baseline(args.baseline, args.source_root, args.mano_right)
     dataset = Dataset(str(args.cache), min_num_cont=1)
     indices = [index for index, row in enumerate(dataset.dataset)
                if (str(row.get("h2o_sequence")), int(row.get("h2o_frame_id"))) in wanted]

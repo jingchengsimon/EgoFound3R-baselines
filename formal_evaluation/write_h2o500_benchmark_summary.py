@@ -19,7 +19,7 @@ AUDIT = {
     "egofound3r": ("EgoFound3R", "infer_marker_video.py-compatible runtime", "step_006099_newflow.pt", "egofound3r", "success: real neural-network forward"),
     "wilor": ("hand", "formal_evaluation/hand/adapters/run_wilor_baseline.py", "wilor_final.ckpt + detector.pt", "egofound3r", "blocked: WiLoR/mano_data/MANO_RIGHT.pkl missing"),
     "hawor": ("hand pipeline", "formal_evaluation/hand/adapters/run_hawor_baseline.py", "hawor.ckpt + infiller.pt + DROID/Metric3D", "egofound3r", "blocked: source-local DROID and Metric3D assets missing"),
-    "dyn_hamr": ("hand pipeline", "formal_evaluation/hand/adapters/run_dyn_hamr_baseline.py", "Dyn-HaMR component checkpoints", "unverified", "blocked: adapter is an importer; no verified H2O RGB-to-result runner"),
+    "dyn_hamr": ("hand pipeline", "formal_evaluation/benchmark_dyn_hamr_500.py", "HaMeR + YOLO + DROID-SLAM + MANO", "dyn_hamr", "full RGB pipeline runner implemented; DSW 500-frame validation pending"),
     "pad_hand": ("hand pipeline", "formal_evaluation/hand/adapters/run_pad_hand_baseline.py", "checkpoints/pad_hand.pt", "pad_hand_h20", "blocked: no verified pad_hand_h20 runtime"),
     "reviv4d": ("scene + hand", "formal_evaluation/scene/adapters/run_reviv4d_baseline.py", "ReViV + Cosmos DV8", "unverified", "blocked: Cosmos decoder.jit missing"),
     "s2contact": ("contact", "formal_evaluation/contact/adapters/run_s2_contactopt.py", "S2Contact-20211027-212322.pt", "contactopt", "blocked for RGB speed: adapter consumes H2O cache, not raw RGB"),
@@ -40,7 +40,7 @@ PARAMETERS = {
 BLOCKERS = {
     "wilor": "`/mnt/workspace/sjc/EgoFound3R-baselines/WiLoR/mano_data/MANO_RIGHT.pkl` absent; official loader raised `AssertionError`.",
     "hawor": "`HaWoR/thirdparty/DROID-SLAM/droid.pth` and `HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth` absent; central copies were not linked into source.",
-    "dyn_hamr": "The registered adapter only imports native predictions; no verified one-command H2O RGB inference entrypoint was found in the vendored tree.",
+    "dyn_hamr": "This legacy three-JSON summary does not ingest the dedicated Dyn-HaMR result yet; use benchmark_dyn_hamr_500.py and never substitute optimization-stage FPS.",
     "pad_hand": "`pad_hand_h20` was requested by the adapter but no corresponding verified interpreter/environment exists under `/mnt/workspace/sjc/envs`.",
     "reviv4d": "`/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/decoder.jit` is absent.",
     "s2contact": "The only verified H2O adapter requires a prebuilt `s2_right_h2o_30724.pkl` contact cache, not raw RGB; cache throughput was deliberately not measured.",

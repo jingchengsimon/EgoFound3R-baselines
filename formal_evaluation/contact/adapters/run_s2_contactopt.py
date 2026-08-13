@@ -37,6 +37,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--mano-right", type=Path, required=True,
+                        help="absolute path to MANO_RIGHT.pkl")
     parser.add_argument("--manifest", type=Path, required=True, help="formal manifest JSON or preserved frame_index.jsonl")
     parser.add_argument("--materialized-manifest", type=Path, help="write reconstructed formal manifest when --manifest is JSONL")
     parser.add_argument("--methods-config", type=Path, required=True)
@@ -47,12 +49,25 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _load_baseline(baseline: str, source_root: Path):
+def _load_baseline(baseline: str, source_root: Path, mano_right: Path):
     """Import each vendored package using the compatibility shims from old eval."""
-    # The original loaders unpickle ``HandObject`` classes that resolve MANO
-    # through ``mano/models/MANO_RIGHT.pkl`` relative to their repository.
-    # Match the old evaluator's ``cd <baseline-root>`` invocation.
-    os.chdir(source_root)
+    source_root = source_root.resolve(strict=True)
+    mano_right = mano_right.resolve(strict=True)
+    if mano_right.name != "MANO_RIGHT.pkl":
+        raise ValueError(f"--mano-right must name MANO_RIGHT.pkl: {mano_right}")
+
+    # Both released baselines instantiate manopth at module-import time with
+    # the hard-coded relative default ``mano/models``. Redirect that legacy
+    # default to the explicit canonical asset without changing process cwd.
+    from manopth import manolayer
+    original_init = manolayer.ManoLayer.__init__
+
+    def absolute_mano_init(self, *args, **kwargs):
+        if kwargs.get("mano_root", "mano/models") == "mano/models":
+            kwargs["mano_root"] = str(mano_right.parent)
+        return original_init(self, *args, **kwargs)
+
+    manolayer.ManoLayer.__init__ = absolute_mano_init
     sys.path.insert(0, str(source_root))
     import torch_cluster
     import torch_geometric.nn as tgn
@@ -178,7 +193,7 @@ def main() -> None:
     windows = _load_windows(args.manifest, args.materialized_manifest)
     arrays_by_window = _new_window_arrays(windows)
     method_config = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"][args.baseline]
-    Dataset, model = _load_baseline(args.baseline, args.source_root)
+    Dataset, model = _load_baseline(args.baseline, args.source_root, args.mano_right)
     dataset = Dataset(str(args.cache), min_num_cont=1)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=0, collate_fn=Dataset.collate_fn)
     state = torch.load(args.checkpoint, map_location="cpu", weights_only=False)

@@ -170,10 +170,14 @@ def run_opt(cfg, dataset, out_dir, device, hand_model=None, save_io=True):
         obs_data, hand_model, cfg, cfg.data, os.path.join(out_dir, 'prior'))
     d = time.time()
     print('prior optimization time: ', d-c)
+    prediction = None
+    if not save_io:
+        with torch.no_grad():
+            prediction = base_model.get_optim_result()
     if writer is not None:
         writer.close()
-    return {"root_optimization": b - a, "smooth_optimization": c - b,
-            "prior": d - c}
+    return ({"root_optimization": b - a, "smooth_optimization": c - b,
+             "prior": d - c}, prediction)
 
 
 @hydra.main(version_base=None, config_path="confs", config_name="config.yaml")

@@ -88,6 +88,7 @@ def _pipeline(gpu: int) -> str:
             f"--source-root /mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact "
             f"--cache /mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/s2_right_h2o_30724.pkl "
             f"--checkpoint /mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact/checkpoints/20211027-212322.pt "
+            f"--mano-right /mnt/workspace/sjc/models/human/mano/MANO_RIGHT.pkl "
             f"{common} --materialized-manifest {manifest}",
             f"{PYTHON} -m formal_evaluation.evaluate {evaluate} "
             f"--report-path {OUTPUT / 'contact_s2contact_formal_2579.new.json'} --methods s2contact",
@@ -95,6 +96,7 @@ def _pipeline(gpu: int) -> str:
             f"--source-root /mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt "
             f"--cache /mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/contactopt_right_h2o_30724.pkl "
             f"--checkpoint /mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt/checkpoints/deepcontact_checkpoint.pt "
+            f"--mano-right /mnt/workspace/sjc/models/human/mano/MANO_RIGHT.pkl "
             f"{common}",
             f"{PYTHON} -m formal_evaluation.evaluate {evaluate} "
             f"--report-path {OUTPUT / 'contact_contactopt_formal_2579.new.json'} --methods contactopt",

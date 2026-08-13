@@ -96,6 +96,7 @@ class MultiPeopleDataset(Dataset):
         is_static=False,
         pad_shot=False,
         split_cameras=True,
+        img_size=None,
     ):
         self.is_static = is_static
         self.seq_name = seq_name
@@ -115,8 +116,12 @@ class MultiPeopleDataset(Dataset):
         img_dir = self.data_sources["images"]
         assert os.path.isdir(img_dir)
         self.img_paths = [os.path.join(img_dir, f) for f in img_files]
-        img_h, img_w = imageio.imread(self.img_paths[0]).shape[:2]
-        self.img_size = img_w, img_h
+        if img_size is None:
+            img_h, img_w = imageio.imread(self.img_paths[0]).shape[:2]
+            self.img_size = img_w, img_h
+        else:
+            img_w, img_h = img_size
+            self.img_size = int(img_w), int(img_h)
         print(f"USING TOTAL {self.num_imgs} {img_w}x{img_h} IMGS")
 
         # find the tracks in the video
