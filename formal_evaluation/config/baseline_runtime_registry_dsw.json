@@ -92,18 +92,18 @@
       "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
       "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR",
       "input_contract": "RGB detector/tracker, motion estimation, DROID-SLAM, Metric3D, infiller and HaWoR model.",
-      "execution_status": "pending_sm90_droid_slam_build",
+      "execution_status": "runtime_assets_and_adapter_import_verified",
       "build_node": "5000 or 5001",
       "build_command": "/mnt/workspace/sjc/envs/egofound3r/bin/python setup.py build_ext --inplace",
-      "blocker": "DROID and Metric3D consumer mappings are present. The source now requests sm_90, but droid_backends and lietorch_backends must still be built once on a node with nvcc.",
+      "build_verification": "2026-08-13 on node 5000: both sm_90 extensions built and imported through the formal adapter dependency order.",
       "required_paths": [
         {"role": "HaWoR checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/hawor.ckpt", "bytes": 3267481572, "state": "present"},
         {"role": "infiller checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/infiller.pt", "bytes": 418603497, "state": "present"},
         {"role": "detector checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/detector.pt", "bytes": 53582271, "state": "present"},
         {"role": "source-required DROID checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth", "state": "present"},
         {"role": "source-required Metric3D checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth", "state": "present"},
-        {"role": "DROID compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid_backends.cpython-310-x86_64-linux-gnu.so", "state": "pending_build"},
-        {"role": "LieTorch compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends.cpython-310-x86_64-linux-gnu.so", "state": "pending_build"}
+        {"role": "DROID compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid_backends.cpython-310-x86_64-linux-gnu.so", "bytes": 2303672, "state": "present"},
+        {"role": "LieTorch compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends.cpython-310-x86_64-linux-gnu.so", "bytes": 14153624, "state": "present"}
       ],
       "path_mappings_required": [
         {"canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/droid.pth", "bytes": 16061701, "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth", "state": "present"},
@@ -148,17 +148,28 @@
     },
     "reviv4d": {
       "category": "scene reconstruction",
-      "execution_mode": "full_pipeline_pending_external_asset",
+      "execution_mode": "full_pipeline_smoke_verified",
       "runner": "formal_evaluation/scene/adapters/run_reviv4d_baseline.py",
+      "native_500_runner": "formal_evaluation/benchmark_reviv4d_500.py",
       "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "pythonpath_overlay": "/tmp/reviv4d_smoke_deps_20260813",
+      "pythonpath_overlay_state": "temporary smoke overlay; recreate as a persistent ReViV environment before formal scheduling",
       "source_root": "/mnt/workspace/sjc/external/reviv4d",
-      "input_contract": "ReViV4D demo pipeline over RGB/depth inputs; adapter requires source root, model checkpoint root and Cosmos tokenizer directory.",
-      "execution_status": "pending_decoder_transfer",
-      "blocker": "decoder.jit was absent on node 6001 during this audit. User reports its transfer is handled in another conversation; re-validate this exact target after transfer before enabling.",
+      "input_contract": "Formal H2O conversion: one 60-frame RGB context per 12-frame scoring window. Native 500-frame speed: nine non-overlapping 60-frame clips, with the final 40 input frames context-only. Scene requires Cosmos DV8; hands require Cosmos DV4.",
+      "execution_status": "smoke_verified_pending_adapter_sync_and_persistent_environment",
+      "blocker": "The source environment needs the exact ReViV dependency overlay recorded above. The adapter must pass DV8 only to demo_infer.py and DV4 to demo_hand.py; this checkout contains that fix.",
       "required_paths": [
         {"role": "Cosmos tokenizer encoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/encoder.jit", "bytes": 92292848, "state": "present"},
-        {"role": "Cosmos tokenizer decoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/decoder.jit", "state": "pending_external_transfer"},
-        {"role": "ReViV4D model checkpoint root", "path": "/mnt/workspace/sjc/external/reviv4d/checkpoints", "state": "unverified"}
+        {"role": "Cosmos tokenizer decoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/decoder.jit", "bytes": 132042180, "state": "present"},
+        {"role": "Cosmos hand encoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-0.1-Tokenizer-DV4x8x8/encoder.jit", "bytes": 86641076, "state": "present"},
+        {"role": "Cosmos hand decoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-0.1-Tokenizer-DV4x8x8/decoder.jit", "bytes": 125210440, "state": "present"},
+        {"role": "ReViV4D model checkpoint root", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth", "state": "present"},
+        {"role": "ReViV4D normalization statistics", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/norm_stats", "state": "present"},
+        {"role": "ReViV4D official environment specification", "path": "/mnt/workspace/sjc/external/reviv4d/environment.yaml", "state": "present"},
+        {"role": "ReViV4D main checkpoint", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_main.pth", "bytes": 2574931428, "state": "present"},
+        {"role": "ReViV4D camera tokenizer", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_tok_cam.pth", "bytes": 718878062, "state": "present"},
+        {"role": "ReViV4D left-hand tokenizer", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_tok_lhand.pth", "bytes": 720085992, "state": "present"},
+        {"role": "ReViV4D right-hand tokenizer", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_tok_rhand.pth", "bytes": 720086056, "state": "present"}
       ]
     },
     "s2contact": {
@@ -257,11 +268,11 @@
       "python": "/mnt/workspace/sjc/envs/interactvlm_eval/bin/python",
       "source_root": null,
       "input_contract": "Only cached H2O predictions are currently registered; cache read throughput is not model inference speed.",
-      "execution_status": "pending_dsw_deployment",
+      "execution_status": "formal_cached_prediction_evaluation_supported",
       "local_evaluation_status": "formal_cached_prediction_evaluation_supported",
       "runner_deployment": {
         "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/eval_h2o_interactvlm.py",
-        "state": "pending_git_deployment",
+        "state": "deployed_and_help_verified_on_dsw_5000",
         "source_of_truth": "tracked repository file"
       },
       "inference_status": "blocked_cached_predictions_only_no_executable_inference_entrypoint_verified",
