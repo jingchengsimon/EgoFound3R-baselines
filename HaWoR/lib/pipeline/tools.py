@@ -22,15 +22,14 @@ else:
             pass
 
 
-def detect_track(imgfiles, thresh=0.5):
-    
-    hand_det_model = YOLO('./weights/external/detector.pt')
+def detect_track(imgfiles, thresh=0.5, hand_det_model=None):
+    hand_det_model = hand_det_model or YOLO('./weights/external/detector.pt')
 
     # Run
     boxes_ = []
     tracks = {}
     for t, imgpath in enumerate(tqdm(imgfiles)):
-        img_cv2 = cv2.imread(imgpath)
+        img_cv2 = imgpath if isinstance(imgpath, np.ndarray) else cv2.imread(imgpath)
 
         ### --- Detection ---
         with torch.no_grad():

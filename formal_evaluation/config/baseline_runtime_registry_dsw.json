@@ -87,12 +87,13 @@
     },
     "hawor": {
       "category": "hand reconstruction",
-      "execution_mode": "full_pipeline_when_assets_mapped",
-      "runner": "formal_evaluation/hand/adapters/run_hawor_baseline.py",
+      "execution_mode": "full_pipeline_and_loaded_once_benchmark",
+      "runner": "formal_evaluation/hand/adapters/run_hawor_baseline.py; formal_evaluation/benchmark_hawor_500.py",
+      "benchmark_command": "/mnt/workspace/sjc/envs/egofound3r/bin/python formal_evaluation/benchmark_hawor_500.py --data-root /mnt/workspace/sjc/DATA/H2O/h2o_data --source-root /mnt/workspace/sjc/EgoFound3R-baselines/HaWoR --checkpoint /mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/hawor.ckpt --infiller-weight /mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/infiller.pt --detector-weight /mnt/workspace/sjc/models/pretrained/HaWoR/external/detector.pt --output-dir UNIQUE_OUTPUT --device cuda:7",
       "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
       "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR",
       "input_contract": "RGB detector/tracker, motion estimation, DROID-SLAM, Metric3D, infiller and HaWoR model.",
-      "execution_status": "runtime_assets_and_adapter_import_verified",
+      "execution_status": "loaded-once runtime and complete 16-frame in-memory H2O pipeline verified on DSW; 500-frame benchmark ready locally pending normal Git deployment",
       "build_node": "5000 or 5001",
       "build_command": "/mnt/workspace/sjc/envs/egofound3r/bin/python setup.py build_ext --inplace",
       "build_verification": "2026-08-13 on node 5000: both sm_90 extensions built and imported through the formal adapter dependency order.",
@@ -103,21 +104,31 @@
         {"role": "source-required DROID checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth", "state": "present"},
         {"role": "source-required Metric3D checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth", "state": "present"},
         {"role": "DROID compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid_backends.cpython-310-x86_64-linux-gnu.so", "bytes": 2303672, "state": "present"},
-        {"role": "LieTorch compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends.cpython-310-x86_64-linux-gnu.so", "bytes": 14153624, "state": "present"}
+        {"role": "LieTorch compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends.cpython-310-x86_64-linux-gnu.so", "bytes": 14153624, "state": "present"},
+        {"role": "right MANO consumer mapping", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data/mano/MANO_RIGHT.pkl", "state": "present_symlink_to_canonical_asset"},
+        {"role": "left MANO consumer mapping", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data_left/mano_left/MANO_LEFT.pkl", "state": "present_symlink_to_canonical_asset"}
       ],
       "path_mappings_required": [
         {"canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/droid.pth", "bytes": 16061701, "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth", "state": "present"},
-        {"canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/metric_depth_vit_large_800k.pth", "bytes": 1647972663, "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth", "state": "present"}
+        {"canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/metric_depth_vit_large_800k.pth", "bytes": 1647972663, "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth", "state": "present"},
+        {"canonical_path": "/mnt/workspace/sjc/models/human/mano/MANO_RIGHT.pkl", "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data/mano/MANO_RIGHT.pkl", "state": "present"},
+        {"canonical_path": "/mnt/workspace/sjc/models/human/mano/MANO_LEFT.pkl", "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data_left/mano_left/MANO_LEFT.pkl", "state": "present"}
       ]
     },
     "dyn_hamr": {
       "category": "hand reconstruction",
-      "execution_mode": "native_predictions_import_only",
-      "runner": "formal_evaluation/hand/adapters/run_dyn_hamr_baseline.py",
-      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "execution_mode": "official_rgb_pipeline_plus_native_prediction_import",
+      "runner": "Dyn-HaMR/dyn-hamr/run_opt.py followed by formal_evaluation/hand/adapters/run_dyn_hamr_baseline.py",
+      "runtime_note": "Set PYTHONPATH to Dyn-HaMR/third-party/DROID-SLAM, its droid_slam and thirdparty/lietorch directories, then the two registered HaWoR extension directories. Set DYN_HAMR_HAMER_DIR to Dyn-HaMR/third-party/hamer.",
+      "python": "/mnt/workspace/sjc/envs/dyn_hamr/bin/python",
       "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR",
-      "input_contract": "Current formal adapter imports native predictions; no verified H2O raw-RGB inference entrypoint.",
-      "execution_status": "blocked_no_verified_raw_rgb_runner",
+      "input_contract": "Contiguous RGB video; official HaMeR preprocessing, DROID-SLAM camera estimation and Dyn-HaMR optimization; native outputs are then normalized by the formal adapter.",
+      "execution_status": "verified on 128 real H2O frames through detector, HaMeR, DROID-SLAM, camera export, MANO scene construction and reduced-iteration optimization; strict loaded-once 500-frame timing entrypoint not yet implemented",
+      "runtime_extension_mapping": {
+        "policy": "Reuse the ABI-compatible sm_90 extensions already built for HaWoR; Dyn-HaMR keeps its own DROID Python source and checkpoint.",
+        "droid_backends": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid_backends.cpython-310-x86_64-linux-gnu.so",
+        "lietorch_backends": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends.cpython-310-x86_64-linux-gnu.so"
+      },
       "required_paths": [
         {"role": "HaMeR checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hamer_ckpts/checkpoints/hamer.ckpt", "bytes": 2689536166, "state": "present"},
         {"role": "ViTPose checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/vitpose_ckpts/vitpose+_huge/wholebody.pth", "bytes": 3807742341, "state": "present"},
@@ -129,18 +140,18 @@
     },
     "pad_hand": {
       "category": "hand reconstruction",
-      "execution_mode": "full_pipeline_pending_environment_probe",
+      "execution_mode": "full_pipeline_two_interpreters",
       "runner": "formal_evaluation/hand/adapters/run_pad_hand_baseline.py",
-      "python": null,
-      "conda_executable": "/mnt/workspace/sjc/miniconda3/bin/conda",
-      "named_environments": ["pad_hand_h20", "wilor"],
+      "python": "/mnt/workspace/sjc/miniconda3/envs/pad_hand_h20/bin/python",
+      "wilor_python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "legacy_unused_python": "/mnt/workspace/sjc/miniconda3/envs/wilor/bin/python",
       "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand",
-      "input_contract": "PAD-Hand pipeline with WiLoR dependency; the adapter invokes the two registered named conda environments.",
-      "execution_status": "blocked_wilor_environment_missing_torch",
-      "blocker": "Both named environments exist. pad_hand_h20 imports torch 2.4.1+cu124, but wilor fails `import torch` with ModuleNotFoundError; the full PAD pipeline cannot start.",
+      "input_contract": "At least 16 contiguous RGB frames; bundled WiLoR runs with the verified egofound3r interpreter, then PAD refinement runs with pad_hand_h20.",
+      "execution_status": "verified on 16 H2O frames through bundled WiLoR and PAD refinement; strict loaded-once 500-frame timing entrypoint not yet implemented",
       "required_paths": [
         {"role": "PAD-Hand environment Python", "path": "/mnt/workspace/sjc/miniconda3/envs/pad_hand_h20/bin/python", "state": "present"},
-        {"role": "WiLoR environment Python", "path": "/mnt/workspace/sjc/miniconda3/envs/wilor/bin/python", "state": "present"},
+        {"role": "verified WiLoR front-end Python", "path": "/mnt/workspace/sjc/envs/egofound3r/bin/python", "state": "present"},
+        {"role": "PAD bundled WiLoR MANO consumer mapping", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/WiLoR/mano_data/MANO_RIGHT.pkl", "state": "present_symlink_to_canonical_asset"},
         {"role": "PAD-Hand checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/checkpoints/pad_hand.pt", "bytes": 319254959, "state": "present"},
         {"role": "right processed MANO", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/assets/processed_MANO_RIGHT.pkl", "bytes": 3075291, "state": "present"},
         {"role": "left processed MANO", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/assets/processed_MANO_LEFT.pkl", "bytes": 3075324, "state": "present"}
@@ -174,28 +185,30 @@
     },
     "s2contact": {
       "category": "contact",
-      "execution_mode": "formal_cached_prediction_pipeline",
-      "runner": "formal_evaluation/contact/adapters/run_s2_contactopt.py",
+      "execution_mode": "real_model_forward_on_prepared_geometry",
+      "runner": "formal_evaluation/contact/adapters/run_s2_contactopt.py; formal_evaluation/benchmark_contact_500.py",
+      "benchmark_command": "/mnt/workspace/sjc/envs/contactopt/bin/python formal_evaluation/benchmark_contact_500.py --baseline s2contact --data-root /mnt/workspace/sjc/DATA/H2O/h2o_data --source-root /mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact --cache /mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/s2_right_h2o_30724.pkl --checkpoint /mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact/checkpoints/20211027-212322.pt --output-dir UNIQUE_OUTPUT --device cuda:7",
       "python": "/mnt/workspace/sjc/envs/contactopt/bin/python",
       "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact",
-      "input_contract": "H2O contact cache for formal evaluation; not a raw-RGB online inference timing entrypoint.",
-      "execution_status": "formal_cache_pipeline_verified",
+      "input_contract": "Prepared H2O GT hand/object geometry; cache read is excluded from model-forward timing.",
+      "execution_status": "checkpoint forward and formal H2O geometry pipeline verified; future datasets require a dataset-specific geometry-cache builder",
       "required_paths": [
         {"role": "S2Contact checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact/checkpoints/20211027-212322.pt", "bytes": 2392568, "state": "present"},
-        {"role": "H2O right-hand cached predictions", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/s2_right_h2o_30724.pkl", "bytes": 46831283519, "state": "present"}
+        {"role": "H2O right-hand prepared geometry cache", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/s2_right_h2o_30724.pkl", "bytes": 46831283519, "state": "present"}
       ]
     },
     "contactopt": {
       "category": "contact",
-      "execution_mode": "formal_cached_prediction_pipeline",
-      "runner": "formal_evaluation/contact/adapters/run_s2_contactopt.py",
+      "execution_mode": "real_model_forward_on_prepared_geometry",
+      "runner": "formal_evaluation/contact/adapters/run_s2_contactopt.py; formal_evaluation/benchmark_contact_500.py",
+      "benchmark_command": "/mnt/workspace/sjc/envs/contactopt/bin/python formal_evaluation/benchmark_contact_500.py --baseline contactopt --data-root /mnt/workspace/sjc/DATA/H2O/h2o_data --source-root /mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt --cache /mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/contactopt_right_h2o_30724.pkl --checkpoint /mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt/checkpoints/deepcontact_checkpoint.pt --output-dir UNIQUE_OUTPUT --device cuda:7",
       "python": "/mnt/workspace/sjc/envs/contactopt/bin/python",
       "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt",
-      "input_contract": "H2O contact cache for formal evaluation; not a raw-RGB online inference timing entrypoint.",
-      "execution_status": "formal_cache_pipeline_verified",
+      "input_contract": "Prepared H2O GT hand/object geometry; cache read is excluded from model-forward timing.",
+      "execution_status": "checkpoint forward and formal H2O geometry pipeline verified; future datasets require a dataset-specific geometry-cache builder",
       "required_paths": [
         {"role": "ContactOpt checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt/checkpoints/deepcontact_checkpoint.pt", "bytes": 5751948, "state": "present"},
-        {"role": "H2O right-hand cached predictions", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/contactopt_right_h2o_30724.pkl", "bytes": 46831283522, "state": "present"}
+        {"role": "H2O right-hand prepared geometry cache", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/contactopt_right_h2o_30724.pkl", "bytes": 46831283522, "state": "present"}
       ]
     },
     "vggt": {
@@ -237,16 +250,19 @@
     },
     "lingbot_map_long": {
       "category": "scene reconstruction",
-      "execution_mode": "real_model_forward_pending_environment_upgrade",
-      "runner": "formal_evaluation/scene/adapters/run_scene_baseline.py --method lingbot_map_long",
+      "execution_mode": "real_model_forward_and_loaded_once_benchmark",
+      "runner": "formal_evaluation/scene/adapters/run_scene_baseline.py --method lingbot_map_long; formal_evaluation/benchmark_h2o_500.py --methods lingbot_map_long",
+      "benchmark_command": "/mnt/workspace/sjc/envs/lingbot_map/bin/python formal_evaluation/benchmark_h2o_500.py --data-root /mnt/workspace/sjc/DATA/H2O/h2o_data --output-dir UNIQUE_OUTPUT --device cuda:7 --methods lingbot_map_long",
       "python": "/mnt/workspace/sjc/envs/lingbot_map/bin/python",
       "environment_root": "/mnt/workspace/sjc/envs/lingbot_map",
       "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/lingbot-map",
       "input_contract": "RGB video chunks according to LingBot-Map's official context rule.",
-      "execution_status": "blocked_torch_download_stalled",
-      "blocker": "A dedicated Python 3.10 environment was created at the registered path. The official minimum Torch 2.5.1 CUDA 12.1 wheel download was stopped after sustained ~6 KB/s throughput; torch is not yet installed. FlashInfer is optional because this runner selects SDPA.",
+      "execution_status": "verified checkpoint load and real H2O single-frame streaming forward on H20 with Torch 2.5.1+cu121; 500-frame benchmark entry ready locally pending normal Git deployment",
+      "environment_verification": "torch 2.5.1+cu121, CUDA 12.1 available, torchvision 0.20.1+cu121, flex_attention import OK, GCTStream import OK; SDPA path does not require FlashInfer",
       "required_paths": [
-        {"role": "LingBot-Map long checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/LingBot-Map/lingbot-map-long.pt", "bytes": 4632303465, "state": "present"}
+        {"role": "LingBot-Map long checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/LingBot-Map/lingbot-map-long.pt", "bytes": 4632303465, "state": "present"},
+        {"role": "offline Torch wheel", "path": "/mnt/workspace/sjc/wheels/torch-2.5.1+cu121-cp310-cp310-linux_x86_64.whl", "bytes": 780429430, "state": "present"},
+        {"role": "offline torchvision wheel", "path": "/mnt/workspace/sjc/wheels/torchvision-0.20.1+cu121-cp310-cp310-linux_x86_64.whl", "bytes": 7282142, "state": "present"}
       ]
     },
     "vggt_omega": {

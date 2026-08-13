@@ -57,5 +57,7 @@ def load_hamer(root=None):
     # Freeze the config after modifications
     model_cfg.freeze()
 
-    model = HAMER.load_from_checkpoint(checkpoint_path, strict=False, cfg=model_cfg)
+    model = HAMER.load_from_checkpoint(
+        checkpoint_path, strict=False, cfg=model_cfg, init_renderer=False
+    )
     return model, model_cfg

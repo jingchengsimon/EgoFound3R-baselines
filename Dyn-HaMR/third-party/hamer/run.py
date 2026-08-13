@@ -1650,7 +1650,7 @@ def main():
     yolo_detector.to(device)
     
     # Load renderer
-    renderer = Renderer(model_cfg, faces=model.mano.faces)
+    renderer = Renderer(model_cfg, faces=model.mano.faces) if args.render else None
     
     # Create visualization directory
     vis_dir = None

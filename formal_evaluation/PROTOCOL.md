@@ -48,7 +48,9 @@ window is twelve frames unless the supplied manifest explicitly says otherwise.
   union targets, then intersect their supervision mask with `hand_valid`.
 - Contact precision, recall, F1, counts, and AP call `binary_metrics` and
   `average_precision`; scores are thresholded at 0.5 for binary metrics.
-- S²Contact/ContactOpt (21 points) and InteractVLM (778 vertices) retain their
-  own GT projection adapters.  Their predictions must be serialized to the
-  same probability/target/mask form before this metric layer is used; their
-  F1 values are not cross-protocol rankable.
+- The registered contact baselines are S²Contact, ContactOpt, and InteractVLM.
+  S²Contact/ContactOpt use 21 points; InteractVLM uses existing cached
+  778-vertex predictions only and is not a model-inference speed measurement.
+  They retain their own GT projection adapters and must be serialized to the
+  same probability/target/mask form before this metric layer is used; their F1
+  values are not cross-protocol rankable.

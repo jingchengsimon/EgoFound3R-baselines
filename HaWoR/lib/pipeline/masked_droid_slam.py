@@ -53,7 +53,12 @@ args = parser.parse_args([])
 args.stereo = False
 args.upsample = True
 args.disable_vis = True
-torch.multiprocessing.set_start_method('spawn')
+try:
+    torch.multiprocessing.set_start_method('spawn')
+except RuntimeError:
+    # Ultralytics or the benchmark host may have selected the process context
+    # before this module is imported. DROID only requires a valid context.
+    pass
 
 
 def est_calib(imagedir):
@@ -62,7 +67,7 @@ def est_calib(imagedir):
         imgfiles = imagedir
     else:
         imgfiles = sorted(glob(f'{imagedir}/*.jpg'))
-    image = cv2.imread(imgfiles[0])
+    image = imgfiles[0] if isinstance(imgfiles[0], np.ndarray) else cv2.imread(imgfiles[0])
 
     h0, w0, _ = image.shape
     focal = np.max([h0, w0])
@@ -77,7 +82,7 @@ def get_dimention(imagedir):
         imgfiles = imagedir
     else:
         imgfiles = sorted(glob(f'{imagedir}/*.jpg'))
-    image = cv2.imread(imgfiles[0])
+    image = imgfiles[0] if isinstance(imgfiles[0], np.ndarray) else cv2.imread(imgfiles[0])
 
     h0, w0, _ = image.shape
     h1 = int(h0 * np.sqrt((384 * 512) / (h0 * w0)))
@@ -108,7 +113,7 @@ def image_stream(imagedir, calib, stride, max_frame=None):
         image_list = image_list[:max_frame]
 
     for t, imfile in enumerate(image_list):
-        image = cv2.imread(imfile)
+        image = imfile if isinstance(imfile, np.ndarray) else cv2.imread(imfile)
         if len(calib) > 4:
             image = cv2.undistort(image, K, calib[4:])
 
@@ -127,8 +132,8 @@ def image_stream(imagedir, calib, stride, max_frame=None):
         yield t, image[None], intrinsics
 
 
-def run_slam(imagedir, masks, calib=None, depth=None, stride=1,  
-             filter_thresh=2.4, disable_vis=True):
+def run_slam(imagedir, masks, calib=None, depth=None, stride=1,
+             filter_thresh=2.4, disable_vis=True, droid_net=None):
     """ Maksed DROID-SLAM """
     droid = None
     depth = None
@@ -144,7 +149,7 @@ def run_slam(imagedir, masks, calib=None, depth=None, stride=1,
 
         if droid is None:
             args.image_size = [image.shape[2], image.shape[3]]
-            droid = Droid(args)
+            droid = Droid(args, net=droid_net)
         
         img_msk = img_msks[t]
         conf_msk = conf_msks[t]
@@ -281,8 +286,6 @@ def preprocess_masks(img_folder, masks):
     conf_msks = torch.cat(conf_msks)
 
     return img_msks, conf_msks
-
-
 
 
 

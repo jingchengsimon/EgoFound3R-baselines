@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import runpy
 import sys
 from pathlib import Path
@@ -20,6 +21,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     wilor_root = args.source_root / "WiLoR"
+    os.chdir(wilor_root)
     sys.path.insert(0, str(wilor_root))
     import wilor.models as models
     from wilor.configs import get_config

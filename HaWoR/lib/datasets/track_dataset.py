@@ -48,7 +48,7 @@ class TrackDatasetEval(Dataset):
         img_focal = self.img_focal
         img_center = self.img_center
 
-        img = cv2.imread(imgfile)[:,:,::-1]
+        img = (imgfile if isinstance(imgfile, np.ndarray) else cv2.imread(imgfile))[:, :, ::-1]
         if self.do_flip:
             img = img[:, ::-1, :]
             img_width = img.shape[1]
@@ -75,4 +75,3 @@ class TrackDatasetEval(Dataset):
         
 
         return item
-

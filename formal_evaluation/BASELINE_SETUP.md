@@ -13,6 +13,25 @@ check the registered paths with:
 python formal_evaluation/validate_runtime_registry.py --method METHOD --strict
 ```
 
+## Current verified runtime notes
+
+- HaWoR: use `benchmark_hawor_500.py` for the loaded-once 500-frame pipeline.
+  It reports detector/tracker, HaWoR, DROID-SLAM, Metric3D, infiller/world
+  conversion and MANO stages separately. The manifest adapter accepts
+  `--rgb-dir-template` for datasets whose RGB layout differs from H2O.
+- Dyn-HaMR: use `/mnt/workspace/sjc/envs/dyn_hamr/bin/python` and add Dyn's
+  DROID Python directories plus the two HaWoR sm_90 extension directories from
+  the registry to `PYTHONPATH`. A 128-frame H2O smoke completed HaMeR,
+  DROID-SLAM, camera export and reduced-iteration optimization. This validates
+  full evaluation, but it is not a loaded-once 500-frame speed runner.
+- S²Contact/ContactOpt: `benchmark_contact_500.py` times real checkpoint
+  forwards from prepared hand/object geometry already in GPU memory. The large
+  H2O pickle files are input geometry, not cached model predictions. New
+  datasets need a builder that emits the same geometry contract.
+- LingBot-Map: use `/mnt/workspace/sjc/envs/lingbot_map/bin/python`. The offline
+  Torch and torchvision wheels and the exact long checkpoint are registered;
+  the runner uses SDPA, so FlashInfer is optional.
+
 The three adapters below only prepare or convert inference outputs. They do not
 download licensed assets, submit jobs, or run formal metrics.
 
@@ -45,12 +64,14 @@ environments: PAD-Hand itself and WiLoR. Prepare at least 16 contiguous frames
 python formal_evaluation/hand/adapters/run_pad_hand_baseline.py --phase smoke \
   --manifest MANIFEST.json --methods-config formal_evaluation/config/methods_v1.json \
   --prepared-dir PREPARED_DIR --source-root PAD-Hand \
-  --conda-executable CONDA --output-root OUTPUT_ROOT
+  --wilor-python /mnt/workspace/sjc/envs/egofound3r/bin/python --output-root OUTPUT_ROOT
 ```
 
 The adapter invokes the official WiLoR front end and PAD reverse diffusion,
 then exports its refined camera-space 21-joint prediction. It does not treat a
-plain WiLoR result as PAD-Hand.
+plain WiLoR result as PAD-Hand. Run the adapter itself with
+`/mnt/workspace/sjc/miniconda3/envs/pad_hand_h20/bin/python`; the old named
+`wilor` environment is not used because it has no Torch installation.
 
 ## ReViV4D: 3R plus hand only
 
@@ -69,9 +90,29 @@ plain WiLoR result as PAD-Hand.
    python formal_evaluation/scene/adapters/run_reviv4d_baseline.py --phase pilot \
      --manifest MANIFEST.json --methods-config formal_evaluation/config/methods_v1.json \
      --prepared-dir PREPARED_DIR --source-root REVIV_ROOT --checkpoint-root REVIV_CKPT_ROOT \
-     --cosmos-dir COSMOS_ROOT --sequence SEQUENCE --window-id WINDOW_ID --output-root OUTPUT_ROOT
+     --cosmos-dir COSMOS_DV8_ROOT --hand-cosmos-dir COSMOS_DV4_ROOT \
+     --sequence SEQUENCE --window-id WINDOW_ID --output-root OUTPUT_ROOT
    ```
 
 `tok_body` and `tok_gaze` are explicitly excluded. ReViV's camera remains in
 its RGB-predicted canonical frame: the adapter never reads a GT first-camera
 pose sidecar for anchoring.
+
+For ReViV-native 500-target-frame speed, use
+`formal_evaluation/benchmark_reviv4d_500.py`. It runs nine contiguous 60-frame
+clips (540 model-input frames, of which the final 40 are context only), not 42
+independent H2O 12-frame windows. Resolve every path from the registry entry
+below; the `--pythonpath` overlay is required until a persistent ReViV
+environment is provisioned.
+
+```bash
+PYTHONPATH=/tmp/reviv4d_smoke_deps_20260813 \
+/mnt/workspace/sjc/envs/egofound3r/bin/python formal_evaluation/benchmark_reviv4d_500.py \
+  --data-root /mnt/workspace/sjc/DATA/H2O/h2o_data \
+  --output-dir /mnt/workspace/sjc/artifacts/reviv4d_h2o500_TIMESTAMP \
+  --source-root /mnt/workspace/sjc/external/reviv4d \
+  --checkpoint-root /mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth \
+  --scene-cosmos-dir /mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16 \
+  --hand-cosmos-dir /mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-0.1-Tokenizer-DV4x8x8 \
+  --python /mnt/workspace/sjc/envs/egofound3r/bin/python --cuda-visible-devices 7
+```

@@ -57,7 +57,7 @@ def _run_demos(args: argparse.Namespace, input_video: Path, native_dir: Path) ->
     ], cwd=args.source_root, check=True)
     subprocess.run([
         sys.executable, "demo_hand.py", "--video", str(input_video), "--output_dir", str(hand_dir),
-        "--ckpt_root", str(args.checkpoint_root), "--cosmos_dir", str(args.cosmos_dir),
+        "--ckpt_root", str(args.checkpoint_root), "--cosmos_dir", str(args.hand_cosmos_dir),
         "--amp_dtype", args.amp_dtype,
     ], cwd=args.source_root, check=True)
 
@@ -72,6 +72,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--checkpoint-root", type=Path, required=True)
     parser.add_argument("--cosmos-dir", type=Path, required=True)
+    parser.add_argument(
+        "--hand-cosmos-dir",
+        type=Path,
+        default=Path("Cosmos/checkpoints/Cosmos-0.1-Tokenizer-DV4x8x8"),
+        help="Cosmos DV4x8x8 directory for ReViV's 256-pathway hand demo.",
+    )
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--sequence")
     parser.add_argument("--window-id")

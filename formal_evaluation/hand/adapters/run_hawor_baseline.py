@@ -55,53 +55,93 @@ MARKER_IDS_195 = np.array(MANO_MESHGRAPHORMER_LEVEL1_MARKER_VERTEX_IDS_195, dtyp
 # HaWoR pipeline
 # ---------------------------------------------------------------------------
 
+class HaworRuntime:
+    """Load HaWoR's neural modules once and reset only per-sequence state."""
+
+    def __init__(self, source_root: Path, checkpoint: Path, infiller_weight: Path,
+                 detector_weight: Path, device_name: str):
+        import torch
+        from ultralytics import YOLO
+
+        self.source_root = source_root.resolve()
+        self.device = torch.device(device_name)
+        for path in (
+            self.source_root,
+            self.source_root / "thirdparty/DROID-SLAM",
+            self.source_root / "thirdparty/DROID-SLAM/droid_slam",
+            self.source_root / "thirdparty/DROID-SLAM/thirdparty/lietorch",
+            self.source_root / "thirdparty/Metric3D",
+        ):
+            if str(path) not in sys.path:
+                sys.path.insert(0, str(path))
+        previous = Path.cwd()
+        os.chdir(self.source_root)
+        try:
+            from scripts.scripts_test_video.hawor_video import load_hawor
+            from infiller.lib.model.network import TransformerModel
+            from metric import Metric3D
+            from droid import Droid
+
+            self.detector = YOLO(str(detector_weight.resolve()))
+            self.detector.to(self.device)
+            self.hawor_model, self.model_cfg = load_hawor(str(checkpoint.resolve()))
+            self.hawor_model = self.hawor_model.to(self.device).eval()
+            self.metric3d = Metric3D(str(self.source_root / "thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth"))
+            self.droid_net = Droid.load_network(str(self.source_root / "thirdparty/DROID-SLAM/droid.pth"))
+            ckpt = torch.load(str(infiller_weight.resolve()), map_location=self.device)
+            self.infiller = TransformerModel(
+                seq_len=120, input_dim=218, d_model=384, nhead=8, d_hid=2048,
+                nlayers=8, dropout=0.05, out_dim=218, masked_attention_stage=True,
+            ).to(self.device)
+            self.infiller.load_state_dict(ckpt["transformer_encoder_state_dict"])
+            self.infiller.eval()
+        finally:
+            os.chdir(previous)
+
+    def reset_sequence_state(self) -> None:
+        # Ultralytics keeps ByteTrack state when persist=True; a new predictor
+        # resets tracks while retaining the already loaded detector weights.
+        self.detector.predictor = None
+
+    def run(self, frames: list[Path] | list[np.ndarray], img_focal: float | None = None):
+        self.reset_sequence_state()
+        previous = Path.cwd()
+        os.chdir(self.source_root)
+        try:
+            return _run_hawor_inner(frames, self.source_root, self.device, img_focal, self)
+        finally:
+            os.chdir(previous)
+
+    def parameter_modules(self) -> dict[str, object]:
+        return {
+            "detector": self.detector.model,
+            "hawor": self.hawor_model,
+            "droid": self.droid_net,
+            "metric3d": self.metric3d.model_,
+            "infiller": self.infiller,
+        }
+
 
 def _run_hawor(
     frame_paths: list[Path],
     source_root: Path,
     checkpoint: Path,
     infiller_weight: Path,
+    detector_weight: Path,
     device_name: str,
     img_focal: float | None = None,
 ):
     """Run full HaWoR pipeline on a list of frames. Returns canonical arrays + metadata."""
-    import torch
-    import cv2
-    from glob import glob
-    from natsort import natsorted
-
-    source_root_abs = source_root.resolve()
-    hawor_root = str(source_root_abs)
-
-    # Set up sys.path for HaWoR
-    for p in [
-        hawor_root,
-        str(source_root_abs / "thirdparty" / "DROID-SLAM"),
-        str(source_root_abs / "thirdparty" / "DROID-SLAM" / "thirdparty" / "lietorch"),
-        str(source_root_abs / "thirdparty" / "Metric3D"),
-    ]:
-        if p not in sys.path:
-            sys.path.insert(0, p)
-
-    # Must cwd to HaWoR root for relative weight paths (./weights/..., _DATA/...)
-    prev_cwd = os.getcwd()
-    os.chdir(hawor_root)
-
-    try:
-        return _run_hawor_inner(
-            frame_paths, source_root_abs, checkpoint, infiller_weight, device_name, img_focal
-        )
-    finally:
-        os.chdir(prev_cwd)
+    runtime = HaworRuntime(source_root, checkpoint, infiller_weight, detector_weight, device_name)
+    return runtime.run(frame_paths, img_focal)
 
 
 def _run_hawor_inner(
-    frame_paths: list[Path],
+    frame_paths: list[Path] | list[np.ndarray],
     source_root_abs: Path,
-    checkpoint: Path,
-    infiller_weight: Path,
-    device_name: str,
+    device: object,
     img_focal: float | None,
+    runtime: HaworRuntime,
 ):
     import torch
     import cv2
@@ -115,27 +155,38 @@ def _run_hawor_inner(
     from lib.eval_utils.filling_utils import filling_postprocess, filling_preprocess
     from hawor.utils.process import get_mano_faces, run_mano, run_mano_left
     from hawor.utils.rotation import angle_axis_to_rotation_matrix, rotation_matrix_to_angle_axis
-    from infiller.lib.model.network import TransformerModel
 
-    device = torch.device(device_name)
     T = len(frame_paths)
+    stage_seconds: dict[str, float] = {}
+
+    def stage_start() -> float:
+        torch.cuda.synchronize(device)
+        return time.perf_counter()
+
+    def stage_end(name: str, started: float) -> None:
+        torch.cuda.synchronize(device)
+        stage_seconds[name] = time.perf_counter() - started
 
     # Create temp working directory mimicking HaWoR's expected structure
-    tmp_dir = tempfile.mkdtemp(prefix="hawor_comparison_")
+    tmp_parent = "/dev/shm" if Path("/dev/shm").is_dir() else None
+    tmp_dir = tempfile.mkdtemp(prefix="hawor_comparison_", dir=tmp_parent)
     seq_name = "seq"
     seq_folder = os.path.join(tmp_dir, seq_name)
     img_folder = os.path.join(seq_folder, "extracted_images")
     os.makedirs(img_folder, exist_ok=True)
 
-    # Copy frames as jpg
-    for i, fp in enumerate(frame_paths):
-        dst = os.path.join(img_folder, f"{i:04d}.jpg")
-        shutil.copy2(fp, dst)
-    imgfiles = np.array(natsorted(glob(os.path.join(img_folder, "*.jpg"))))
+    if frame_paths and isinstance(frame_paths[0], np.ndarray):
+        # Keep a Python list: np.asarray(..., dtype=object) still constructs a
+        # high-dimensional object array when every frame has the same shape.
+        imgfiles = list(frame_paths)
+    else:
+        for i, fp in enumerate(frame_paths):
+            shutil.copy2(fp, os.path.join(img_folder, f"{i:04d}.jpg"))
+        imgfiles = np.array(natsorted(glob(os.path.join(img_folder, "*.jpg"))))
     assert len(imgfiles) == T
 
     # Determine focal and image center
-    img0 = cv2.imread(imgfiles[0])
+    img0 = imgfiles[0] if isinstance(imgfiles[0], np.ndarray) else cv2.imread(imgfiles[0])
     H_img, W_img = img0.shape[:2]
     if img_focal is None:
         focal = float(max(H_img, W_img))
@@ -147,15 +198,14 @@ def _run_hawor_inner(
     start_idx, end_idx = 0, T
     track_dir = os.path.join(seq_folder, f"tracks_{start_idx}_{end_idx}")
     os.makedirs(track_dir, exist_ok=True)
-    boxes_, tracks_ = detect_track(imgfiles, thresh=0.2)
+    stage_started = stage_start()
+    boxes_, tracks_ = detect_track(imgfiles, thresh=0.2, hand_det_model=runtime.detector)
+    stage_end("detector_tracker", stage_started)
     np.save(os.path.join(track_dir, "model_boxes.npy"), boxes_)
     np.save(os.path.join(track_dir, "model_tracks.npy"), tracks_)
 
     # --- Stage 2: HaWoR motion estimation ---
-    from scripts.scripts_test_video.hawor_video import load_hawor
-
-    model, model_cfg = load_hawor(str(checkpoint.resolve()))
-    model = model.to(device).eval()
+    model = runtime.hawor_model
 
     tracks = np.load(os.path.join(track_dir, "model_tracks.npy"), allow_pickle=True).item()
     tid = np.array(list(tracks.keys()))
@@ -183,6 +233,7 @@ def _run_hawor_inner(
     # model_masks: used for SLAM masking (zeros = no masking since we can't render headless)
     model_masks = np.zeros((T, H_img, W_img), dtype=bool)
 
+    stage_started = stage_start()
     for hand_idx in [0, 1]:
         hand_trk = final_tracks[hand_idx]
         if len(hand_trk) == 0:
@@ -218,7 +269,7 @@ def _run_hawor_inner(
         os.makedirs(hand_dir, exist_ok=True)
 
         for frame_ck, boxes_ck in zip(frame_chunks, boxes_chunks):
-            img_ck = imgfiles[frame_ck]
+            img_ck = [imgfiles[int(index)] for index in frame_ck]
             with torch.no_grad():
                 results = model.inference(
                     img_ck, boxes_ck,
@@ -249,6 +300,7 @@ def _run_hawor_inner(
             pred_path = os.path.join(hand_dir, f"{frame_ck[0]}_{frame_ck[-1]}.json")
             with open(pred_path, "w") as f:
                 json.dump(pred_dict, f)
+    stage_end("hawor_motion", stage_started)
 
     # --- Stage 3+4: DROID-SLAM + Metric3D scale (with identity fallback) ---
     from lib.pipeline.masked_droid_slam import run_slam
@@ -259,7 +311,8 @@ def _run_hawor_inner(
 
     slam_failed = False
     try:
-        droid, traj = run_slam(img_folder, masks=masks_tensor, calib=calib)
+        stage_started = stage_start()
+        droid, traj = run_slam(imgfiles, masks=masks_tensor, calib=calib, droid_net=runtime.droid_net)
         n = droid.video.counter.value
         if n < 2:
             raise RuntimeError(f"DROID-SLAM produced only {n} keyframes (need >=2)")
@@ -267,11 +320,11 @@ def _run_hawor_inner(
         disps = droid.video.disps_up.cpu().numpy()[:n]
         del droid
         torch.cuda.empty_cache()
+        stage_end("droid_slam", stage_started)
 
         # --- Stage 4: Metric3D scale estimation ---
-        from metric import Metric3D
-
-        metric = Metric3D(str(source_root_abs / "thirdparty" / "Metric3D" / "weights" / "metric_depth_vit_large_800k.pth"))
+        stage_started = stage_start()
+        metric = runtime.metric3d
         pred_depths = []
         for t in tstamp:
             pred_depth = metric(imgfiles[t], calib)
@@ -310,6 +363,7 @@ def _run_hawor_inner(
 
         # Load SLAM cameras
         R_w2c_sla_all, t_w2c_sla_all, R_c2w_sla_all, t_c2w_sla_all = load_slam_cam(slam_path)
+        stage_end("metric3d_scale", stage_started)
     except Exception as slam_err:
         print(f"[HaWoR] SLAM failed ({slam_err}), using identity camera fallback")
         slam_failed = True
@@ -333,6 +387,7 @@ def _run_hawor_inner(
     pred_betas = torch.zeros(2, T, 10)
     pred_valid = torch.zeros(2, T)
     cam2world_failed = False
+    stage_started = stage_start()
 
     for hand_idx in [0, 1]:
         chunks = frame_chunks_all[hand_idx]
@@ -385,18 +440,7 @@ def _run_hawor_inner(
     frame_list = torch.tensor(list(range(T)))
     filling_length = 120
 
-    # Load infiller model
-    ckpt = torch.load(str(infiller_weight.resolve()), map_location=device)
-    pos_dim, shape_dim, num_joints = 3, 10, 15
-    rot_dim = (num_joints + 1) * 6
-    repr_dim = 2 * (pos_dim + shape_dim + rot_dim)
-    filling_model = TransformerModel(
-        seq_len=filling_length, input_dim=repr_dim, d_model=384, nhead=8,
-        d_hid=2048, nlayers=8, dropout=0.05, out_dim=repr_dim, masked_attention_stage=True
-    )
-    filling_model.to(device)
-    filling_model.load_state_dict(ckpt["transformer_encoder_state_dict"])
-    filling_model.eval()
+    filling_model = runtime.infiller
 
     idx2hand = ["left", "right"]
     for hand_idx in [1, 0]:
@@ -463,8 +507,10 @@ def _run_hawor_inner(
             pred_valid_np[:, filling_net_start:filling_net_end] = 1
 
     pred_valid = torch.from_numpy(pred_valid_np.astype(np.float32))
+    stage_end("world_conversion_infiller", stage_started)
 
     # --- Stage 6: MANO reconstruction ---
+    stage_started = stage_start()
     vis_start, vis_end = 0, T
 
     # Right hand (idx=1)
@@ -496,6 +542,7 @@ def _run_hawor_inner(
     else:
         left_verts = torch.zeros(T, 778, 3)
         left_joints = torch.zeros(T, 21, 3)
+    stage_end("mano_reconstruction", stage_started)
 
     # --- Stage 7: Coordinate conversion DROID/OpenGL → OpenCV ---
     # R_x = diag(1, -1, -1) converts y-up/z-back to y-down/z-forward
@@ -559,6 +606,7 @@ def _run_hawor_inner(
         "slam_scale": median_s,
         "n_tracked_left": int(pred_valid[0].sum()),
         "n_tracked_right": int(pred_valid[1].sum()),
+        "stage_seconds": stage_seconds,
     }
     return arrays, native, (H_img, W_img), detail
 
@@ -577,11 +625,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--infiller-weight", type=Path, required=True)
+    parser.add_argument("--detector-weight", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--sequence")
     parser.add_argument("--window-id")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--img-focal", type=float, default=None)
+    parser.add_argument("--rgb-dir-template", default="{sequence}/cam4/rgb",
+                        help="dataset-relative RGB directory; {sequence} is replaced from the manifest")
     return parser.parse_args()
 
 
@@ -591,27 +642,33 @@ def main():
     sequence, window_id, frame_ids = select_manifest_window(
         manifest, phase=args.phase, sequence=args.sequence, window_id=args.window_id
     )
-    frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+    if args.rgb_dir_template == "{sequence}/cam4/rgb":
+        frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+    else:
+        rgb_dir = args.data_root / args.rgb_dir_template.format(sequence=sequence)
+        by_stem = {path.stem: path for path in rgb_dir.iterdir()
+                   if path.suffix.lower() in {".png", ".jpg", ".jpeg"}}
+        missing = [frame_id for frame_id in frame_ids if frame_id not in by_stem]
+        if missing:
+            raise FileNotFoundError(f"RGB frames missing from {rgb_dir}: {missing[:3]}")
+        frame_paths = [by_stem[frame_id] for frame_id in frame_ids]
 
     # Read original resolution
     img0 = Image.open(frame_paths[0])
     img0 = ImageOps.exif_transpose(img0)
     orig_hw = (img0.height, img0.width)
 
-    t0 = time.perf_counter()
     if args.device.startswith("cuda"):
         import torch
         torch.cuda.init()
         torch.cuda.reset_peak_memory_stats()
-
-    arrays, native_arrays, run_hw, detail = _run_hawor(
-        frame_paths=frame_paths,
-        source_root=args.source_root,
-        checkpoint=args.checkpoint,
-        infiller_weight=args.infiller_weight,
-        device_name=args.device,
-        img_focal=args.img_focal,
+    load_start = time.perf_counter()
+    runtime = HaworRuntime(
+        args.source_root, args.checkpoint, args.infiller_weight, args.detector_weight, args.device
     )
+    load_seconds = time.perf_counter() - load_start
+    t0 = time.perf_counter()
+    arrays, native_arrays, run_hw, detail = runtime.run(frame_paths, args.img_focal)
 
     elapsed = time.perf_counter() - t0
     peak_vram_gb = 0.0
@@ -634,10 +691,12 @@ def main():
     }
     run_info = {
         "elapsed_seconds": round(elapsed, 2),
+        "checkpoint_and_model_load_seconds_excluded": round(load_seconds, 2),
         "peak_vram_gb": round(peak_vram_gb, 2),
         "device": args.device,
         "checkpoint": str(args.checkpoint),
         "infiller_weight": str(args.infiller_weight),
+        "detector_weight": str(args.detector_weight),
         "source_root": str(args.source_root),
         "status": "success",
     }

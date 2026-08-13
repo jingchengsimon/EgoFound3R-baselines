@@ -24,9 +24,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--methods-config", type=Path, required=True)
     parser.add_argument("--prepared-dir", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)
-    parser.add_argument("--conda-executable", type=Path, default=Path("conda"))
-    parser.add_argument("--pad-env", default="pad_hand_h20")
-    parser.add_argument("--wilor-env", default="wilor")
+    parser.add_argument("--wilor-python", type=Path, required=True,
+                        help="verified interpreter for PAD-Hand's bundled WiLoR front end")
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--sequence")
@@ -36,11 +35,10 @@ def parse_args() -> argparse.Namespace:
 
 def _run_wilor(args: argparse.Namespace, video: Path, native: Path) -> Path:
     result = native / "wilor.npz"
-    subprocess.run([
-        str(args.conda_executable), "run", "-n", args.wilor_env, "python",
-        str(Path(__file__).with_name("pad_wilor_inference.py")),
+    command = [str(args.wilor_python), str(Path(__file__).with_name("pad_wilor_inference.py")),
         "--source-root", str(args.source_root), "--video", str(video), "--output", str(result),
-    ], check=True)
+    ]
+    subprocess.run(command, check=True)
     return result
 
 

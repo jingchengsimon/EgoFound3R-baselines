@@ -20,7 +20,7 @@ def launch_hamer(gpus, seq, img_dir, res_dir, name, datatype, overwrite=False):
     # gpu = gpus[worker_id % len(gpus)]
     gpu = gpus[0]
 
-    HAMER_DIR = SRC_DIR
+    HAMER_DIR = os.environ.get("DYN_HAMR_HAMER_DIR", SRC_DIR)
     print("HAMER DIR", HAMER_DIR)
 
     cmd_args = [

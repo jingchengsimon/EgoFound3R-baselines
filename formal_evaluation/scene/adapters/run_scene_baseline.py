@@ -352,6 +352,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sequence")
     parser.add_argument("--window-id")
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--rgb-dir-template", default="{sequence}/cam4/rgb",
+                        help="dataset-relative RGB directory; {sequence} is replaced from the manifest")
     return parser.parse_args()
 
 
@@ -364,7 +366,16 @@ def main() -> None:
         sequence=args.sequence,
         window_id=args.window_id,
     )
-    frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+    if args.rgb_dir_template == "{sequence}/cam4/rgb":
+        frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+    else:
+        rgb_dir = args.data_root / args.rgb_dir_template.format(sequence=sequence)
+        by_stem = {path.stem: path for path in rgb_dir.iterdir()
+                   if path.suffix.lower() in {".png", ".jpg", ".jpeg"}}
+        missing = [frame_id for frame_id in frame_ids if frame_id not in by_stem]
+        if missing:
+            raise FileNotFoundError(f"RGB frames missing from {rgb_dir}: {missing[:3]}")
+        frame_paths = [by_stem[frame_id] for frame_id in frame_ids]
     methods = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"]
     method_config = methods[args.method]
     output_dir = args.output_root / args.method / args.phase / window_id
