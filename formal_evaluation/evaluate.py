@@ -51,6 +51,20 @@ def _depth_pairs(predictions: dict[str, np.ndarray], targets) -> list[tuple[np.n
     return pairs
 
 
+def _load_predictions(path: Path, config: dict[str, object]) -> dict[str, np.ndarray]:
+    """Load only canonical fields consumed by the selected metric groups."""
+    groups = set(config.get("group", []))
+    keys: set[str] = set()
+    if "hand" in groups:
+        keys.update(("hand_joints_camera", "hand_joints_world", "camera_c2w", "hand_valid"))
+    if "scene" in groups:
+        keys.update(("camera_c2w", "depth"))
+    if "contact" in groups:
+        keys.update(("hand_valid", "joint_contact_probability", "marker_contact_probability"))
+    with np.load(path, allow_pickle=False) as archive:
+        return {key: archive[key] for key in keys if key in archive}
+
+
 def evaluate_window(method: str, predictions: dict[str, np.ndarray], gt: H2OGTLoader, sequence: str, frame_ids: list[str], config: dict[str, object]) -> dict[str, object]:
     result: dict[str, object] = {"sequence": sequence, "window_id": "_".join((sequence.replace("/", "_"), frame_ids[0], frame_ids[-1]))}
     groups = set(config.get("group", []))
@@ -107,8 +121,7 @@ def main() -> None:
                 prediction_path = args.output_root / method / args.phase / window_id / "predictions.npz"
                 if not prediction_path.exists():
                     continue
-                with np.load(prediction_path, allow_pickle=False) as archive:
-                    predictions = dict(archive)
+                predictions = _load_predictions(prediction_path, methods[method])
                 window_results.append(evaluate_window(method, predictions, gt, sequence, frame_ids, methods[method]))
         report["methods"][method] = aggregate_windows(window_results, method=method)
     args.report_path.parent.mkdir(parents=True, exist_ok=True)

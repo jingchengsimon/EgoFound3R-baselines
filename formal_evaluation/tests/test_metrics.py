@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 
 from formal_evaluation.contact.metrics import compute_contact_metrics
+from formal_evaluation.evaluate import _load_predictions
 from formal_evaluation.hand.metrics import compute_hand_metrics
 from formal_evaluation.scene.metrics import compute_scene_metrics
 
@@ -29,6 +32,13 @@ class FormalMetricTests(unittest.TestCase):
         self.assertTrue(np.isnan(values["precision"]))
         self.assertTrue(np.isnan(values["recall"]))
         self.assertTrue(np.isnan(values["f1"]))
+
+    def test_scene_loader_skips_unused_native_arrays(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "prediction.npz"
+            np.savez(path, camera_c2w=np.eye(4)[None], depth=np.ones((1, 2, 2)), world_points=np.ones((1, 2, 2, 3)))
+            values = _load_predictions(path, {"group": ["scene"]})
+        self.assertEqual(set(values), {"camera_c2w", "depth"})
 
 
 if __name__ == "__main__":
