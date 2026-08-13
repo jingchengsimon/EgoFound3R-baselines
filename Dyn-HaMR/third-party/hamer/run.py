@@ -1591,10 +1591,11 @@ def run_hamer_on_cleaned_bboxes(raw_data, model, model_cfg, renderer, args, imag
             cv2.imwrite(os.path.join(render_path, f'{img_fn}.jpg'), 255 * input_img_overlay[:, :, ::-1])
     
     # Create video from Pass 3 rendered results
-    render_path = os.path.join(os.path.dirname(args.res_folder), f'render_all_{model_cfg.EXTRA.FOCAL_LENGTH}')
-    if os.path.exists(render_path):
-        video_path = os.path.join(os.path.dirname(args.res_folder), f'render_all_{model_cfg.EXTRA.FOCAL_LENGTH}.mp4')
-        create_video_from_images(render_path, video_path, fps=30)
+    if args.render and args.res_folder is not None:
+        render_path = os.path.join(os.path.dirname(args.res_folder), f'render_all_{model_cfg.EXTRA.FOCAL_LENGTH}')
+        if os.path.exists(render_path):
+            video_path = os.path.join(os.path.dirname(args.res_folder), f'render_all_{model_cfg.EXTRA.FOCAL_LENGTH}.mp4')
+            create_video_from_images(render_path, video_path, fps=30)
     
     print("\n" + "="*80)
     print("PASS 3 Complete: HaMeR reconstruction finished")
