@@ -2,23 +2,23 @@
 
 ## Git and DSW synchronization
 
-- Local edits do not authorize `git commit`, `git push`, or a remote Git
-  update. Only perform those operations when a human explicitly asks for a
-  commit. A request to modify, test, run, deploy, or synchronize is not by
-  itself commit authorization.
-- Without explicit commit authorization, keep source changes local. Do not use
-  a commit plus DSW `pull` as an implicit synchronization mechanism, and do not
-  replace it with ad-hoc project-root copies. Report that DSW still has the
-  previous source revision and request the exact promotion instruction when a
-  remote run depends on the local change.
-- When a human explicitly authorizes a commit, group work into one atomic,
-  DSW-runnable change set: complete local fixes, static checks, and a small
-  smoke test first; amend locally if needed and do not push intermediate work.
+- The project owner grants standing authorization for routine local
+  `git commit`, `git push` to the current designated branch, and DSW
+  `git pull --ff-only` when they promote a validated, atomic, DSW-runnable
+  change set or are needed for an authorized evaluation. Do not request this
+  authorization again for each normal code/benchmark iteration.
+- Keep source changes local until their static checks and small smoke test are
+  complete; then group them into one atomic DSW-runnable commit. Do not use
+  ad-hoc project-root copies instead of Git synchronization.
 - At a reproducible experiment boundary, create one scope-specific commit and
   push it. DSW checkouts must be clean and may advance only with
   `git pull --ff-only` to that commit.
 - Never rewrite a pushed commit. Follow-up defects use a small new fix commit
   so the actual experiment history remains traceable.
+- Standing authorization does not cover destructive or history-rewriting Git
+  operations, force pushes, branch changes, deleting/overwriting results or
+  checkpoints, remote source edits, dependency downloads, transfers, or access
+  changes; those still require task-specific user approval.
 - Benchmark JSON, logs, checkpoints, and result directories stay outside Git.
   Every result must record the exact source commit SHA used to produce it.
 
@@ -34,10 +34,10 @@
   that a reachable node shares another node's GPU availability or process
   state.
 - Keep DSW checkouts execution-only: change source and configuration on macOS,
-  then use a clean checkout and `git pull --ff-only` only after an explicitly
-  authorized commit/push. Do not edit, commit, merge, reset, or reconcile
-  source on DSW. Do not remount or reconfigure OSSFS; report an unhealthy or
-  stale mount instead.
+  then use a clean checkout and `git pull --ff-only` after a validated atomic
+  commit/push. Do not edit, commit, merge, reset, or reconcile source on DSW.
+  Do not remount or reconfigure OSSFS; report an unhealthy or stale mount
+  instead.
 
 ## Large-file transfer via OSS
 
