@@ -1,5 +1,18 @@
 # Pending baseline setup
 
+## Canonical DSW runtime registry
+
+Before any baseline setup, resolve the method from
+[`config/baseline_runtime_registry_dsw.json`](config/baseline_runtime_registry_dsw.json).
+It is the single source of truth for the fixed 14-method roster, exact DSW
+paths, expected consumer mappings, Python environments, and current blockers.
+Do not replace a registered path with a recursive/fuzzy-match result. On DSW,
+check the registered paths with:
+
+```bash
+python formal_evaluation/validate_runtime_registry.py --method METHOD --strict
+```
+
 The three adapters below only prepare or convert inference outputs. They do not
 download licensed assets, submit jobs, or run formal metrics.
 

@@ -3,3 +3,7 @@
 docs/
 outputs/
 scripts/
+__pycache__/
+/WiLoR/mano_data/MANO_RIGHT.pkl
+/HaWoR/thirdparty/DROID-SLAM/droid_backends*.so
+/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends*.so

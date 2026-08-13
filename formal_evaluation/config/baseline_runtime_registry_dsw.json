@@ -1,0 +1,275 @@
+{
+  "registry_version": "dsw_baseline_runtime_v1",
+  "scope": "H2O formal baseline execution on DSW node 6001; fixed 14-method roster; CHOI deliberately excluded",
+  "last_path_audit": {
+    "date": "2026-08-13",
+    "host": "39.106.218.186",
+    "ssh_port": 6001,
+    "check": "exact path existence and byte size; targeted import and named-environment smoke checks; no recursive discovery or content hash"
+  },
+  "usage": {
+    "policy": "Resolve a baseline only from this registry. Do not substitute a fuzzy-match result for a registered path. A missing consumer mapping is a blocker until an authorized, reversible setup action creates it.",
+    "verify_command": "python formal_evaluation/validate_runtime_registry.py --method <method>",
+    "path_root": "/mnt/workspace/sjc"
+  },
+  "baseline_checkout_root": "/mnt/workspace/sjc/EgoFound3R-baselines",
+  "method_order": [
+    "egofound3r", "wilor", "hawor", "dyn_hamr", "pad_hand", "reviv4d", "s2contact", "contactopt", "vggt", "pi3", "da3_large_1_1", "lingbot_map_long", "vggt_omega", "interactvlm"
+  ],
+  "shared_required_paths": [
+    {
+      "role": "H2O raw test data",
+      "path": "/mnt/workspace/sjc/DATA/H2O/h2o_data",
+      "state": "present"
+    },
+    {
+      "role": "right MANO canonical asset",
+      "path": "/mnt/workspace/sjc/models/human/mano/MANO_RIGHT.pkl",
+      "bytes": 3821356,
+      "state": "present"
+    },
+    {
+      "role": "left MANO canonical asset",
+      "path": "/mnt/workspace/sjc/models/human/mano/MANO_LEFT.pkl",
+      "bytes": 3821391,
+      "state": "present"
+    },
+    {
+      "role": "EgoFound3R Python",
+      "path": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "bytes": 17467520,
+      "state": "present"
+    },
+    {
+      "role": "ContactOpt Python",
+      "path": "/mnt/workspace/sjc/envs/contactopt/bin/python",
+      "bytes": 17467520,
+      "state": "present"
+    },
+    {
+      "role": "Conda executable for named legacy environments",
+      "path": "/mnt/workspace/sjc/miniconda3/bin/conda",
+      "bytes": 530,
+      "state": "present"
+    }
+  ],
+  "methods": {
+    "egofound3r": {
+      "category": "scene/contact reconstruction",
+      "execution_mode": "real_model_forward",
+      "runner": "formal_evaluation/scene/adapters/run_egofound3r_baseline.py",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R_dev_dataloader_shm_compat_20260808",
+      "input_contract": "RGB video; 12-frame windows, stride 12, final window padded for 500 outputs.",
+      "execution_status": "runtime_paths_verified",
+      "required_paths": [
+        {"role": "runtime config", "path": "/mnt/workspace/sjc/EgoFound3R_dev_dataloader_shm_compat_20260808/configs/h2o_contact_or_conf_flow_workers4_step006099_100steps_20260809.toml", "bytes": 5095, "state": "present"},
+        {"role": "model checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R_dev/outputs/experiments/step_006099_newflow.pt", "bytes": 2924621790, "state": "present"},
+        {"role": "VGGT-Omega backbone", "path": "/mnt/workspace/sjc/models/pretrained/VGGT-Omega/vggt_omega_1b_512.pt", "bytes": 4576706117, "state": "present"}
+      ]
+    },
+    "wilor": {
+      "category": "hand reconstruction",
+      "execution_mode": "full_pipeline_when_assets_mapped",
+      "runner": "formal_evaluation/hand/adapters/run_wilor_baseline.py",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/WiLoR",
+      "input_contract": "Per-frame RGB hand detector plus WiLoR reconstruction.",
+      "execution_status": "runtime_assets_and_source_import_verified",
+      "required_paths": [
+        {"role": "WiLoR checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/WiLoR/wilor_final.ckpt", "bytes": 2564989533, "state": "present"},
+        {"role": "detector checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/WiLoR/detector.pt", "bytes": 53582271, "state": "present"},
+        {"role": "source-required MANO path", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/WiLoR/mano_data/MANO_RIGHT.pkl", "state": "present"}
+      ],
+      "path_mappings_required": [
+        {"canonical_path": "/mnt/workspace/sjc/models/human/mano/MANO_RIGHT.pkl", "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/WiLoR/mano_data/MANO_RIGHT.pkl", "state": "present"}
+      ]
+    },
+    "hawor": {
+      "category": "hand reconstruction",
+      "execution_mode": "full_pipeline_when_assets_mapped",
+      "runner": "formal_evaluation/hand/adapters/run_hawor_baseline.py",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR",
+      "input_contract": "RGB detector/tracker, motion estimation, DROID-SLAM, Metric3D, infiller and HaWoR model.",
+      "execution_status": "pending_sm90_droid_slam_build",
+      "build_node": "5000 or 5001",
+      "build_command": "/mnt/workspace/sjc/envs/egofound3r/bin/python setup.py build_ext --inplace",
+      "blocker": "DROID and Metric3D consumer mappings are present. The source now requests sm_90, but droid_backends and lietorch_backends must still be built once on a node with nvcc.",
+      "required_paths": [
+        {"role": "HaWoR checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/hawor.ckpt", "bytes": 3267481572, "state": "present"},
+        {"role": "infiller checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/infiller.pt", "bytes": 418603497, "state": "present"},
+        {"role": "detector checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/detector.pt", "bytes": 53582271, "state": "present"},
+        {"role": "source-required DROID checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth", "state": "present"},
+        {"role": "source-required Metric3D checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth", "state": "present"},
+        {"role": "DROID compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid_backends.cpython-310-x86_64-linux-gnu.so", "state": "pending_build"},
+        {"role": "LieTorch compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends.cpython-310-x86_64-linux-gnu.so", "state": "pending_build"}
+      ],
+      "path_mappings_required": [
+        {"canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/droid.pth", "bytes": 16061701, "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth", "state": "present"},
+        {"canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/metric_depth_vit_large_800k.pth", "bytes": 1647972663, "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth", "state": "present"}
+      ]
+    },
+    "dyn_hamr": {
+      "category": "hand reconstruction",
+      "execution_mode": "native_predictions_import_only",
+      "runner": "formal_evaluation/hand/adapters/run_dyn_hamr_baseline.py",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR",
+      "input_contract": "Current formal adapter imports native predictions; no verified H2O raw-RGB inference entrypoint.",
+      "execution_status": "blocked_no_verified_raw_rgb_runner",
+      "required_paths": [
+        {"role": "HaMeR checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hamer_ckpts/checkpoints/hamer.ckpt", "bytes": 2689536166, "state": "present"},
+        {"role": "ViTPose checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/vitpose_ckpts/vitpose+_huge/wholebody.pth", "bytes": 3807742341, "state": "present"},
+        {"role": "DROID checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/droid.pth", "bytes": 16061701, "state": "present"},
+        {"role": "local encoder", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hmp_model/results/model/local_encoder.pth", "bytes": 161190688, "state": "present"},
+        {"role": "global encoder", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hmp_model/results/model/global_encoder.pth", "bytes": 16944962, "state": "present"},
+        {"role": "NeMF", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hmp_model/results/model/nemf.pth", "bytes": 92620900, "state": "present"}
+      ]
+    },
+    "pad_hand": {
+      "category": "hand reconstruction",
+      "execution_mode": "full_pipeline_pending_environment_probe",
+      "runner": "formal_evaluation/hand/adapters/run_pad_hand_baseline.py",
+      "python": null,
+      "conda_executable": "/mnt/workspace/sjc/miniconda3/bin/conda",
+      "named_environments": ["pad_hand_h20", "wilor"],
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand",
+      "input_contract": "PAD-Hand pipeline with WiLoR dependency; the adapter invokes the two registered named conda environments.",
+      "execution_status": "blocked_wilor_environment_missing_torch",
+      "blocker": "Both named environments exist. pad_hand_h20 imports torch 2.4.1+cu124, but wilor fails `import torch` with ModuleNotFoundError; the full PAD pipeline cannot start.",
+      "required_paths": [
+        {"role": "PAD-Hand environment Python", "path": "/mnt/workspace/sjc/miniconda3/envs/pad_hand_h20/bin/python", "state": "present"},
+        {"role": "WiLoR environment Python", "path": "/mnt/workspace/sjc/miniconda3/envs/wilor/bin/python", "state": "present"},
+        {"role": "PAD-Hand checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/checkpoints/pad_hand.pt", "bytes": 319254959, "state": "present"},
+        {"role": "right processed MANO", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/assets/processed_MANO_RIGHT.pkl", "bytes": 3075291, "state": "present"},
+        {"role": "left processed MANO", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/assets/processed_MANO_LEFT.pkl", "bytes": 3075324, "state": "present"}
+      ]
+    },
+    "reviv4d": {
+      "category": "scene reconstruction",
+      "execution_mode": "full_pipeline_pending_external_asset",
+      "runner": "formal_evaluation/scene/adapters/run_reviv4d_baseline.py",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "source_root": "/mnt/workspace/sjc/external/reviv4d",
+      "input_contract": "ReViV4D demo pipeline over RGB/depth inputs; adapter requires source root, model checkpoint root and Cosmos tokenizer directory.",
+      "execution_status": "pending_decoder_transfer",
+      "blocker": "decoder.jit was absent on node 6001 during this audit. User reports its transfer is handled in another conversation; re-validate this exact target after transfer before enabling.",
+      "required_paths": [
+        {"role": "Cosmos tokenizer encoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/encoder.jit", "bytes": 92292848, "state": "present"},
+        {"role": "Cosmos tokenizer decoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/decoder.jit", "state": "pending_external_transfer"},
+        {"role": "ReViV4D model checkpoint root", "path": "/mnt/workspace/sjc/external/reviv4d/checkpoints", "state": "unverified"}
+      ]
+    },
+    "s2contact": {
+      "category": "contact",
+      "execution_mode": "formal_cached_prediction_pipeline",
+      "runner": "formal_evaluation/contact/adapters/run_s2_contactopt.py",
+      "python": "/mnt/workspace/sjc/envs/contactopt/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact",
+      "input_contract": "H2O contact cache for formal evaluation; not a raw-RGB online inference timing entrypoint.",
+      "execution_status": "formal_cache_pipeline_verified",
+      "required_paths": [
+        {"role": "S2Contact checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact/checkpoints/20211027-212322.pt", "bytes": 2392568, "state": "present"},
+        {"role": "H2O right-hand cached predictions", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/s2_right_h2o_30724.pkl", "bytes": 46831283519, "state": "present"}
+      ]
+    },
+    "contactopt": {
+      "category": "contact",
+      "execution_mode": "formal_cached_prediction_pipeline",
+      "runner": "formal_evaluation/contact/adapters/run_s2_contactopt.py",
+      "python": "/mnt/workspace/sjc/envs/contactopt/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt",
+      "input_contract": "H2O contact cache for formal evaluation; not a raw-RGB online inference timing entrypoint.",
+      "execution_status": "formal_cache_pipeline_verified",
+      "required_paths": [
+        {"role": "ContactOpt checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt/checkpoints/deepcontact_checkpoint.pt", "bytes": 5751948, "state": "present"},
+        {"role": "H2O right-hand cached predictions", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/contactopt_right_h2o_30724.pkl", "bytes": 46831283522, "state": "present"}
+      ]
+    },
+    "vggt": {
+      "category": "scene reconstruction",
+      "execution_mode": "real_model_forward",
+      "runner": "formal_evaluation/scene/adapters/run_scene_baseline.py --method vggt",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/VGGT",
+      "input_contract": "RGB video chunks according to the runner's official context rule.",
+      "execution_status": "runtime_paths_verified",
+      "required_paths": [
+        {"role": "VGGT-1B checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/VGGT-1B/model.pt", "bytes": 5026874952, "state": "present"}
+      ]
+    },
+    "pi3": {
+      "category": "scene reconstruction",
+      "execution_mode": "real_model_forward",
+      "runner": "formal_evaluation/scene/adapters/run_scene_baseline.py --method pi3",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/Pi3",
+      "input_contract": "RGB video chunks according to the runner's official context rule.",
+      "execution_status": "runtime_paths_verified",
+      "required_paths": [
+        {"role": "Pi3 checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/Pi3/model.safetensors", "bytes": 3834909248, "state": "present"}
+      ]
+    },
+    "da3_large_1_1": {
+      "category": "scene reconstruction",
+      "execution_mode": "real_model_forward",
+      "runner": "formal_evaluation/scene/adapters/run_scene_baseline.py --method da3_large_1_1",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/Depth-Anything-3",
+      "input_contract": "RGB video chunks according to the runner's official context rule.",
+      "execution_status": "runtime_paths_verified",
+      "required_paths": [
+        {"role": "DA3-LARGE-1.1 weights", "path": "/mnt/workspace/sjc/models/pretrained/Depth-Anything-3/DA3-LARGE-1.1/model.safetensors", "bytes": 1643843860, "state": "present"},
+        {"role": "DA3-LARGE-1.1 config", "path": "/mnt/workspace/sjc/models/pretrained/Depth-Anything-3/DA3-LARGE-1.1/config.json", "bytes": 1213, "state": "present"}
+      ]
+    },
+    "lingbot_map_long": {
+      "category": "scene reconstruction",
+      "execution_mode": "real_model_forward_pending_environment_upgrade",
+      "runner": "formal_evaluation/scene/adapters/run_scene_baseline.py --method lingbot_map_long",
+      "python": "/mnt/workspace/sjc/envs/lingbot_map/bin/python",
+      "environment_root": "/mnt/workspace/sjc/envs/lingbot_map",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/lingbot-map",
+      "input_contract": "RGB video chunks according to LingBot-Map's official context rule.",
+      "execution_status": "blocked_torch_download_stalled",
+      "blocker": "A dedicated Python 3.10 environment was created at the registered path. The official minimum Torch 2.5.1 CUDA 12.1 wheel download was stopped after sustained ~6 KB/s throughput; torch is not yet installed. FlashInfer is optional because this runner selects SDPA.",
+      "required_paths": [
+        {"role": "LingBot-Map long checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/LingBot-Map/lingbot-map-long.pt", "bytes": 4632303465, "state": "present"}
+      ]
+    },
+    "vggt_omega": {
+      "category": "scene reconstruction",
+      "execution_mode": "real_model_forward",
+      "runner": "formal_evaluation/scene/adapters/run_scene_baseline.py --method vggt_omega",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/vggt-omega",
+      "input_contract": "RGB video chunks according to the runner's official context rule.",
+      "execution_status": "runtime_paths_verified",
+      "required_paths": [
+        {"role": "VGGT-Omega checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/VGGT-Omega/vggt_omega_1b_512.pt", "bytes": 4576706117, "state": "present"}
+      ]
+    },
+    "interactvlm": {
+      "category": "contact",
+      "execution_mode": "formal_cached_prediction_evaluation_only",
+      "runner": "formal_evaluation/contact/eval_h2o_interactvlm.py (cache evaluation only)",
+      "python": "/mnt/workspace/sjc/envs/interactvlm_eval/bin/python",
+      "source_root": null,
+      "input_contract": "Only cached H2O predictions are currently registered; cache read throughput is not model inference speed.",
+      "execution_status": "pending_dsw_deployment",
+      "local_evaluation_status": "formal_cached_prediction_evaluation_supported",
+      "runner_deployment": {
+        "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/eval_h2o_interactvlm.py",
+        "state": "pending_git_deployment",
+        "source_of_truth": "tracked repository file"
+      },
+      "inference_status": "blocked_cached_predictions_only_no_executable_inference_entrypoint_verified",
+      "inference_blocker": "No original InteractVLM checkpoint plus executable inference entrypoint has been verified. This does not block formal evaluation of the already saved H2O hcontact predictions.",
+      "unavailable_inference_assets": [
+        {"role": "expected source root", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/InteractVLM", "state": "missing"},
+        {"role": "expected pretrained-model root", "path": "/mnt/workspace/sjc/models/pretrained/InteractVLM", "state": "missing"}
+      ]
+    }
+  }
+}
