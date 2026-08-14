@@ -57,6 +57,8 @@ def main() -> None:
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--vision-tower", default="openai/clip-vit-large-patch14",
+                        help="official CLIP ViT-L/14 identifier or fully local snapshot directory")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--frame-count", type=int, default=500)
@@ -100,7 +102,7 @@ def main() -> None:
     )
     tokenizer.pad_token = tokenizer.unk_token
     model = InteractVLMForCausalLM.from_pretrained(
-        str(checkpoint), low_cpu_mem_usage=True, vision_tower="openai/clip-vit-large-patch14",
+        str(checkpoint), low_cpu_mem_usage=True, vision_tower=args.vision_tower,
         torch_dtype=dtype, train_from_LISA=False, train_from_LLAVA=False,
         local_files_only=True,
     )
