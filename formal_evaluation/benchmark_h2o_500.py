@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import gc
 import json
-import random
 import statistics
 import time
 from pathlib import Path
@@ -20,21 +19,9 @@ METHODS = (
 
 
 def _frames(data_root: Path) -> tuple[str, list[Path]]:
-    candidates = sorted(
-        rgb.parent.parent.relative_to(data_root).as_posix()
-        for rgb in data_root.glob("subject4_ego/*/*/cam4/rgb")
-        if sum(path.suffix.lower() in {".png", ".jpg", ".jpeg"} for path in rgb.iterdir()) >= 500
-    )
-    if not candidates:
-        raise RuntimeError("no H2O test sequence has 500 frames")
-    sequence = random.Random(0).choice(candidates)
-    paths = sorted(
-        path for path in (data_root / sequence / "cam4/rgb").iterdir()
-        if path.suffix.lower() in {".png", ".jpg", ".jpeg"}
-    )[:500]
-    if len(paths) != 500:
-        raise RuntimeError(f"{sequence} has only {len(paths)} selected frames")
-    return sequence, paths
+    from formal_evaluation.datasets import get_dataset_adapter
+    selected = get_dataset_adapter("h2o", data_root).select_contiguous("test", 500, seed=0)
+    return selected.sequence_id, list(selected.frame_paths)
 
 
 def _chunks(items: list, size: int = 12) -> list[list]:
@@ -430,7 +417,7 @@ BLOCKED = {
     "reviv4d": "blocked: /mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/decoder.jit is missing",
     "s2contact": "blocked: verified adapter consumes H2O contact cache, not preprocessed raw H2O RGB",
     "contactopt": "blocked: verified adapter consumes H2O contact cache, not preprocessed raw H2O RGB",
-    "interactvlm": "blocked: cached predictions only; no executable inference entrypoint verified",
+    "interactvlm": "delegated: use formal_evaluation/contact/adapters/run_interactvlm.py; dedicated loaded-once speed runner pending DSW runtime deployment",
 }
 
 

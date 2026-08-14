@@ -281,23 +281,24 @@
     },
     "interactvlm": {
       "category": "contact",
-      "execution_mode": "formal_cached_prediction_evaluation_only",
-      "runner": "formal_evaluation/contact/eval_h2o_interactvlm.py (cache evaluation only)",
+      "execution_mode": "official_rgb_inference_and_loaded_once_500_frame_benchmark",
+      "runner": "formal_evaluation/benchmark_interactvlm_500.py for speed; formal_evaluation/contact/adapters/run_interactvlm.py for inference; formal_evaluation/contact/eval_h2o_interactvlm.py for metrics",
       "python": "/mnt/workspace/sjc/envs/interactvlm_eval/bin/python",
-      "source_root": null,
-      "input_contract": "Only cached H2O predictions are currently registered; cache read throughput is not model inference speed.",
-      "execution_status": "formal_cached_prediction_evaluation_supported",
+      "source_root": "/mnt/workspace/sjc/external/InteractVLM",
+      "input_contract": "Dataset-neutral JSONL with RGB path, object name, sequence and frame ID; adapter invokes official file-mode hcontact inference and emits an output JSONL pointing to 6890-vertex SMPL-H contact predictions.",
+      "execution_status": "official source/config/runtime verified on DSW; dedicated loaded-once 500-frame speed driver ready for a full checkpoint-load smoke test",
       "local_evaluation_status": "formal_cached_prediction_evaluation_supported",
       "runner_deployment": {
-        "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/eval_h2o_interactvlm.py",
-        "state": "deployed_and_help_verified_on_dsw_5000",
+        "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/adapters/run_interactvlm.py",
+        "state": "tracked_repository_file_pending_authorized_git_promotion",
         "source_of_truth": "tracked repository file"
       },
-      "inference_status": "blocked_cached_predictions_only_no_executable_inference_entrypoint_verified",
-      "inference_blocker": "No original InteractVLM checkpoint plus executable inference entrypoint has been verified. This does not block formal evaluation of the already saved H2O hcontact predictions.",
-      "unavailable_inference_assets": [
-        {"role": "expected source root", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/InteractVLM", "state": "missing"},
-        {"role": "expected pretrained-model root", "path": "/mnt/workspace/sjc/models/pretrained/InteractVLM", "state": "missing"}
+      "inference_status": "official_entrypoint_and_checkpoint_config_verified_full_500_speed_pending",
+      "inference_blocker": "The only remaining benchmark gate is a full model-load/forward run on a sufficiently empty GPU; cached predictions remain excluded from speed reporting.",
+      "required_inference_assets": [
+        {"role": "official source root", "path": "/mnt/workspace/sjc/external/InteractVLM", "source_commit": "46f836133c7db9fc106c0d34be793c48a64abca3", "state": "verified_on_dsw"},
+        {"role": "DAMON checkpoint root", "path": "/mnt/workspace/sjc/models/pretrained/InteractVLM/interactvlm-3d-hcontact-damon", "archive_bytes": 21952861169, "state": "verified_extracted_on_dsw"},
+        {"role": "inference adapter", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/adapters/run_interactvlm.py", "state": "implemented_locally_pending_authorized_git_promotion"}
       ]
     }
   }

@@ -13,6 +13,14 @@ check the registered paths with:
 python formal_evaluation/validate_runtime_registry.py --method METHOD --strict
 ```
 
+## Dataset adapters
+
+Resolve datasets through [`datasets/INDEX.md`](datasets/INDEX.md). The dataset
+adapter owns split discovery, sequence/frame identity, original RGB paths and
+per-frame resolution audit. It is read-only and never resizes dataset files.
+Each method adapter remains responsible for its official resize,
+normalization, intrinsics conversion and temporal chunking.
+
 ## Current verified runtime notes
 
 - HaWoR: use `benchmark_hawor_500.py` for the loaded-once 500-frame pipeline.
@@ -42,6 +50,12 @@ python formal_evaluation/validate_runtime_registry.py --method METHOD --strict
   site-packages directory through `PYTHONPATH`. For 500 outputs, PAD processes
   32 non-overlapping 16-frame windows (512 PAD inputs); the final input frame is
   repeated 12 times and the padded outputs are discarded.
+- InteractVLM: `contact/adapters/run_interactvlm.py` is the real inference
+  adapter. It consumes dataset-neutral JSONL rows containing RGB path, object
+  name, sequence and frame ID, invokes the official file-mode `hcontact` demo,
+  and emits a manifest of 6890-vertex SMPL-H contact predictions. The older
+  `contact/eval_h2o_interactvlm.py` remains metrics-only and must never be used
+  for inference timing.
 
 The three adapters below only prepare or convert inference outputs. They do not
 download licensed assets, submit jobs, or run formal metrics.

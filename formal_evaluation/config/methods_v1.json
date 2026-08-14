@@ -63,8 +63,8 @@
     },
     "interactvlm": {
       "group": ["contact"],
-      "source": "existing saved InteractVLM hcontact predictions",
-      "checkpoint_role": "cached prediction evaluation only; this registry entry does not run inference or report inference speed",
+      "source": "official InteractVLM inference through formal_evaluation/contact/adapters/run_interactvlm.py",
+      "checkpoint_role": "interactvlm-3d-hcontact-damon; real RGB-to-SMPL-H-contact inference",
       "scale_type": "not_applicable",
       "native_outputs": ["smplh_right_hand_vertex_contact_probability"]
     },

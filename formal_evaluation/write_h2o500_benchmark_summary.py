@@ -29,7 +29,7 @@ AUDIT = {
     "da3_large_1_1": ("scene", "formal_evaluation/scene/adapters/run_scene_baseline.py", "DA3-LARGE-1.1/model.safetensors", "egofound3r", "success: real neural-network forward"),
     "lingbot_map_long": ("scene", "formal_evaluation/scene/adapters/run_scene_baseline.py", "lingbot-map-long.pt", "egofound3r", "blocked: PyTorch 2.4.1 lacks torch.nn.attention.flex_attention"),
     "vggt_omega": ("scene", "formal_evaluation/scene/adapters/run_scene_baseline.py", "vggt_omega_1b_512.pt", "egofound3r", "success: real neural-network forward"),
-    "interactvlm": ("contact", "scripts/eval_h2o_interactvlm.py", "N/A", "interactvlm_eval", "blocked: cached predictions only; no executable inference entrypoint verified"),
+    "interactvlm": ("contact", "formal_evaluation/contact/adapters/run_interactvlm.py", "interactvlm-3d-hcontact-damon", "InteractVLM runtime pending", "official RGB inference adapter implemented; DSW deployment pending"),
 }
 
 PARAMETERS = {
@@ -46,7 +46,7 @@ BLOCKERS = {
     "s2contact": "The only verified H2O adapter requires a prebuilt `s2_right_h2o_30724.pkl` contact cache, not raw RGB; cache throughput was deliberately not measured.",
     "contactopt": "The only verified H2O adapter requires a prebuilt `contactopt_right_h2o_30724.pkl` contact cache, not raw RGB; cache throughput was deliberately not measured.",
     "lingbot_map_long": "Import failed with `ModuleNotFoundError: torch.nn.attention.flex_attention` under the available PyTorch 2.4.1; FlashInfer is also unavailable.",
-    "interactvlm": "No `/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/InteractVLM` or executable checkpoint/entrypoint was present; cached prediction evaluation is not inference.",
+    "interactvlm": "Official RGB inference adapter is implemented, but DSW still needs source commit 46f8361, the extracted DAMON checkpoint, and a compatible runtime before real inference or speed measurement.",
 }
 
 
