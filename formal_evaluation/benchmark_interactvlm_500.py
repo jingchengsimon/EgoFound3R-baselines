@@ -79,7 +79,7 @@ def main() -> None:
     import torch
     import torch.nn.functional as F
     from PIL import Image
-    from transformers import AutoTokenizer, CLIPImageProcessor
+    from transformers import AutoConfig, AutoTokenizer, CLIPImageProcessor
     from model.InteractVLM import InteractVLMForCausalLM
     from model.llava import conversation as conversation_lib
     from model.llava.mm_utils import tokenizer_image_token
@@ -101,8 +101,11 @@ def main() -> None:
         local_files_only=True,
     )
     tokenizer.pad_token = tokenizer.unk_token
+    model_config = AutoConfig.from_pretrained(str(checkpoint), local_files_only=True)
+    model_config.vision_tower = args.vision_tower
+    model_config.mm_vision_tower = args.vision_tower
     model = InteractVLMForCausalLM.from_pretrained(
-        str(checkpoint), low_cpu_mem_usage=True, vision_tower=args.vision_tower,
+        str(checkpoint), config=model_config, low_cpu_mem_usage=True, vision_tower=args.vision_tower,
         torch_dtype=dtype, train_from_LISA=False, train_from_LLAVA=False,
         local_files_only=True,
     )
