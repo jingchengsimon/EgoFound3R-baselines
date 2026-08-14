@@ -288,6 +288,9 @@
       "input_contract": "Dataset-neutral JSONL with RGB path, object name, sequence and frame ID; adapter invokes official file-mode hcontact inference and emits an output JSONL pointing to 6890-vertex SMPL-H contact predictions.",
       "execution_status": "official source/config/runtime verified on DSW; dedicated loaded-once 500-frame speed driver ready for a full checkpoint-load smoke test",
       "local_evaluation_status": "formal_cached_prediction_evaluation_supported",
+      "required_paths": [
+        {"role": "CLIP ViT-L/14 local snapshot", "path": "/mnt/workspace/sjc/models/pretrained/CLIP/clip-vit-large-patch14", "state": "present"}
+      ],
       "runner_deployment": {
         "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/adapters/run_interactvlm.py",
         "state": "tracked_repository_file_pending_authorized_git_promotion",
@@ -298,6 +301,7 @@
       "required_inference_assets": [
         {"role": "official source root", "path": "/mnt/workspace/sjc/external/InteractVLM", "source_commit": "46f836133c7db9fc106c0d34be793c48a64abca3", "state": "verified_on_dsw"},
         {"role": "DAMON checkpoint root", "path": "/mnt/workspace/sjc/models/pretrained/InteractVLM/interactvlm-3d-hcontact-damon", "archive_bytes": 21952861169, "state": "verified_extracted_on_dsw"},
+        {"role": "CLIP ViT-L/14 local snapshot", "path": "/mnt/workspace/sjc/models/pretrained/CLIP/clip-vit-large-patch14", "state": "verified_on_dsw"},
         {"role": "inference adapter", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/adapters/run_interactvlm.py", "state": "implemented_locally_pending_authorized_git_promotion"}
       ]
     }
