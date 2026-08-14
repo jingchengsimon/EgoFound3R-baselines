@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import os
 import statistics
 import sys
 import time
@@ -73,6 +74,7 @@ def main() -> None:
 
     source_root = args.source_root.resolve(strict=True)
     checkpoint = args.checkpoint.resolve(strict=True)
+    os.chdir(source_root)
     sys.path.insert(0, str(source_root))
     import cv2
     import numpy as np
