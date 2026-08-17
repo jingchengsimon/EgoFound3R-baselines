@@ -236,6 +236,10 @@ def _run_lingbot(frame_paths: list[Path], source_root: Path, checkpoint: Path, d
     model = GCTStream(
         img_size=518,
         patch_size=14,
+        # The released full LingBot checkpoint supplies the patch encoder.
+        # ``GCTStream`` defaults to an empty string here, which the official
+        # aggregator mistakes for a DINO checkpoint pathname.
+        pretrained_path=None,
         enable_3d_rope=True,
         max_frame_num=1024,
         kv_cache_sliding_window=64,
