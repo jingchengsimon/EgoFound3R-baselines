@@ -203,8 +203,14 @@ def camera_c2w_from_batch(batch: Mapping[str, Any]) -> tuple[np.ndarray, np.ndar
     """Convert the loader's world-to-camera poses to the canonical evaluator's c2w convention."""
     import numpy as np
 
-    poses = batch["camera_pose"][0].detach().cpu().numpy().astype(np.float64)
-    valid = batch["camera_pose_supervision_mask"][0].detach().cpu().numpy().astype(bool)
+    poses = batch["camera_pose"][0]
+    valid = batch["camera_pose_supervision_mask"][0]
+    if hasattr(poses, "detach"):
+        poses = poses.detach().cpu().numpy()
+    if hasattr(valid, "detach"):
+        valid = valid.detach().cpu().numpy()
+    poses = np.asarray(poses, dtype=np.float64)
+    valid = np.asarray(valid, dtype=bool)
     output = np.full_like(poses, np.nan)
     if np.any(valid):
         output[valid] = np.linalg.inv(poses[valid])
