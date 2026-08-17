@@ -52,6 +52,48 @@ def _load_output(path: Path, expected_ndim: int) -> np.ndarray:
     return value
 
 
+# ReViV's own demo_vis.py decode constants: the 512x512 metric pathway stores a
+# linear 0-15 m range in 0-255, the 256x256 pathway stores inverse depth.
+METRIC_DEPTH_MAX_M = 15.0
+RELATIVE_DEPTH_DECODE_MIN_MM = 200.0
+RELATIVE_DEPTH_DECODE_MAX_MM = 3800.0
+
+
+def _load_depth_meters(scene_dir: Path, stem: str) -> tuple[np.ndarray, str]:
+    """Load ReViV's depth video and decode it to meters with its own convention.
+
+    demo_infer.py names the file after the depth resolution the checkpoint
+    provides, so the 512 "metric depth" checkpoint writes ``_tok_depth_512.npy``
+    even when ``tok_depth`` was requested. Both pathways emit uint8 grayscale
+    video frames, which are meaningless as depth until decoded.
+    """
+    metric_path = scene_dir / f"{stem}_tok_depth_512.npy"
+    relative_path = scene_dir / f"{stem}_tok_depth.npy"
+    if metric_path.is_file():
+        path, pathway = metric_path, "512x512_metric"
+    elif relative_path.is_file():
+        path, pathway = relative_path, "256x256_relative"
+    else:
+        raise FileNotFoundError(
+            f"neither {metric_path} (512x512 metric depth) nor {relative_path} "
+            "(256x256 relative depth) was produced by demo_infer.py"
+        )
+    raw = np.load(path).astype(np.float32)
+    if raw.ndim == 4:
+        # demo_infer writes [T,H,W,3] uint8 grayscale; collapse the channels.
+        raw = raw.mean(axis=-1)
+    if raw.ndim != 3:
+        raise ValueError(f"ReViV depth output must be [T,H,W] or [T,H,W,C], got {raw.shape}")
+    if pathway == "512x512_metric":
+        depth = np.clip(raw, 0.0, 255.0) / 255.0 * METRIC_DEPTH_MAX_M
+    else:
+        inv_min = 1.0 / RELATIVE_DEPTH_DECODE_MAX_MM
+        inv_range = 1.0 / RELATIVE_DEPTH_DECODE_MIN_MM - inv_min
+        inverse = raw * inv_range / 255.0 + inv_min
+        depth = 1.0 / np.maximum(inverse, 1e-12) / 1000.0
+    return depth.astype(np.float32), pathway
+
+
 def _run_demos(args: argparse.Namespace, input_video: Path, native_dir: Path) -> None:
     scene_dir, hand_dir = native_dir / "scene", native_dir / "hand"
     subprocess.run([
@@ -130,7 +172,7 @@ def main() -> None:
     stem = input_video.stem
     scene_dir, hand_dir = native_dir / "scene" / stem, native_dir / "hand" / stem
     camera = decode_camera_9d(_load_output(scene_dir / f"{stem}_tok_cam.npy", 2))
-    depth = _load_output(scene_dir / f"{stem}_tok_depth.npy", 4)
+    depth, depth_pathway = _load_depth_meters(scene_dir, stem)
     left = _load_output(hand_dir / f"{stem}_tok_lhand.npy", 3)
     right = _load_output(hand_dir / f"{stem}_tok_rhand.npy", 3)
     if left.shape[1:] != (21, 3) or right.shape != left.shape:
@@ -140,9 +182,6 @@ def main() -> None:
         raise ValueError("invalid ReViV hand frame mapping")
     scene_indices = _nearest_indices(mapping["hand_indices_30fps"], len(depth))
     camera_indices = _nearest_indices(mapping["hand_indices_30fps"], len(camera))
-    depth = depth[..., 0] if depth.shape[-1] in (1, 3) else depth
-    if depth.ndim != 3:
-        raise ValueError("ReViV depth output must be [T,H,W] or [T,H,W,C]")
     arrays = {
         "camera_c2w": camera[camera_indices],
         "camera_valid": np.isfinite(camera[camera_indices]).all(axis=(1, 2)),
@@ -167,6 +206,8 @@ def main() -> None:
         "scale_type": config["scale_type"],
         "camera_convention": "ReViV canonical c2w; no GT first-frame pose anchor applied",
         "hand_coordinate": "ReViV camera-space joints",
+        "depth_pathway": depth_pathway,
+        "depth_units": "meters (decoded with ReViV demo_vis.py convention)",
         "targets": ["tok_cam", "tok_depth", "tok_lhand", "tok_rhand"],
         "excluded_targets": ["tok_body", "tok_gaze"],
         "scene_indices": scene_indices.tolist(),
