@@ -198,6 +198,24 @@ class SixDatasetGroundTruth:
             })
         return output
 
+    def rgb_context_for_window(self, row: Mapping[str, object], context_frames: int) -> list[dict[str, Any]]:
+        """Return a centered contiguous RGB-only context without scoring/GT expansion."""
+        dataset, sequence_id, frame_ids = validate_window_row(row)
+        if context_frames < len(frame_ids):
+            raise ValueError("context must include every scoring frame")
+        parent = self._datasets[dataset]
+        raw_sequence_id = canonical_sequence_id(dataset, sequence_id)
+        selected = source_indices_for_window(parent, raw_sequence_id, frame_ids)
+        sequence_indices = [int(index) for index in parent.sequence_to_indices[raw_sequence_id]]
+        first = sequence_indices.index(selected[0])
+        start = min(max(first - (context_frames - len(frame_ids)) // 2, 0), len(sequence_indices) - context_frames)
+        if start < 0:
+            raise ValueError(f"{dataset}/{sequence_id}: sequence has {len(sequence_indices)} frames, needs {context_frames}")
+        samples = [parent[index] for index in sequence_indices[start:start + context_frames]]
+        ids = [str(sample["frame_id"]) for sample in samples]
+        target_indices = [ids.index(frame_id) for frame_id in frame_ids]
+        return [{"frame_id": frame_id, "rgb": sample["rgb"]} for frame_id, sample in zip(ids, samples, strict=True)], target_indices
+
     def batch_for_window(self, row: Mapping[str, object]) -> dict[str, Any]:
         dataset, sequence_id, frame_ids = validate_window_row(row)
         chunk = self.chunk_for_window(row)

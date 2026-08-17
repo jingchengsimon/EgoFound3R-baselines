@@ -163,3 +163,38 @@ def load_window_input(path: Path) -> dict[str, object]:
     if missing:
         raise FileNotFoundError(missing[0])
     return record
+
+
+def materialize_video_context(
+    bridge: SixDatasetGroundTruth,
+    window_input_path: Path,
+    *,
+    context_frames: int,
+) -> Path:
+    """Add a method-neutral RGB context video while preserving scoring geometry."""
+    record = load_window_input(window_input_path)
+    directory = window_input_path.parent / f"context_{context_frames}f"
+    mapping_path = directory / "mapping.json"
+    video_path = directory / "input.mp4"
+    if mapping_path.is_file() and video_path.is_file():
+        return mapping_path
+    row = {
+        "dataset": record["dataset"], "sequence_id": record["sequence_id"],
+        "frame_ids": record["frame_ids"], "window_size": len(record["frame_ids"]),
+    }
+    frames, scoring_indices = bridge.rgb_context_for_window(row, context_frames)
+    rgb_paths: list[Path] = []
+    from PIL import Image
+    for index, frame in enumerate(frames):
+        path = directory / "rgb" / f"{index:03d}_{frame['frame_id']}.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(_rgb_uint8(frame["rgb"]), mode="RGB").save(path)
+        rgb_paths.append(path)
+    video, _ = _materialize_30fps_video(directory, rgb_paths)
+    _atomic_text(mapping_path, json.dumps({
+        "dataset": record["dataset"], "sequence": record["sequence_id"], "window_id": record["window_id"],
+        "frame_ids": record["frame_ids"], "context_frame_ids": [frame["frame_id"] for frame in frames],
+        "hand_indices_30fps": scoring_indices, "context_frames": context_frames,
+        "input_fps": 30.0, "duration_seconds": context_frames / 30.0, "video_path": str(video),
+    }, ensure_ascii=False, indent=2) + "\n")
+    return mapping_path

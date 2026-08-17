@@ -101,7 +101,8 @@ def main() -> None:
         sequence = str(window_input["sequence_id"])
         window_id = str(window_input["window_id"])
         frame_ids = [str(item) for item in window_input["frame_ids"]]
-        prepared_dir = args.window_input.parent
+        context_dir = args.window_input.parent / "context_60f"
+        prepared_dir = context_dir if (context_dir / "mapping.json").is_file() else args.window_input.parent
         dataset = str(window_input["dataset"])
         output_window_id = str(window_input["cache_id"])
     else:
