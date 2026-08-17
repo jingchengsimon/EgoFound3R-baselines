@@ -11,6 +11,9 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageOps
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+
 from formal_evaluation.common.io import (
     load_manifest,
     resolve_rgb_paths,

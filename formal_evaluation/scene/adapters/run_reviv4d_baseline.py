@@ -12,6 +12,9 @@ from pathlib import Path
 
 import numpy as np
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+
 from formal_evaluation.common.io import load_manifest, select_manifest_window, write_comparison_output
 from formal_evaluation.common.schema import SCHEMA_VERSION
 from formal_evaluation.datasets.window_inputs import load_window_input

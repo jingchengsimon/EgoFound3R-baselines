@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -11,6 +12,9 @@ import cv2
 import numpy as np
 import torch
 from PIL import Image
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from egohandmetric_prompt import build_runtime_marker_model, load_marker_model_weights, load_project_config
 from egohandmetric_prompt.marker_runtime import reconstruct_metric_scale_outputs
