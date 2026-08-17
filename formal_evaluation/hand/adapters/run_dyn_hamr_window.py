@@ -39,19 +39,32 @@ def _module(path: Path, name: str):
     return module
 
 
-def _canonical_joints(mano_output: dict[str, object], frame_count: int) -> tuple[np.ndarray, np.ndarray]:
+def _canonical_joints(
+    mano_output: dict[str, object], frame_count: int, start_idx: int = 0
+) -> tuple[np.ndarray, np.ndarray]:
+    """Place Dyn-HaMR's optimized joints back on the full input clip.
+
+    Dyn-HaMR trims the sequence to ``[start_idx, end_idx)`` -- the frames its
+    surviving tracks actually cover -- so its output is shorter than the clip
+    that was fed in. Frames outside that span carry no official prediction and
+    stay invalid rather than being filled in.
+    """
     joints = mano_output["joints"].detach().cpu().numpy()
     sides = mano_output["is_right"].detach().cpu().numpy().astype(bool)
     output = np.zeros((frame_count, 2, 21, 3), dtype=np.float32)
     valid = np.zeros((frame_count, 2), dtype=bool)
+    span = min(joints.shape[1], frame_count - start_idx) if joints.shape[0] else 0
+    if span <= 0:
+        return output, valid
+    window = slice(start_idx, start_idx + span)
     for track in range(joints.shape[0]):
         slot = 1 if bool(sides[track, 0]) else 0
         if valid[:, slot].any():
             continue  # one canonical slot per side; keep official first track deterministically
-        values = np.asarray(joints[track, :frame_count], dtype=np.float32)
+        values = np.asarray(joints[track, :span], dtype=np.float32)
         mask = np.isfinite(values).all(axis=(1, 2))
-        output[:, slot] = np.nan_to_num(values)
-        valid[:, slot] = mask
+        output[window, slot] = np.nan_to_num(values)
+        valid[window, slot] = mask
     return output, valid
 
 
@@ -185,26 +198,43 @@ def main() -> None:
         frame_w2c, droid = run_loaded(slam_args, frame_paths, intrins, images, droid_net)
         save_cameras(str(camera_dir), frame_w2c, intrins)
         dataset = MultiPeopleDataset({"images": str(image_dir), "tracks": str(track_dir), "shots": str(shot_path), "cameras": str(camera_dir)}, sequence_name, end_idx=frame_count, is_static=False, split_cameras=True, img_size=(width, height))
-        if dataset.seq_len != frame_count:
-            raise RuntimeError(f"Dyn-HaMR produced {dataset.seq_len} frames, expected {frame_count}")
-        with initialize_config_dir(version_base=None, config_dir=str(dyn_root / "confs")):
-            cfg = compose(config_name="config", overrides=[
-                "data=video_driod", f"data.seq={sequence_name}", f"data.end_idx={frame_count}",
-                f"optim.root.num_iters={args.root_iters}", f"optim.smooth.num_iters={args.smooth_iters}",
-                "run_prior=False", "run_vis=False", "is_static=False",
-            ])
-        cfg = resolve_cfg_paths(cfg); cfg.paths.base_dir = str(source_root); cfg.data.frame_opts.fps = 30
-        mano_cfg = {key.lower(): value for key, value in dict(cfg.MANO).items()}
-        mano_model = MANO(batch_size=len(dataset) * frame_count, pose2rot=True, **mano_cfg).to(device)
-        set_seed(cfg.get("seed", 42))
-        _, prediction = run_opt(cfg, dataset, str(work / "unused"), device, hand_model=mano_model, save_io=False)
-        world = prediction["world"]
-        mano = run_mano(mano_model, world["trans"], world["root_orient"], world["pose_body"], world["is_right"], betas=world.get("betas"))
-        joints, valid = _canonical_joints(mano, frame_count)
-        # Score only the manifest frames; the surrounding context is input-only.
-        selection = np.asarray(scoring_indices, dtype=np.int64)
-        joints, valid = joints[selection], valid[selection]
-        torch.cuda.synchronize(device)
+        # Dyn-HaMR keeps only tracks longer than MIN_TRACK_LEN and trims the clip
+        # to the frames they cover, so a shorter span is an official outcome, not
+        # an error. A clip with no surviving track yields no prediction at all.
+        kept_start, kept_len = int(dataset.start_idx), int(dataset.seq_len)
+        if dataset.n_tracks == 0 or kept_len <= 0:
+            blocked = {
+                "status": "blocked_no_track_over_min_track_len",
+                "elapsed_seconds": time.perf_counter() - start, "device": str(device),
+                "context_frames": frame_count, "scored_frames": scoring_count,
+                "covered_scored_frames": 0,
+                "detail": ("Dyn-HaMR's official MultiPeopleDataset kept no track longer than "
+                           "MIN_TRACK_LEN (60) in this clip"),
+            }
+            joints = np.zeros((scoring_count, 2, 21, 3), dtype=np.float32)
+            valid = np.zeros((scoring_count, 2), dtype=bool)
+            kept_start, kept_len = 0, 0
+        else:
+            blocked = None
+        if blocked is None:
+            with initialize_config_dir(version_base=None, config_dir=str(dyn_root / "confs")):
+                cfg = compose(config_name="config", overrides=[
+                    "data=video_driod", f"data.seq={sequence_name}", f"data.end_idx={frame_count}",
+                    f"optim.root.num_iters={args.root_iters}", f"optim.smooth.num_iters={args.smooth_iters}",
+                    "run_prior=False", "run_vis=False", "is_static=False",
+                ])
+            cfg = resolve_cfg_paths(cfg); cfg.paths.base_dir = str(source_root); cfg.data.frame_opts.fps = 30
+            mano_cfg = {key.lower(): value for key, value in dict(cfg.MANO).items()}
+            mano_model = MANO(batch_size=len(dataset) * frame_count, pose2rot=True, **mano_cfg).to(device)
+            set_seed(cfg.get("seed", 42))
+            _, prediction = run_opt(cfg, dataset, str(work / "unused"), device, hand_model=mano_model, save_io=False)
+            world = prediction["world"]
+            mano = run_mano(mano_model, world["trans"], world["root_orient"], world["pose_body"], world["is_right"], betas=world.get("betas"))
+            joints, valid = _canonical_joints(mano, frame_count, kept_start)
+            # Score only the manifest frames; the surrounding context is input-only.
+            selection = np.asarray(scoring_indices, dtype=np.int64)
+            joints, valid = joints[selection], valid[selection]
+            torch.cuda.synchronize(device)
     finally:
         shutil.rmtree(work, ignore_errors=True)
     config = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"]["dyn_hamr"]
@@ -221,12 +251,14 @@ def main() -> None:
             "context frames are input-only; Dyn-HaMR's official MultiPeopleDataset drops tracks "
             "with track_len <= 60, so a 60-frame scoring window cannot be run on its own"
         ),
-    }, arrays={"hand_joints_world": joints, "hand_valid": valid}, run={
+        "official_kept_span": [kept_start, kept_start + kept_len],
+    }, arrays={"hand_joints_world": joints, "hand_valid": valid}, run=blocked or {
         "status": "success", "elapsed_seconds": time.perf_counter() - start, "device": str(device),
         "root_iterations": args.root_iters, "smooth_iterations": args.smooth_iters,
         "context_frames": frame_count, "scored_frames": scoring_count,
+        "covered_scored_frames": int(valid.any(axis=1).sum()),
     }, native_metadata={"window_input": str(args.window_input)})
-    print(json.dumps({"status": "success", "output_dir": str(output_dir)}))
+    print(json.dumps({"status": (blocked or {}).get("status", "success"), "output_dir": str(output_dir)}))
 
 
 if __name__ == "__main__":
