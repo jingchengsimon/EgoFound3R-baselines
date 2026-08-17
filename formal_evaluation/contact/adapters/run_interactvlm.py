@@ -24,6 +24,11 @@ def main() -> None:
     parser.add_argument("--output-manifest", type=Path, required=True)
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--precision", choices=("bf16", "fp16", "fp32"), default="bf16")
+    parser.add_argument(
+        "--vision-tower",
+        type=Path,
+        help="local CLIP vision-tower snapshot passed to the official runner for offline execution",
+    )
     args = parser.parse_args()
 
     source_root = args.source_root.resolve(strict=True)
@@ -63,6 +68,8 @@ def main() -> None:
         "--img_folder", str(input_dir), "--contact_type", "hcontact",
         "--input_mode", "file", "--precision", args.precision,
     ]
+    if args.vision_tower is not None:
+        command.extend(("--vision-tower", str(args.vision_tower.resolve(strict=True))))
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(
         [str(source_root), env.get("PYTHONPATH", "")]).rstrip(os.pathsep)
