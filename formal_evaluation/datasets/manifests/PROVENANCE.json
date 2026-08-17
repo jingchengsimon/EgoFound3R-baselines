@@ -1,0 +1,25 @@
+{
+  "manifest_version": "egofound3r_baseline_eval_provenance_v1",
+  "generator_commit": "f80ba5da18bee6826d8c680df43a0a37ab737499",
+  "dataloader_source_commit": "4bbc466d31a77733ef515daec9409a62f7eb4e9e",
+  "dataloader_snapshot_sha256_manifest": "0499c4baefc6e73b371a1e0e9fb96aab14f5f6a947a0f297d9a9e2afc2cd9811",
+  "fixed_sequence_manifest_sha256": "a0842500449cd890ba772aa388658c1c6d18c5df5881bfbe2f59208f14b0d6fa",
+  "protocol": {
+    "datasets": ["h2o", "taco", "hot3d", "oakink_v2", "arctic", "hoi4d"],
+    "windows_per_dataset": 300,
+    "window_size": 12,
+    "window_stride": 12,
+    "window_overlap": 0,
+    "drop_incomplete_tail": true,
+    "seed": 0
+  },
+  "normalized_input_sha256": {
+    "h2o": "c9ea836ce22f2777a0223694a7aada387ac71268652e43b2fcd9f543db2b2900",
+    "taco": "8dc064cd9d811c4456baa512400e0c62c142c86569dc0ad8f84bc38de037240a",
+    "hot3d": "686666a2572cb753214b6e71e3c4e8b62f7bbb6b17c0c3dd79753e4348c76c2d",
+    "oakink_v2": "894aa8bcd6aac9a6033dea518c05818ee2cb8496debc1aa2e767f772a60c5551",
+    "arctic": "c01576f82534d4bae5c9512115b1d1397c29e8e3170878254d7b5035eb7d32de",
+    "hoi4d": "3ac5b2d286034aaa2feb4a265eaa44a99d2daa65cb7be39527630fbc683c1f27"
+  },
+  "evaluation_window_manifest_sha256": "ef999e16c2eed388813e8c55b27dee4dc168bcc678806f104e927ecae9fadf35"
+}
