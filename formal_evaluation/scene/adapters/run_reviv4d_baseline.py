@@ -55,12 +55,12 @@ def _load_output(path: Path, expected_ndim: int) -> np.ndarray:
 def _run_demos(args: argparse.Namespace, input_video: Path, native_dir: Path) -> None:
     scene_dir, hand_dir = native_dir / "scene", native_dir / "hand"
     subprocess.run([
-        sys.executable, "demo_infer.py", "--video", str(input_video), "--output_dir", str(scene_dir),
+        args.python, "demo_infer.py", "--video", str(input_video), "--output_dir", str(scene_dir),
         "--ckpt_root", str(args.checkpoint_root), "--cosmos_dir", str(args.cosmos_dir),
         "--targets", "tok_cam", "tok_depth", "--amp_dtype", args.amp_dtype,
     ], cwd=args.source_root, check=True)
     subprocess.run([
-        sys.executable, "demo_hand.py", "--video", str(input_video), "--output_dir", str(hand_dir),
+        args.python, "demo_hand.py", "--video", str(input_video), "--output_dir", str(hand_dir),
         "--ckpt_root", str(args.checkpoint_root), "--cosmos_dir", str(args.hand_cosmos_dir),
         "--amp_dtype", args.amp_dtype,
     ], cwd=args.source_root, check=True)
@@ -76,6 +76,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--window-input", type=Path,
                         help="method-neutral record from materialize_six_dataset_window_inputs.py")
     parser.add_argument("--source-root", type=Path, required=True)
+    parser.add_argument("--python", default=sys.executable,
+                        help="ReViV-compatible interpreter used for both official demos")
     parser.add_argument("--checkpoint-root", type=Path, required=True)
     parser.add_argument("--cosmos-dir", type=Path, required=True)
     parser.add_argument(
