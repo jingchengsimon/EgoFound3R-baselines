@@ -44,6 +44,7 @@ def main() -> None:
     parser.add_argument("--datasets", nargs="*", choices=sorted(DATASET_LOADERS), default=sorted(DATASET_LOADERS))
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--shard-index", type=int, default=0)
+    parser.add_argument("--max-windows", type=int, help="bounded validation only; omit for a full shard")
     parser.add_argument("--scene-visibility-device", default="cpu")
     parser.add_argument("--interhand-contact-compute-device", default="cpu")
     args = parser.parse_args()
@@ -51,6 +52,10 @@ def main() -> None:
         raise ValueError("shard index must satisfy 0 <= index < count")
 
     selected = _rows(args.windows, set(args.datasets), args.shard_count, args.shard_index)
+    if args.max_windows is not None:
+        if args.max_windows < 1:
+            raise ValueError("--max-windows must be positive")
+        selected = selected[:args.max_windows]
     if not selected:
         raise ValueError("selected shard has no windows")
     args.output_root.mkdir(parents=True, exist_ok=True)
