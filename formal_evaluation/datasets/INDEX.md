@@ -17,3 +17,43 @@ Registry and shared output type:
 To add a dataset: implement the same `sequence_ids()` and
 `select_contiguous()` contract, register one key in `DATASET_ADAPTERS`, and add
 one row above. Never modify or resize files inside a dataset root.
+
+## Six-dataset split manifests
+
+The frozen manifests consumed by future dataloaders and evaluation scripts are:
+
+- `manifests/sequence_splits/{h2o,taco,hot3d,oakink_v2,arctic,hoi4d}.json`
+- `manifests/dataset_sequence_splits.json`
+- `manifests/evaluation_test_windows_seed0.jsonl`
+
+`build_dataset_splits.py` creates the permanent sequence split and the sampled
+evaluation-window manifest without loading or changing dataset files:
+
+```bash
+python -m formal_evaluation.datasets.build_dataset_splits \
+  --manifest h2o=/path/h2o.json \
+  --manifest taco=/path/taco.json \
+  --manifest hot3d=/path/hot3d.json \
+  --manifest oakink_v2=/path/oakink_v2.json \
+  --manifest arctic=/path/arctic.json \
+  --manifest hoi4d=/path/hoi4d.json \
+  --output-dir /path/splits
+```
+
+Each input JSON has `sequences`, whose rows contain `sequence_id` and ordered
+`frame_ids`. H2O and TACO additionally require `official_splits`. H2O accepts
+the official frame paths and collapses them to canonical sequence IDs. For
+every dataset, candidates start at the first frame of each test sequence, use
+12 frames with stride 12, never overlap, and drop an incomplete final tail.
+Outputs are `dataset_sequence_splits.json` and
+`evaluation_test_windows_seed0.jsonl`.
+
+H2O split keys are `train`, `val`, and `test`. TACO split keys are `train`,
+`test_1`, `test_2`, `test_3`, and `test_4`. The command fails unless all six
+available/training/test counts match the fixed protocol and every dataset has
+at least 300 valid test windows. H2O outputs `trainval/test`; the other five
+datasets output `train/test`.
+
+`export_dataset_manifests.py` is the read-only bridge from the existing
+EgoFound3R dataset indexes to the six normalized inputs used by the command
+above. It is not a training dataloader.
