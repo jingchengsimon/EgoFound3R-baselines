@@ -1,0 +1,282 @@
+[project]
+default_name = "egofound3r"
+seed = 0
+
+[paths]
+data_root = ""
+human_model_root = ""
+
+[marker_model]
+dino_dim = 1024
+aggregator_dim = 2048
+prompt_dim = 768
+hand_feature_dim = 768
+detection_hidden_dim = 256
+num_markers = 195
+marker_query_count = 195
+prompt_injection_layer = 18
+adapter_num_layers = 6
+adapter_num_heads = 12
+adapter_mlp_ratio = 4
+temporal_prompt_layers = 2
+temporal_prompt_heads = 12
+temporal_prompt_mlp_ratio = 4
+root_head_num_layers = 1
+joint_head_num_layers = 5
+vertex_head_num_layers = 5
+hand_head_num_heads = 12
+hand_head_mlp_ratio = 4
+peak_threshold = 0.3
+enable_presence_head = false
+inference_egocentric = true
+enable_flow_guidance = false
+flow_motion_dim = 1232
+flow_num_heads = 8
+flow_patch_size = 16
+flow_gate_init_logit = 0.0
+flow_local_correlation_radius = 3
+flow_local_correlation_dim = 64
+
+[flow_model]
+num_markers = 195
+state_dim = 61
+camera_pose_dim = 9
+hidden_dim = 768
+num_layers = 8
+num_heads = 12
+
+[smoke_backbone]
+feature_dim = 8
+aggregator_dim = 10
+patch_grid_height = 4
+patch_grid_width = 4
+depth_height = 16
+depth_width = 16
+
+[smoke_marker_model]
+dino_dim = 8
+aggregator_dim = 10
+prompt_dim = 24
+hand_feature_dim = 24
+detection_hidden_dim = 16
+num_markers = 8
+marker_query_count = 8
+prompt_injection_layer = 18
+adapter_num_layers = 2
+adapter_num_heads = 4
+adapter_mlp_ratio = 2
+temporal_prompt_layers = 1
+temporal_prompt_heads = 4
+temporal_prompt_mlp_ratio = 2
+root_head_num_layers = 1
+joint_head_num_layers = 1
+vertex_head_num_layers = 1
+hand_head_num_heads = 4
+hand_head_mlp_ratio = 2
+peak_threshold = 0.0
+enable_presence_head = false
+inference_egocentric = true
+enable_flow_guidance = false
+flow_motion_dim = 32
+flow_num_heads = 4
+flow_patch_size = 8
+flow_gate_init_logit = 0.0
+flow_local_correlation_radius = 3
+flow_local_correlation_dim = 32
+
+[smoke_flow_model]
+num_markers = 8
+state_dim = 16
+camera_pose_dim = 9
+hidden_dim = 32
+num_layers = 2
+num_heads = 4
+
+[interval]
+visible_count_threshold = 2
+merge_gap_threshold = 1
+filter_length_threshold = 1
+visibility_threshold = 0.5
+
+[smoke_marker_train]
+batch_size = 2
+num_frames = 3
+image_height = 32
+image_width = 32
+learning_rate = 0.001
+
+[marker_data.common]
+split = "all"
+exclude_h2o_test_split_from_training = false
+dataset_sampling_weights = {}
+num_frames = 2
+min_num_frames = 2
+max_num_frames = 2
+window_stride = 1
+min_frame_stride = 1
+max_frame_stride = 1
+group_frame_stride_in_batch = false
+sequence_sampling_mode = "window_proportional"
+batch_size = 1
+num_workers = 0
+streaming_epoch_sampler = false
+container_local_sampling_enabled = false
+container_local_sampling_dataset_names = []
+container_local_sampling_block_batches = 64
+container_local_sampling_start_order = "random_cursor"
+container_local_prefetch_enabled = false
+container_local_prefetch_margin_batches = 16
+missing_sample_replacement_attempts = 0
+missing_sample_registry_dir = ""
+
+[marker_data.midtrain]
+marker_dataset_names = ["h2o", "hot3d_aria", "hoi4d", "oakink_v2", "whim", "forehoi", "reinterhand", "stera_10m", "egoforce_arctic"]
+three_r_dataset_names = []
+marker_dataset_sampling_weights = {}
+three_r_dataset_sampling_weights = {}
+
+[marker_data.posttrain]
+marker_dataset_names = ["h2o", "hot3d_aria", "oakink_v2", "egoforce_arctic"]
+three_r_dataset_names = ["h2o", "hot3d_aria", "hoi4d", "oakink_v2", "egoforce_arctic", "stera_10m"]
+marker_dataset_sampling_weights = {}
+three_r_dataset_sampling_weights = {}
+
+[marker_runtime]
+backend = "vggt_omega"
+image_height = 512
+image_width = 512
+vggt_checkpoint_path = "/home/ruixu/programs_hm/fhm_home/data5/mnt/MODELS/VGGT-Omega/vggt_omega_1b_512.pt"
+marker_visibility_loss_weight = 0.1
+vertex_visibility_mesh_mode = "marker"
+include_scene_occlusion_in_visibility = true
+joint_visibility_loss_weight = 0.1
+contact_loss_weight = 0.1
+marker_contact_loss_weight = 0.1
+contact_supervision = { h2o = "object_and_interhand", hot3d_aria = "object_and_interhand", hoi4d = "object_and_interhand", oakink_v2 = "object_and_interhand", whim = "disabled", forehoi = "disabled", reinterhand = "interhand_only", stera_10m = "disabled", egoforce_arctic = "object_and_interhand", taco = "object_and_interhand" }
+contact_confidence_warmup_steps = 200
+contact_confidence_alpha = 0.05
+depth_consistency_loss_weight = 0.1
+depth_supervision_loss_weight = 1.0
+intrinsics_supervision_loss_weight = 1.0
+camera_translation_loss_weight = 1.0
+camera_rotation_loss_weight = 1.0
+camera_translation_max_sample_loss = 100.0
+keypoint_heatmap_loss_weight = 1.0
+keypoint_heatmap_positive_weight = 0.0
+keypoint_offset_loss_weight = 1.0
+scene_scale_min_value = 0.001
+scale_normalized_max_sample_loss = 100.0
+depth_confidence_alpha = 0.2
+depth_relative_weight_max = 20.0
+depth_robust_quantile = 0.98
+point_supervision_loss_weight = 0.25
+point_robust_quantile = 0.98
+vertex_depth_pred_self_loss_weight = 0.05
+vertex_depth_pred_self_warmup_steps = 100
+hand_representation = "root_offsets"
+hand_vertex_offset_loss_weight = 1.0
+hand_joint_offset_loss_weight = 1.0
+hand_root_scene_loss_weight = 0.25
+hand_root_metric_loss_weight = 0.25
+hand_root_metric_warmup_steps = 200
+hand_joint_scene_loss_weight = 0.25
+hand_joint_metric_loss_weight = 0.25
+hand_vertex_scene_loss_weight = 0.25
+hand_vertex_metric_loss_weight = 0.25
+hand_2d_reprojection_loss_weight = 2.2
+hand_root_2d_reprojection_loss_weight = 11.0
+hand_vertex_2d_reprojection_loss_weight = 2.2
+hand_joint_2d_bone_length_loss_weight = 5.0
+hand_joint_2d_bbox_size_loss_weight = 2.5
+hand_vertex_2d_bbox_size_loss_weight = 1.0
+hand_2d_reprojection_warmup_steps = 0
+hand_2d_reprojection_error_max = 0.0
+hand_confidence_warmup_steps = 500
+hand_conf_log_min = 0.0
+hand_conf_log_max = 2.0
+hand_conf_local_alpha = 0.05
+hand_conf_root_alpha = 0.05
+metric_scale_loss_weight = 1.0
+metric_hand_joint_loss_weight = 0.5
+metric_hand_vertex_loss_weight = 0.5
+metric_hand_scale_warmup_steps = 100
+metric_scale_min_value = 0.01
+metric_scale_max_value = 100.0
+enable_wilor_teacher = false
+wilor_teacher_loss_weight = 0.1
+wilor_teacher_feature_dim = 1280
+wilor_teacher_input = "gt_bbox"
+wilor_checkpoint_path = "/home/ruixu/programs_hm/fhm_home/data5/mnt/MODELS/WiLoR/wilor_final.ckpt"
+wilor_config_path = ""
+# flow_loss_peak_steps/decay_steps are absolute global-step milestones.
+# Set flow_loss_weight = 0.0 to disable flow supervision regardless of schedule.
+flow_loss_weight = 0.1
+flow_loss_peak_weight = 0.5
+flow_loss_warmup_steps = 200
+flow_loss_peak_steps = 1000
+flow_loss_decay_steps = 3000
+flow_motion_weight = 0.0
+flow_motion_threshold_px = 1.0
+flow_background_weight = 0.05
+flow_hand_region_weight = 1.0
+flow_fingertip_weight = 3.0
+flow_fingertip_sigma_px = 12.0
+flow_multiscale_half_weight = 0.25
+flow_smoothness_weight = 0.005
+flow_pseudo_cache_root = ""
+flow_max_supervised_frame_stride = 1
+
+[marker_runtime.random_crop_resize]
+enabled = false
+crop_probability = 0.3
+target_shapes = [
+  [384, 672],
+  [432, 768],
+  [384, 512],
+  [432, 576],
+  [448, 448],
+  [512, 512],
+]
+
+[marker_train]
+output_dir = "outputs/marker_train"
+resume_from = ""
+resume_mode = "full"
+control_mode = "steps"
+max_epochs = 0
+learning_rate = 0.0001
+weight_decay = 0.01
+gradient_accumulation_steps = 1
+max_steps = 1000
+log_interval = 10
+find_unused_parameters = true
+visualization_interval_steps = 0
+visualization_sequences_per_step = 1
+posttrain_three_r_stream_ratio = 1.0
+posttrain_marker_stream_steps = 1
+posttrain_three_r_stream_steps = 1
+posttrain_stream_schedule = {}
+vggt_suffix_activation_checkpointing = false
+eval_interval = 100
+checkpoint_interval = 100
+keep_last_k = 3
+mixed_precision = "bf16"
+lr_scheduler = "cosine"
+warmup_steps = 0
+min_learning_rate = 1e-6
+grad_clip_norm = 1.0
+eval_stage = "posttrain"
+eval_stream = "marker"
+eval_steps = 4
+eval_max_samples = 0
+eval_sample_seed = 0
+use_official_h2o_eval = true
+official_h2o_eval_samples = 50
+official_h2o_eval_seed = 0
+best_metric_name = "mano_joint_mpjpe"
+best_metric_mode = "min"
+
+[smoke_flow_train]
+batch_size = 2
+num_frames = 5
+learning_rate = 0.001
