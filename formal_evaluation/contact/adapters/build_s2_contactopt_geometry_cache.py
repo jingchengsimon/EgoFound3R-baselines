@@ -17,6 +17,9 @@ from pathlib import Path
 
 import numpy as np
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+
 from formal_evaluation.datasets.window_inputs import load_window_input
 
 
