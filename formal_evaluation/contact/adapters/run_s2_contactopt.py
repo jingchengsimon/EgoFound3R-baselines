@@ -24,6 +24,7 @@ from torch.utils.data import DataLoader
 
 from formal_evaluation.common.io import load_manifest, write_comparison_output
 from formal_evaluation.common.schema import SCHEMA_VERSION
+from formal_evaluation.datasets.window_inputs import load_window_input
 
 
 TIP_JOINT_IDS = (4, 8, 12, 16, 20)
@@ -39,11 +40,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--mano-right", type=Path, required=True,
                         help="absolute path to MANO_RIGHT.pkl")
-    parser.add_argument("--manifest", type=Path, required=True, help="formal manifest JSON or preserved frame_index.jsonl")
+    parser.add_argument("--manifest", type=Path, help="formal manifest JSON or preserved frame_index.jsonl")
+    parser.add_argument("--window-input-index", type=Path,
+                        help="method-neutral window_inputs.jsonl; use with cache built by build_s2_contactopt_geometry_cache.py")
+    parser.add_argument("--cache-index", type=Path,
+                        help="index emitted by build_s2_contactopt_geometry_cache.py")
     parser.add_argument("--materialized-manifest", type=Path, help="write reconstructed formal manifest when --manifest is JSONL")
     parser.add_argument("--methods-config", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
-    parser.add_argument("--phase", choices=("formal",), default="formal")
+    parser.add_argument("--phase", choices=("smoke", "pilot", "formal"), default="formal")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--device", default="cuda:0")
     return parser.parse_args()
@@ -186,11 +191,47 @@ def _new_window_arrays(windows: Mapping[str, tuple[str, list[str]]]) -> dict[str
     }
 
 
+def _windows_from_input_index(path: Path) -> tuple[dict[str, tuple[str, list[str]]], dict[str, dict[str, object]]]:
+    windows: dict[str, tuple[str, list[str]]] = {}
+    records: dict[str, dict[str, object]] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        item = json.loads(line)
+        record_path = Path(str(item["window_input"]))
+        record = load_window_input(record_path)
+        cache_id = str(record["cache_id"])
+        windows[cache_id] = (str(record["sequence_id"]), [str(value) for value in record["frame_ids"]])
+        records[cache_id] = record
+    if not windows:
+        raise ValueError("window input index is empty")
+    return windows, records
+
+
+def _cache_locations(path: Path) -> dict[int, tuple[str, int]]:
+    locations: dict[int, tuple[str, int]] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        item = json.loads(line)
+        cache_index = int(item["cache_index"])
+        locations[cache_index] = (str(item["cache_id"]), int(item["time_index"]))
+    return locations
+
+
 def main() -> None:
     args = _parse_args()
     if not torch.cuda.is_available():
         raise RuntimeError("S²Contact/ContactOpt formal prediction requires CUDA")
-    windows = _load_windows(args.manifest, args.materialized_manifest)
+    if (args.window_input_index is None) != (args.cache_index is None):
+        raise ValueError("--window-input-index and --cache-index must be passed together")
+    if args.window_input_index is not None:
+        if args.manifest is not None or args.materialized_manifest is not None:
+            raise ValueError("generic contact mode cannot be combined with --manifest options")
+        windows, input_records = _windows_from_input_index(args.window_input_index)
+        cache_locations = _cache_locations(args.cache_index)
+    else:
+        if args.manifest is None:
+            raise ValueError("provide --manifest or generic --window-input-index/--cache-index")
+        windows = _load_windows(args.manifest, args.materialized_manifest)
+        input_records = {}
+        cache_locations = {}
     arrays_by_window = _new_window_arrays(windows)
     method_config = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"][args.baseline]
     Dataset, model = _load_baseline(args.baseline, args.source_root, args.mano_right)
@@ -219,6 +260,15 @@ def main() -> None:
             probability = torch.softmax(output["contact_hand"], dim=-1)[..., 5:].sum(dim=-1).cpu().numpy()
             for batch_index in range(size):
                 record = dataset.dataset[cursor + batch_index]
+                generic_location = cache_locations.get(cursor + batch_index)
+                if generic_location is not None:
+                    cache_id, time_index = generic_location
+                    arrays = arrays_by_window.get(cache_id)
+                    if arrays is not None and 0 <= time_index < len(arrays["hand_valid"]):
+                        arrays["joint_contact_probability"][time_index, 1] = probability[batch_index, _joint_vertex_indices(record)]
+                        arrays["hand_valid"][time_index, 1] = True
+                        matched_samples += 1
+                    continue
                 if int(record.get("h2o_hand_index", 1)) != 1:
                     continue
                 sequence = str(record["h2o_sequence"])
@@ -249,6 +299,7 @@ def main() -> None:
     ]
     for window_id, (sequence, frame_ids) in windows.items():
         arrays = arrays_by_window[window_id]
+        input_record = input_records.get(window_id, {})
         write_comparison_output(
             args.output_root / args.baseline / args.phase / window_id,
             metadata={
@@ -257,6 +308,7 @@ def main() -> None:
                 "source": method_config["source"],
                 "checkpoint": str(args.checkpoint),
                 "phase": args.phase,
+                "dataset": input_record.get("dataset", "h2o"),
                 "sequence": sequence,
                 "window_id": window_id,
                 "frame_ids": frame_ids,

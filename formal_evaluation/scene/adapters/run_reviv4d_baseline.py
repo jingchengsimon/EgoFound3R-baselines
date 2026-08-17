@@ -14,6 +14,7 @@ import numpy as np
 
 from formal_evaluation.common.io import load_manifest, select_manifest_window, write_comparison_output
 from formal_evaluation.common.schema import SCHEMA_VERSION
+from formal_evaluation.datasets.window_inputs import load_window_input
 
 
 def decode_camera_9d(camera: np.ndarray) -> np.ndarray:
@@ -65,10 +66,12 @@ def _run_demos(args: argparse.Namespace, input_video: Path, native_dir: Path) ->
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--phase", choices=("smoke", "pilot", "formal"), required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path)
     parser.add_argument("--methods-config", type=Path, required=True)
-    parser.add_argument("--prepared-dir", type=Path, required=True,
+    parser.add_argument("--prepared-dir", type=Path,
                         help="directory produced by scripts/prepare_reviv4d_input.py")
+    parser.add_argument("--window-input", type=Path,
+                        help="method-neutral record from materialize_six_dataset_window_inputs.py")
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--checkpoint-root", type=Path, required=True)
     parser.add_argument("--cosmos-dir", type=Path, required=True)
@@ -88,16 +91,32 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    manifest = load_manifest(args.manifest)
-    sequence, window_id, frame_ids = select_manifest_window(
-        manifest, phase=args.phase, sequence=args.sequence, window_id=args.window_id
-    )
-    mapping_path, input_video = args.prepared_dir / "mapping.json", args.prepared_dir / "input.mp4"
+    if args.window_input is not None:
+        if args.manifest is not None or args.prepared_dir is not None:
+            raise ValueError("--window-input cannot be combined with --manifest/--prepared-dir")
+        window_input = load_window_input(args.window_input)
+        sequence = str(window_input["sequence_id"])
+        window_id = str(window_input["window_id"])
+        frame_ids = [str(item) for item in window_input["frame_ids"]]
+        prepared_dir = args.window_input.parent
+        dataset = str(window_input["dataset"])
+        output_window_id = str(window_input["cache_id"])
+    else:
+        if args.manifest is None or args.prepared_dir is None:
+            raise ValueError("provide --window-input or both --manifest and --prepared-dir")
+        manifest = load_manifest(args.manifest)
+        sequence, window_id, frame_ids = select_manifest_window(
+            manifest, phase=args.phase, sequence=args.sequence, window_id=args.window_id
+        )
+        prepared_dir = args.prepared_dir
+        dataset = "h2o"
+        output_window_id = window_id
+    mapping_path, input_video = prepared_dir / "mapping.json", prepared_dir / "input.mp4"
     mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
     if mapping.get("sequence") != sequence or mapping.get("window_id") != window_id or mapping.get("frame_ids") != frame_ids:
         raise ValueError("prepared ReViV input does not match the requested manifest window")
 
-    output_dir = args.output_root / "reviv4d" / args.phase / window_id
+    output_dir = args.output_root / "reviv4d" / args.phase / output_window_id
     native_dir = output_dir / "native" / "reviv4d"
     start = time.perf_counter()
     if not args.reuse_native:
@@ -134,6 +153,7 @@ def main() -> None:
         "method": "reviv4d",
         "source": config["source"],
         "phase": args.phase,
+        "dataset": dataset,
         "sequence": sequence,
         "window_id": window_id,
         "frame_ids": frame_ids,

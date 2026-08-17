@@ -119,6 +119,7 @@ class SixDatasetGroundTruth:
         build_dataset, temporal_chunk, training, marker_ids = _dataloader_runtime()
         mano_builder, collator = training
         self._temporal_chunk = temporal_chunk
+        self._mano_builder = mano_builder(self.mano_dir)
         self._datasets = {
             dataset: build_dataset(
                 loader_name,
@@ -133,13 +134,22 @@ class SixDatasetGroundTruth:
             stage="posttrain",
             stream_name="marker",
             marker_vertex_ids=marker_ids,
-            mano_vertex_builder=mano_builder(self.mano_dir),
+            mano_vertex_builder=self._mano_builder,
             contact_supervision_by_dataset=CONTACT_MODES,
             scene_visibility_device=self.scene_visibility_device,
             interhand_contact_compute_device=self.interhand_contact_compute_device,
         )
+        self._geometry_collator = collator(
+            stage="posttrain",
+            stream_name="marker",
+            marker_vertex_ids=marker_ids,
+            mano_vertex_builder=self._mano_builder,
+            include_scene_occlusion_in_visibility=False,
+            contact_supervision_by_dataset={dataset: "disabled" for dataset in DATASET_LOADERS},
+        )
 
-    def batch_for_window(self, row: Mapping[str, object]) -> dict[str, Any]:
+    def chunk_for_window(self, row: Mapping[str, object]) -> dict[str, Any]:
+        """Return one exact, sequence-preserving chunk from the latest FrameDataset."""
         dataset, sequence_id, frame_ids = validate_window_row(row)
         parent = self._datasets[dataset]
         raw_sequence_id = canonical_sequence_id(dataset, sequence_id)
@@ -156,6 +166,41 @@ class SixDatasetGroundTruth:
         chunk = chunks[0]
         if chunk["frame_ids"] != frame_ids:
             raise RuntimeError(f"{dataset}/{sequence_id}: loader frame IDs drift from split manifest")
+        return chunk
+
+    def geometry_for_window(self, row: Mapping[str, object]) -> list[dict[str, Any]]:
+        """Canonical camera-space MANO/object geometry without contact labels or method features."""
+        chunk = self.chunk_for_window(row)
+        batch = self._geometry_collator([chunk])
+        output: list[dict[str, Any]] = []
+        for sample, hands in zip(chunk["samples"], batch["normalized_hands"][0], strict=True):
+            hand_vertices = []
+            hand_joints = []
+            hand_valid = []
+            for hand in hands:
+                vertices, joints = (None, None) if hand is None else self._mano_builder.build_vertices_and_joints(hand)
+                valid = vertices is not None and joints is not None and tuple(vertices.shape) == (778, 3) and tuple(joints.shape) == (21, 3)
+                hand_vertices.append(None if not valid else vertices.detach().cpu().numpy())
+                hand_joints.append(None if not valid else joints.detach().cpu().numpy())
+                hand_valid.append(valid)
+            if len(hand_vertices) != 2:
+                raise ValueError(f"canonical geometry requires two hand slots, got {len(hand_vertices)}")
+            object_mesh = self._geometry_collator._object_mesh_for_sample(sample)
+            output.append({
+                "hand_vertices": hand_vertices,
+                "hand_joints": hand_joints,
+                "hand_valid": hand_valid,
+                "object_vertices": None if object_mesh is None else object_mesh[0].detach().cpu().numpy(),
+                "object_faces": None if object_mesh is None else object_mesh[1].detach().cpu().numpy(),
+                "rgb": sample["rgb"],
+                "rgb_ref": sample.get("rgb_ref"),
+                "scene_objects": sample.get("extras", {}).get("scene_objects", []),
+            })
+        return output
+
+    def batch_for_window(self, row: Mapping[str, object]) -> dict[str, Any]:
+        dataset, sequence_id, frame_ids = validate_window_row(row)
+        chunk = self.chunk_for_window(row)
         batch = self._collator([chunk])
         source = batch["batch_sources"][0]
         if source["frame_ids"] != frame_ids:

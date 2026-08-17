@@ -25,6 +25,7 @@ from formal_evaluation.common.io import (
 )
 from formal_evaluation.common.marker_vertices import MANO_MESHGRAPHORMER_LEVEL1_MARKER_VERTEX_IDS_195
 from formal_evaluation.common.schema import SCHEMA_VERSION
+from formal_evaluation.datasets.window_inputs import load_window_input
 
 # ---------------------------------------------------------------------------
 # Mock pyrender/OpenGL before WiLoR imports (headless server, no rendering needed)
@@ -221,9 +222,10 @@ def _original_resolution(frame_path: Path) -> tuple[int, int]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="运行 WiLoR baseline 并写入 canonical 输出")
     parser.add_argument("--phase", choices=("smoke", "pilot"), required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path)
     parser.add_argument("--methods-config", type=Path, required=True)
-    parser.add_argument("--data-root", type=Path, required=True)
+    parser.add_argument("--data-root", type=Path)
+    parser.add_argument("--window-input", type=Path)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--detector", type=Path, required=True)
@@ -237,17 +239,29 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    manifest = load_manifest(args.manifest)
-    sequence, window_id, frame_ids = select_manifest_window(
-        manifest,
-        phase=args.phase,
-        sequence=args.sequence,
-        window_id=args.window_id,
-    )
-    frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+    if args.window_input is not None:
+        if args.manifest is not None or args.data_root is not None:
+            raise ValueError("--window-input cannot be combined with --manifest/--data-root")
+        window_input = load_window_input(args.window_input)
+        sequence = str(window_input["sequence_id"])
+        window_id = str(window_input["window_id"])
+        frame_ids = [str(item) for item in window_input["frame_ids"]]
+        frame_paths = [Path(str(item)) for item in window_input["rgb_paths"]]
+        dataset = str(window_input["dataset"])
+        output_window_id = str(window_input["cache_id"])
+    else:
+        if args.manifest is None or args.data_root is None:
+            raise ValueError("provide --window-input or both --manifest and --data-root")
+        manifest = load_manifest(args.manifest)
+        sequence, window_id, frame_ids = select_manifest_window(
+            manifest, phase=args.phase, sequence=args.sequence, window_id=args.window_id,
+        )
+        frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+        dataset = "h2o"
+        output_window_id = window_id
     methods = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"]
     method_config = methods["wilor"]
-    output_dir = args.output_root / "wilor" / args.phase / window_id
+    output_dir = args.output_root / "wilor" / args.phase / output_window_id
 
     import torch
 
@@ -277,6 +291,7 @@ def main() -> None:
         "checkpoint": str(args.checkpoint),
         "checkpoint_id": method_config.get("checkpoint_id"),
         "phase": args.phase,
+        "dataset": dataset,
         "sequence": sequence,
         "window_id": window_id,
         "frame_ids": frame_ids,

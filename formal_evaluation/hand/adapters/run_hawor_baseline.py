@@ -31,6 +31,7 @@ from formal_evaluation.common.io import (
 )
 from formal_evaluation.common.marker_vertices import MANO_MESHGRAPHORMER_LEVEL1_MARKER_VERTEX_IDS_195
 from formal_evaluation.common.schema import SCHEMA_VERSION
+from formal_evaluation.datasets.window_inputs import load_window_input
 
 # ---------------------------------------------------------------------------
 # Mock non-essential heavy deps before HaWoR imports
@@ -619,9 +620,10 @@ def _run_hawor_inner(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="运行 HaWoR baseline 并写入 canonical 输出")
     parser.add_argument("--phase", choices=("smoke", "pilot"), required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path)
     parser.add_argument("--methods-config", type=Path, required=True)
-    parser.add_argument("--data-root", type=Path, required=True)
+    parser.add_argument("--data-root", type=Path)
+    parser.add_argument("--window-input", type=Path)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--infiller-weight", type=Path, required=True)
@@ -638,20 +640,35 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     args = parse_args()
-    manifest = load_manifest(args.manifest)
-    sequence, window_id, frame_ids = select_manifest_window(
-        manifest, phase=args.phase, sequence=args.sequence, window_id=args.window_id
-    )
-    if args.rgb_dir_template == "{sequence}/cam4/rgb":
-        frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+    if args.window_input is not None:
+        if args.manifest is not None or args.data_root is not None:
+            raise ValueError("--window-input cannot be combined with --manifest/--data-root")
+        window_input = load_window_input(args.window_input)
+        sequence = str(window_input["sequence_id"])
+        window_id = str(window_input["window_id"])
+        frame_ids = [str(item) for item in window_input["frame_ids"]]
+        frame_paths = [Path(str(item)) for item in window_input["rgb_paths"]]
+        dataset = str(window_input["dataset"])
+        output_window_id = str(window_input["cache_id"])
     else:
-        rgb_dir = args.data_root / args.rgb_dir_template.format(sequence=sequence)
-        by_stem = {path.stem: path for path in rgb_dir.iterdir()
-                   if path.suffix.lower() in {".png", ".jpg", ".jpeg"}}
-        missing = [frame_id for frame_id in frame_ids if frame_id not in by_stem]
-        if missing:
-            raise FileNotFoundError(f"RGB frames missing from {rgb_dir}: {missing[:3]}")
-        frame_paths = [by_stem[frame_id] for frame_id in frame_ids]
+        if args.manifest is None or args.data_root is None:
+            raise ValueError("provide --window-input or both --manifest and --data-root")
+        manifest = load_manifest(args.manifest)
+        sequence, window_id, frame_ids = select_manifest_window(
+            manifest, phase=args.phase, sequence=args.sequence, window_id=args.window_id
+        )
+        if args.rgb_dir_template == "{sequence}/cam4/rgb":
+            frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+        else:
+            rgb_dir = args.data_root / args.rgb_dir_template.format(sequence=sequence)
+            by_stem = {path.stem: path for path in rgb_dir.iterdir()
+                       if path.suffix.lower() in {".png", ".jpg", ".jpeg"}}
+            missing = [frame_id for frame_id in frame_ids if frame_id not in by_stem]
+            if missing:
+                raise FileNotFoundError(f"RGB frames missing from {rgb_dir}: {missing[:3]}")
+            frame_paths = [by_stem[frame_id] for frame_id in frame_ids]
+        dataset = "h2o"
+        output_window_id = f"{sequence.replace('/', '_')}_{frame_ids[0]}_{frame_ids[-1]}"
 
     # Read original resolution
     img0 = Image.open(frame_paths[0])
@@ -682,6 +699,7 @@ def main():
     metadata = {
         "schema_version": SCHEMA_VERSION,
         "method": "hawor",
+        "dataset": dataset,
         "sequence": sequence,
         "window_id": window_id,
         "frame_ids": frame_ids,
@@ -701,7 +719,7 @@ def main():
         "status": "success",
     }
 
-    output_dir = args.output_root / "hawor" / args.phase / f"{sequence.replace('/', '_')}_{frame_ids[0]}_{frame_ids[-1]}"
+    output_dir = args.output_root / "hawor" / args.phase / output_window_id
     write_comparison_output(
         output_dir,
         metadata=metadata,

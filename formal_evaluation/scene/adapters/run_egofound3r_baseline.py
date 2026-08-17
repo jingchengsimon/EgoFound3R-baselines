@@ -21,6 +21,7 @@ from formal_evaluation.common.io import (
     write_comparison_output,
 )
 from formal_evaluation.common.schema import SCHEMA_VERSION
+from formal_evaluation.datasets.window_inputs import load_window_input
 
 
 def _as_numpy(tensor: torch.Tensor) -> np.ndarray:
@@ -73,9 +74,10 @@ def _load_training_config_compat(config_path: Path):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="运行 EgoFound3R 并写入 comparison canonical 输出")
     parser.add_argument("--phase", choices=("smoke", "pilot", "formal"), required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path)
     parser.add_argument("--methods-config", type=Path, required=True)
-    parser.add_argument("--data-root", type=Path, required=True)
+    parser.add_argument("--data-root", type=Path)
+    parser.add_argument("--window-input", type=Path)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--backbone-checkpoint", type=Path, required=True)
@@ -88,11 +90,26 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    manifest = load_manifest(args.manifest)
-    sequence, window_id, frame_ids = select_manifest_window(
-        manifest, phase=args.phase, sequence=args.sequence, window_id=args.window_id
-    )
-    frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+    if args.window_input is not None:
+        if args.manifest is not None or args.data_root is not None:
+            raise ValueError("--window-input cannot be combined with --manifest/--data-root")
+        window_input = load_window_input(args.window_input)
+        sequence = str(window_input["sequence_id"])
+        window_id = str(window_input["window_id"])
+        frame_ids = [str(item) for item in window_input["frame_ids"]]
+        frame_paths = [Path(str(item)) for item in window_input["rgb_paths"]]
+        dataset = str(window_input["dataset"])
+        output_window_id = str(window_input["cache_id"])
+    else:
+        if args.manifest is None or args.data_root is None:
+            raise ValueError("provide --window-input or both --manifest and --data-root")
+        manifest = load_manifest(args.manifest)
+        sequence, window_id, frame_ids = select_manifest_window(
+            manifest, phase=args.phase, sequence=args.sequence, window_id=args.window_id
+        )
+        frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+        dataset = "h2o"
+        output_window_id = window_id
     method_config = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"][
         "egofound3r"
     ]
@@ -161,7 +178,7 @@ def main() -> None:
         "joint_contact_probability": joint_contact,
         "marker_contact_probability": marker_contact,
     }
-    output_dir = args.output_root / "egofound3r" / args.phase / window_id
+    output_dir = args.output_root / "egofound3r" / args.phase / output_window_id
     with Image.open(frame_paths[0]) as image:
         source_width, source_height = image.size
     metadata = {
@@ -172,6 +189,7 @@ def main() -> None:
         "checkpoint": str(args.checkpoint),
         "checkpoint_role": method_config["checkpoint_role"],
         "phase": args.phase,
+        "dataset": dataset,
         "sequence": sequence,
         "window_id": window_id,
         "frame_ids": frame_ids,
