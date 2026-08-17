@@ -48,12 +48,14 @@ every dataset, candidates start at the first frame of each test sequence, use
 Outputs are `dataset_sequence_splits.json` and
 `evaluation_test_windows_seed0.jsonl`.
 
-H2O split keys are `train`, `val`, and `test`. TACO split keys are `train`,
-`test_1`, `test_2`, `test_3`, and `test_4`. The command fails unless all six
-available/training/test counts match the fixed protocol and every dataset has
-at least 300 valid test windows. H2O outputs `trainval/test`; the other five
-datasets output `train/test`.
+H2O split keys are `train`, `val`, and `test`; TACO split keys are `train` and
+`test`, copied from the fixed EgoFound3R sequence manifest. The command fails
+unless all six available/training/test counts match the fixed protocol and
+every dataset has at least 300 valid test windows. H2O outputs `trainval/test`;
+the other five datasets output `train/test`.
 
 `export_dataset_manifests.py` is the read-only bridge from the existing
 EgoFound3R dataset indexes to the six normalized inputs used by the command
-above. It is not a training dataloader.
+above. Pass the copied `configs/dataset_sequence_splits.json` with
+`--sequence-splits`; this is the source of TACO's frozen train/test sequence
+membership. It is not a training dataloader.

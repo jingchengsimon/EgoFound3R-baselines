@@ -22,7 +22,6 @@ EXPECTED_COUNTS = {
     "arctic": (301, 226, 75),
     "hoi4d": (1683, 1262, 421),
 }
-TACO_TEST_COUNTS = {"test_1": 215, "test_2": 220, "test_3": 328, "test_4": 512}
 CAPABILITIES = {
     "h2o": {"hand_evaluation_status": "available", "depth_3r_status": "available"},
     "taco": {"hand_evaluation_status": "available", "depth_3r_status": "blocked_invalid_uint8_depth_gt"},
@@ -89,8 +88,8 @@ def _official_partition(
         required = {"train", "val", "test"}
         training_labels, test_labels = ("train", "val"), ("test",)
     else:
-        required = {"train", *TACO_TEST_COUNTS}
-        training_labels, test_labels = ("train",), tuple(TACO_TEST_COUNTS)
+        required = {"train", "test"}
+        training_labels, test_labels = ("train",), ("test",)
     missing_labels = required - set(official)
     if missing_labels:
         raise ValueError(f"{dataset}: missing official split labels {sorted(missing_labels)}")
@@ -149,8 +148,6 @@ def build_sequence_splits(manifests: Mapping[str, Mapping[str, object]]) -> tupl
             missing, official_counts = {}, {}
             split_type = "custom_75_25"
         _validate_expected_counts(dataset, len(actual_ids), training, test)
-        if dataset == "taco" and any(official_counts[label] != count for label, count in TACO_TEST_COUNTS.items()):
-            raise ValueError(f"taco: expected test split counts {TACO_TEST_COUNTS}, got {official_counts}")
         training_partition = "trainval" if dataset == "h2o" else "train"
         output["datasets"][dataset] = {
             "split_type": split_type,

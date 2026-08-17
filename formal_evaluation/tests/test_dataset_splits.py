@@ -11,10 +11,10 @@ from formal_evaluation.datasets.build_dataset_splits import (
     CAPABILITIES,
     DATASET_ORDER,
     EXPECTED_COUNTS,
-    TACO_TEST_COUNTS,
     build_sequence_splits,
     write_outputs,
 )
+from formal_evaluation.datasets.export_dataset_manifests import _taco_splits
 
 
 def _manifest(dataset: str) -> dict[str, object]:
@@ -44,16 +44,31 @@ def _manifest(dataset: str) -> dict[str, object]:
             "test": official_paths[training_count:],
         }
     elif dataset == "taco":
-        offset = training_count
-        official = {"train": sequence_ids[:offset]}
-        for split, count in TACO_TEST_COUNTS.items():
-            official[split] = sequence_ids[offset : offset + count]
-            offset += count
-        manifest["official_splits"] = official
+        manifest["official_splits"] = {
+            "train": sequence_ids[:training_count],
+            "test": sequence_ids[training_count:],
+        }
     return manifest
 
 
 class DatasetSplitTests(unittest.TestCase):
+    def test_taco_export_uses_frozen_sequence_manifest(self) -> None:
+        payload = {
+            "datasets": {
+                "taco": {
+                    "train_sequence_ids": ["taco/train"],
+                    "test_sequence_ids": ["taco/test"],
+                }
+            }
+        }
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "splits.json"
+            path.write_text(json.dumps(payload))
+            self.assertEqual(
+                _taco_splits(path, {"taco/train", "taco/test"}),
+                {"train": ["taco/train"], "test": ["taco/test"]},
+            )
+
     def test_counts_windows_and_reproducibility(self) -> None:
         manifests = {dataset: _manifest(dataset) for dataset in DATASET_ORDER}
         with TemporaryDirectory() as directory:
@@ -100,9 +115,9 @@ class DatasetSplitTests(unittest.TestCase):
                 self.assertEqual(int(row["frame_ids"][0]) % 12, 0)
                 self.assertEqual(row["depth_3r_status"], CAPABILITIES[row["dataset"]]["depth_3r_status"])
 
-    def test_rejects_taco_official_count_drift(self) -> None:
+    def test_rejects_taco_official_split_drift(self) -> None:
         manifests = {dataset: _manifest(dataset) for dataset in DATASET_ORDER}
-        manifests["taco"]["official_splits"]["test_1"].pop()
+        manifests["taco"]["official_splits"]["test"].pop()
         with self.assertRaisesRegex(ValueError, "missing from official splits"):
             build_sequence_splits(manifests)
 

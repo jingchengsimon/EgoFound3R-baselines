@@ -60,22 +60,17 @@ def _h2o_manifest(root: Path) -> dict[str, object]:
 
 
 def _taco_splits(path: Path, sequence_ids: set[str]) -> dict[str, list[str]]:
-    labels = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        sequence_name, split = line.rsplit(",", 1)
-        labels[sequence_name] = split
-    by_name: dict[str, str] = {}
-    for sequence_id in sequence_ids:
-        name = Path(sequence_id).name
-        if name in by_name:
-            raise ValueError(f"taco: duplicate official basename {name}")
-        by_name[name] = sequence_id
-    result = {split: [] for split in ("train", "test_1", "test_2", "test_3", "test_4")}
-    for name, sequence_id in by_name.items():
-        if name not in labels:
-            raise ValueError(f"taco: missing official split for {sequence_id}")
-        result[labels[name]].append(sequence_id)
-    return {split: sorted(ids) for split, ids in result.items()}
+    entry = json.loads(path.read_text(encoding="utf-8"))["datasets"]["taco"]
+    result = {
+        "train": list(entry["train_sequence_ids"]),
+        "test": list(entry["test_sequence_ids"]),
+    }
+    frozen_ids = set(result["train"]) | set(result["test"])
+    if set(result["train"]) & set(result["test"]):
+        raise ValueError("taco: frozen train/test split overlaps")
+    if frozen_ids != sequence_ids:
+        raise ValueError("taco: frozen train/test split does not exactly cover the dataset index")
+    return result
 
 
 def export(args: argparse.Namespace) -> None:
@@ -101,7 +96,7 @@ def export(args: argparse.Namespace) -> None:
                 for sequence_id, frame_ids in sorted(frames.items())
             ]}
             if output_name == "taco":
-                manifest["official_splits"] = _taco_splits(args.taco_split, set(frames))
+                manifest["official_splits"] = _taco_splits(args.sequence_splits, set(frames))
         path = args.output_dir / f"{output_name}.json"
         path.write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
         print(json.dumps({
@@ -116,7 +111,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--egofound3r-dev", type=Path, required=True)
     parser.add_argument("--root", action="append", required=True, metavar="DATASET=PATH")
-    parser.add_argument("--taco-split", type=Path, required=True)
+    parser.add_argument("--sequence-splits", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     export(parser.parse_args())
 
