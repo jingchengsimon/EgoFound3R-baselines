@@ -23,8 +23,20 @@ if __package__ in (None, ""):
 from formal_evaluation.datasets.window_inputs import load_window_input
 
 
-def _hand_object(baseline: str, source_root: Path):
+def _hand_object(baseline: str, source_root: Path, mano_right: Path):
     source_root = source_root.resolve(strict=True)
+    mano_right = mano_right.resolve(strict=True)
+    if mano_right.name != "MANO_RIGHT.pkl":
+        raise ValueError(f"--mano-right must name MANO_RIGHT.pkl: {mano_right}")
+    from manopth import manolayer
+    original_init = manolayer.ManoLayer.__init__
+
+    def absolute_mano_init(self, *args, **kwargs):
+        if kwargs.get("mano_root", "mano/models") == "mano/models":
+            kwargs["mano_root"] = str(mano_right.parent)
+        return original_init(self, *args, **kwargs)
+
+    manolayer.ManoLayer.__init__ = absolute_mano_init
     sys.path.insert(0, str(source_root))
     if baseline == "contactopt":
         return importlib.import_module("contactopt.hand_object").HandObject
@@ -76,6 +88,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", choices=("s2contact", "contactopt"), required=True)
     parser.add_argument("--source-root", type=Path, required=True)
+    parser.add_argument("--mano-right", type=Path, required=True)
     parser.add_argument("--window-input-index", type=Path, required=True,
                         help="window_inputs.jsonl written by materialize_six_dataset_window_inputs.py")
     parser.add_argument("--output-cache", type=Path, required=True)
@@ -84,7 +97,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.output_cache.exists() or args.output_index.exists():
         raise FileExistsError("refusing to overwrite a contact geometry cache/index")
-    HandObject = _hand_object(args.baseline, args.source_root)
+    HandObject = _hand_object(args.baseline, args.source_root, args.mano_right)
     cache: list[dict[str, object]] = []
     index_rows: list[dict[str, object]] = []
     for line in args.window_input_index.read_text(encoding="utf-8").splitlines():
