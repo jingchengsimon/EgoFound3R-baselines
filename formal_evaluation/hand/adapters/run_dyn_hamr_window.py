@@ -55,9 +55,45 @@ def _canonical_joints(mano_output: dict[str, object], frame_count: int) -> tuple
     return output, valid
 
 
+def _load_context(window_input: Path, record: dict[str, object], context_frames: int) -> tuple[list[Path], list[int]]:
+    """Resolve the longer RGB context Dyn-HaMR needs, plus the scoring positions.
+
+    Dyn-HaMR's official MultiPeopleDataset keeps only tracks with
+    ``track_len > MIN_TRACK_LEN`` (60), so a 60-frame scoring window is always
+    discarded. The context is fed to the official pipeline unchanged; only the
+    manifest's scoring frames are read back out of the result.
+    """
+    directory = window_input.parent / f"context_{context_frames}f"
+    mapping_path = directory / "mapping.json"
+    if not mapping_path.is_file():
+        raise FileNotFoundError(
+            f"missing {mapping_path}; materialize it with "
+            f"materialize_six_dataset_video_contexts.py --context-frames {context_frames}"
+        )
+    mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+    scoring_ids = [str(value) for value in record["frame_ids"]]
+    if [str(value) for value in mapping["frame_ids"]] != scoring_ids:
+        raise ValueError("context mapping scoring frames do not match the window input")
+    if mapping.get("sequence") != record["sequence_id"] or mapping.get("window_id") != record["window_id"]:
+        raise ValueError("context mapping identity does not match the window input")
+    context_ids = [str(value) for value in mapping["context_frame_ids"]]
+    if len(context_ids) != context_frames:
+        raise ValueError(f"context mapping holds {len(context_ids)} frames, expected {context_frames}")
+    paths = [(directory / "rgb" / f"{index:03d}_{frame_id}.png").resolve(strict=True)
+             for index, frame_id in enumerate(context_ids)]
+    scoring_indices = [int(value) for value in mapping["hand_indices_30fps"]]
+    if len(scoring_indices) != len(scoring_ids):
+        raise ValueError("context mapping provides the wrong number of scoring indices")
+    if any(index < 0 or index >= context_frames for index in scoring_indices):
+        raise ValueError("context mapping scoring index outside the context clip")
+    if [context_ids[index] for index in scoring_indices] != scoring_ids:
+        raise ValueError("context scoring indices do not recover the manifest frame identity")
+    return paths, scoring_indices
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--phase", choices=("smoke", "pilot"), required=True)
+    parser.add_argument("--phase", choices=("smoke", "pilot", "formal"), required=True)
     parser.add_argument("--window-input", type=Path, required=True)
     parser.add_argument("--methods-config", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)
@@ -69,6 +105,9 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--root-iters", type=int, default=1, help="smoke default; use formal policy values for pilot")
     parser.add_argument("--smooth-iters", type=int, default=1, help="smoke default; use formal policy values for pilot")
+    parser.add_argument("--context-frames", type=int,
+                        help="feed this many contiguous RGB frames to the official pipeline and score only "
+                             "the manifest frames; required because Dyn-HaMR drops tracks of 60 frames or fewer")
     args = parser.parse_args()
     if args.output_root.exists() and (args.output_root / "dyn_hamr" / args.phase).exists():
         # Per-window directory below is still checked before writing; this only
@@ -81,7 +120,12 @@ def main() -> None:
     from ultralytics import YOLO
 
     record = load_window_input(args.window_input)
-    frame_paths = [Path(str(path)).resolve(strict=True) for path in record["rgb_paths"]]
+    scoring_count = len(record["frame_ids"])
+    if args.context_frames is None:
+        frame_paths = [Path(str(path)).resolve(strict=True) for path in record["rgb_paths"]]
+        scoring_indices = list(range(len(frame_paths)))
+    else:
+        frame_paths, scoring_indices = _load_context(args.window_input, record, args.context_frames)
     frame_count = len(frame_paths)
     if frame_count < 2:
         raise ValueError("Dyn-HaMR requires at least two contiguous RGB frames")
@@ -157,6 +201,9 @@ def main() -> None:
         world = prediction["world"]
         mano = run_mano(mano_model, world["trans"], world["root_orient"], world["pose_body"], world["is_right"], betas=world.get("betas"))
         joints, valid = _canonical_joints(mano, frame_count)
+        # Score only the manifest frames; the surrounding context is input-only.
+        selection = np.asarray(scoring_indices, dtype=np.int64)
+        joints, valid = joints[selection], valid[selection]
         torch.cuda.synchronize(device)
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -168,9 +215,16 @@ def main() -> None:
         "capabilities": {"hand_joints_world": True, "hand_valid": True},
         "scale_type": config["scale_type"], "coordinate_space": "world",
         "runner_detail": "official RGB->YOLO/HaMeR/DROID-SLAM/Dyn-HaMR; smoke optimization iterations configured explicitly",
+        "context_frames": frame_count,
+        "scoring_indices": [int(index) for index in scoring_indices],
+        "context_policy": (
+            "context frames are input-only; Dyn-HaMR's official MultiPeopleDataset drops tracks "
+            "with track_len <= 60, so a 60-frame scoring window cannot be run on its own"
+        ),
     }, arrays={"hand_joints_world": joints, "hand_valid": valid}, run={
         "status": "success", "elapsed_seconds": time.perf_counter() - start, "device": str(device),
         "root_iterations": args.root_iters, "smooth_iterations": args.smooth_iters,
+        "context_frames": frame_count, "scored_frames": scoring_count,
     }, native_metadata={"window_input": str(args.window_input)})
     print(json.dumps({"status": "success", "output_dir": str(output_dir)}))
 
