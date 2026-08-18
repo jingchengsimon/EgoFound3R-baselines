@@ -55,6 +55,9 @@ def _run_wilor(
     detector_path: Path,
     device_name: str,
     rescale_factor: float = 2.0,
+    intrinsics: "list | None" = None,
+    detect_batch: int = 16,
+    forward_batch: int = 32,
 ):
     """Run WiLoR on a list of frames, return canonical arrays."""
     import cv2
@@ -87,102 +90,136 @@ def _run_wilor(
     joints_out = np.zeros((frame_count, 2, 21, 3), dtype=np.float32)
     vertices_out = np.zeros((frame_count, 2, 778, 3), dtype=np.float32)
     hand_valid_out = np.zeros((frame_count, 2), dtype=bool)
-    detection_meta = []  # per-frame metadata
 
-    for fi, frame_path in enumerate(frame_paths):
-        img_cv2 = cv2.imread(str(frame_path))
-        if img_cv2 is None:
-            detection_meta.append({"frame": frame_path.name, "error": "cv2.imread returned None"})
-            continue
+    # WiLoR's official demo reads the camera's fx to place its prediction at a metric
+    # depth, so intrinsics are an input to the method rather than ground truth.
+    fx_per_frame: list[float | None] | None = None
+    if intrinsics is not None:
+        fx_per_frame = []
+        for matrix in intrinsics:
+            value = None
+            if matrix is not None:
+                candidate = float(np.asarray(matrix, dtype=np.float64)[0, 0])
+                value = candidate if np.isfinite(candidate) and candidate > 0 else None
+            fx_per_frame.append(value)
+        if len(fx_per_frame) != frame_count:
+            raise ValueError("intrinsics must provide one entry per frame")
+    rescaled_frames: set[int] = set()
 
-        # Official YOLO detection, conf=0.3
-        detections = detector(img_cv2, conf=0.3, verbose=False)[0]
+    focal_scale_base = float(model_cfg.EXTRA.FOCAL_LENGTH / model_cfg.MODEL.IMAGE_SIZE)
+    frame_meta_by_index: dict[int, dict] = {}
 
-        bboxes = []
-        is_right_list = []
-        confidences = []
-        for det in detections:
-            box_data = det.boxes.data.cpu().detach().squeeze().numpy()
-            cls = int(det.boxes.cls.cpu().detach().squeeze().item())
-            conf = float(det.boxes.conf.cpu().detach().squeeze().item())
-            bboxes.append(box_data[:4].tolist())
-            is_right_list.append(cls)
-            confidences.append(conf)
-
-        if len(bboxes) == 0:
-            detection_meta.append({"frame": frame_path.name, "detections": 0})
-            continue
-
-        boxes = np.stack(bboxes)
-        right = np.stack(is_right_list)
-        confs = np.array(confidences)
-
-        # Deterministic selection: for each side, pick highest confidence
-        # right==1 → right hand, right==0 → left hand
-        frame_meta = {"frame": frame_path.name, "detections": len(bboxes)}
-
-        for side_class, slot in [(0, _SLOT_LEFT), (1, _SLOT_RIGHT)]:
-            side_mask = right == side_class
-            if not side_mask.any():
+    # Stage 1: detect every frame in batches. YOLO takes a list of images, so the
+    # detector runs once per chunk instead of once per frame.
+    images: dict[int, object] = {}
+    selections: list[dict] = []
+    for begin in range(0, frame_count, detect_batch):
+        chunk = list(range(begin, min(begin + detect_batch, frame_count)))
+        chunk_images, kept = [], []
+        for fi in chunk:
+            img_cv2 = cv2.imread(str(frame_paths[fi]))
+            if img_cv2 is None:
+                frame_meta_by_index[fi] = {"frame": frame_paths[fi].name, "error": "cv2.imread returned None"}
                 continue
-            side_indices = np.where(side_mask)[0]
-            # Pick highest confidence among same-side detections
-            best_idx = side_indices[np.argmax(confs[side_indices])]
-            if len(side_indices) > 1:
-                frame_meta[f"slot_{slot}_multi_det"] = int(len(side_indices))
-                frame_meta[f"slot_{slot}_selected_conf"] = float(confs[best_idx])
+            chunk_images.append(img_cv2)
+            kept.append(fi)
+        if not kept:
+            continue
+        results = detector(chunk_images, conf=0.3, verbose=False)
+        for fi, img_cv2, detections in zip(kept, chunk_images, results, strict=True):
+            bboxes, is_right_list, confidences = [], [], []
+            for det in detections:
+                box_data = det.boxes.data.cpu().detach().squeeze().numpy()
+                bboxes.append(box_data[:4].tolist())
+                is_right_list.append(int(det.boxes.cls.cpu().detach().squeeze().item()))
+                confidences.append(float(det.boxes.conf.cpu().detach().squeeze().item()))
+            if not bboxes:
+                frame_meta_by_index[fi] = {"frame": frame_paths[fi].name, "detections": 0}
+                continue
+            boxes, right, confs = np.stack(bboxes), np.stack(is_right_list), np.array(confidences)
+            meta = {"frame": frame_paths[fi].name, "detections": len(bboxes)}
+            for side_class, slot in ((0, _SLOT_LEFT), (1, _SLOT_RIGHT)):
+                side_indices = np.where(right == side_class)[0]
+                if side_indices.size == 0:
+                    continue
+                # Deterministic selection: highest detector confidence per side.
+                best_idx = side_indices[np.argmax(confs[side_indices])]
+                if side_indices.size > 1:
+                    meta[f"slot_{slot}_multi_det"] = int(side_indices.size)
+                    meta[f"slot_{slot}_selected_conf"] = float(confs[best_idx])
+                selections.append({"frame_index": fi, "slot": slot,
+                                   "box": boxes[best_idx], "right": right[best_idx]})
+            frame_meta_by_index[fi] = meta
+            images[fi] = img_cv2
 
-            # Run WiLoR on this single detection
-            sel_boxes = boxes[best_idx : best_idx + 1]
-            sel_right = right[best_idx : best_idx + 1]
+    # Stage 2: one WiLoR forward pass per batch of crops, across frames.
+    order: list[tuple[int, int]] = []
+    crop_datasets = []
+    by_frame: dict[int, list[dict]] = {}
+    for item in selections:
+        by_frame.setdefault(item["frame_index"], []).append(item)
+    for fi in sorted(by_frame):
+        picks = by_frame[fi]
+        crop_datasets.append(ViTDetDataset(
+            model_cfg, images[fi],
+            np.stack([pick["box"] for pick in picks]),
+            np.stack([pick["right"] for pick in picks]),
+            rescale_factor=rescale_factor, fp16=False,
+        ))
+        order.extend((fi, pick["slot"]) for pick in picks)
 
-            dataset = ViTDetDataset(
-                model_cfg, img_cv2, sel_boxes, sel_right,
-                rescale_factor=rescale_factor, fp16=False,
-            )
-            dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
+    if crop_datasets:
+        loader = torch.utils.data.DataLoader(
+            torch.utils.data.ConcatDataset(crop_datasets),
+            batch_size=forward_batch, shuffle=False, num_workers=0,
+        )
+        cursor = 0
+        for batch in loader:
+            batch = recursive_to(batch, device)
+            with torch.no_grad():
+                out = model(batch)
 
-            for batch in dataloader:
-                batch = recursive_to(batch, device)
-                with torch.no_grad():
-                    out = model(batch)
+            # Official demo.py post-processing, evaluated per sample so that batching
+            # cannot leak one frame's image size into another's camera conversion.
+            multiplier = 2 * batch["right"] - 1
+            pred_cam = out["pred_cam"].clone()
+            pred_cam[:, 1] = multiplier * pred_cam[:, 1]
+            img_size = batch["img_size"].float()
+            scaled_focal_length = focal_scale_base * torch.max(img_size, dim=1).values
+            pred_cam_t_full = cam_crop_to_full(
+                pred_cam, batch["box_center"].float(), batch["box_size"].float(),
+                img_size, scaled_focal_length,
+            ).detach().cpu().numpy()
 
-                # Post-process following official demo.py logic
-                multiplier = 2 * batch["right"] - 1  # +1 for right, -1 for left
-                pred_cam = out["pred_cam"].clone()
-                pred_cam[:, 1] = multiplier * pred_cam[:, 1]
-
-                box_center = batch["box_center"].float()
-                box_size = batch["box_size"].float()
-                img_size = batch["img_size"].float()
-                scaled_focal_length = (
-                    model_cfg.EXTRA.FOCAL_LENGTH / model_cfg.MODEL.IMAGE_SIZE * img_size.max()
-                )
-                pred_cam_t_full = (
-                    cam_crop_to_full(pred_cam, box_center, box_size, img_size, scaled_focal_length)
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
-
-                verts = out["pred_vertices"][0].detach().cpu().numpy()  # (778, 3)
-                joints = out["pred_keypoints_3d"][0].detach().cpu().numpy()  # (21, 3)
-                is_right_val = batch["right"][0].cpu().numpy()
-
+            for n in range(int(batch["img"].shape[0])):
+                frame_index, slot = order[cursor + n]
+                verts = out["pred_vertices"][n].detach().cpu().numpy()
+                joints = out["pred_keypoints_3d"][n].detach().cpu().numpy()
+                is_right_val = float(batch["right"][n].detach().cpu().item())
                 # Flip x for left hand (official convention)
                 verts[:, 0] = (2 * is_right_val - 1) * verts[:, 0]
                 joints[:, 0] = (2 * is_right_val - 1) * joints[:, 0]
 
-                # Translate to full camera space
-                cam_t = pred_cam_t_full[0]  # (3,)
+                cam_t = pred_cam_t_full[n].astype(np.float32)
+                sample_focal = max(float(scaled_focal_length[n].detach().cpu().item()), 1e-9)
+                # WiLoR solves depth against its own rendering focal length; the official
+                # demo rescales it with the camera's real fx. Without this the hand sits at
+                # a fictitious depth and absolute MPJPE is meaningless, while root-relative
+                # metrics are unaffected because cam_t is a constant per-hand offset.
+                fx = None if fx_per_frame is None else fx_per_frame[frame_index]
+                if fx is not None:
+                    cam_t[2] *= fx / sample_focal
+                    rescaled_frames.add(frame_index)
+
                 verts = verts + cam_t[None, :]
                 joints = joints + cam_t[None, :]
+                joints_out[frame_index, slot] = joints
+                vertices_out[frame_index, slot] = verts
+                hand_valid_out[frame_index, slot] = True
+            cursor += int(batch["img"].shape[0])
 
-                joints_out[fi, slot] = joints
-                vertices_out[fi, slot] = verts
-                hand_valid_out[fi, slot] = True
-
-        detection_meta.append(frame_meta)
+    detection_meta = [frame_meta_by_index.get(fi, {"frame": frame_paths[fi].name, "detections": 0})
+                      for fi in range(frame_count)]
 
     # Extract 195 marker subset from vertices
     markers_out = vertices_out[:, :, MARKER_IDS_195, :]  # (T, 2, 195, 3)
@@ -198,6 +235,14 @@ def _run_wilor(
         "detector": "official YOLO, conf=0.3",
         "dataset": "official ViTDetDataset",
         "cam_crop_to_full": "official",
+        "metric_depth_rescale": (
+            "cam_t[2] *= fx / scaled_focal_length, following the official demo"
+            if fx_per_frame is not None else
+            "unavailable: no intrinsics supplied, absolute depth left on WiLoR's rendering focal length"
+        ),
+        "frames_with_intrinsic_rescale": len(rescaled_frames),
+        "detect_batch": detect_batch,
+        "forward_batch": forward_batch,
         "rescale_factor": rescale_factor,
         "multi_detection_rule": "highest detector confidence per side",
         "hand_slot_convention": "slot 0=left, slot 1=right",
@@ -237,6 +282,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--window-id")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--rescale-factor", type=float, default=2.0)
+    parser.add_argument("--detect-batch", type=int, default=16)
+    parser.add_argument("--forward-batch", type=int, default=32)
     return parser.parse_args()
 
 
@@ -252,6 +299,7 @@ def main() -> None:
         frame_paths = [Path(str(item)) for item in window_input["rgb_paths"]]
         dataset = str(window_input["dataset"])
         output_window_id = str(window_input["cache_id"])
+        window_intrinsics = window_input.get("intrinsics")
     else:
         if args.manifest is None or args.data_root is None:
             raise ValueError("provide --window-input or both --manifest and --data-root")
@@ -260,6 +308,7 @@ def main() -> None:
             manifest, phase=args.phase, sequence=args.sequence, window_id=args.window_id,
         )
         frame_paths = resolve_rgb_paths(args.data_root, sequence, frame_ids)
+        window_intrinsics = None
         dataset = "h2o"
         output_window_id = window_id
     methods = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"]
@@ -280,6 +329,9 @@ def main() -> None:
         args.detector,
         args.device,
         rescale_factor=args.rescale_factor,
+        intrinsics=window_intrinsics,
+        detect_batch=args.detect_batch,
+        forward_batch=args.forward_batch,
     )
     torch.cuda.synchronize()
     elapsed = time.perf_counter() - start

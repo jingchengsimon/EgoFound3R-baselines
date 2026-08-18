@@ -201,6 +201,7 @@ class SixDatasetGroundTruth:
                 "object_faces": None if object_mesh is None else object_mesh[1].detach().cpu().numpy(),
                 "rgb": sample["rgb"],
                 "rgb_ref": sample.get("rgb_ref"),
+                "intrinsics": sample.get("intrinsics"),
                 "scene_objects": sample.get("extras", {}).get("scene_objects", []),
             })
         return output

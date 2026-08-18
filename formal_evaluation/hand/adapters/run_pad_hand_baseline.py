@@ -48,22 +48,41 @@ def _run_wilor(args: argparse.Namespace, video: Path, native: Path) -> Path:
     return result
 
 
-def _joints_from_refined(frame_predictions: list[object], mano: object) -> tuple[np.ndarray, np.ndarray]:
+def _joints_from_refined(
+    frame_predictions: list[object],
+    mano: object,
+    fx_per_frame: "list[float | None] | None" = None,
+    scaled_focal: "np.ndarray | None" = None,
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Camera-space joints for each frame, at the depth the real camera implies.
+
+    PAD-Hand refines WiLoR's mesh but keeps WiLoR's translation, which solves depth
+    against WiLoR's rendering focal length. The official demo rescales it with the
+    camera's fx; without that, absolute MPJPE measures a fictitious depth while
+    root-relative metrics stay correct because cam_t is a constant per-hand offset.
+    """
     import torch
 
     joints = np.full((len(frame_predictions), 2, 21, 3), np.nan, dtype=np.float32)
     valid = np.zeros((len(frame_predictions), 2), dtype=bool)
+    rescaled = 0
     for index, prediction in enumerate(frame_predictions):
         if prediction is None:
             continue
         vertices = prediction["refined_vertices"].to(mano.device).unsqueeze(0)
         with torch.no_grad():
             hand_joints = torch.matmul(vertices.transpose(1, 2), mano.J_regressor).transpose(1, 2)[0]
-        hand_joints = hand_joints.detach().cpu().numpy() + np.asarray(prediction["cam_t"], dtype=np.float32)
+        cam_t = np.asarray(prediction["cam_t"], dtype=np.float32).copy()
+        fx = None if fx_per_frame is None else fx_per_frame[index]
+        focal = None if scaled_focal is None else float(scaled_focal[index])
+        if fx is not None and focal is not None and np.isfinite(focal) and focal > 1e-9:
+            cam_t[2] *= fx / focal
+            rescaled += 1
+        hand_joints = hand_joints.detach().cpu().numpy() + cam_t
         slot = 1 if prediction["is_right"] else 0
         joints[index, slot] = hand_joints
         valid[index, slot] = np.isfinite(hand_joints).all()
-    return joints, valid
+    return joints, valid, rescaled
 
 
 def main() -> None:
@@ -78,6 +97,7 @@ def main() -> None:
         prepared_dir = args.window_input.parent
         dataset = str(window_input["dataset"])
         output_window_id = str(window_input["cache_id"])
+        window_intrinsics = window_input.get("intrinsics")
     else:
         if args.manifest is None or args.prepared_dir is None:
             raise ValueError("provide --window-input or both --manifest and --prepared-dir")
@@ -88,6 +108,18 @@ def main() -> None:
         prepared_dir = args.prepared_dir
         dataset = "h2o"
         output_window_id = window_id
+        window_intrinsics = None
+    fx_per_frame = None
+    if window_intrinsics is not None:
+        fx_per_frame = []
+        for matrix in window_intrinsics:
+            value = None
+            if matrix is not None:
+                candidate = float(np.asarray(matrix, dtype=np.float64)[0, 0])
+                value = candidate if np.isfinite(candidate) and candidate > 0 else None
+            fx_per_frame.append(value)
+        if len(fx_per_frame) != len(frame_ids):
+            raise ValueError("intrinsics must provide one entry per frame")
     mapping = json.loads((prepared_dir / "mapping.json").read_text(encoding="utf-8"))
     if mapping.get("sequence") != sequence or mapping.get("window_id") != window_id or mapping.get("frame_ids") != frame_ids:
         raise ValueError("prepared PAD-Hand input does not match the requested manifest window")
@@ -118,7 +150,9 @@ def main() -> None:
         model = load_pad_hand_model(checkpoint, device)
         predictions, _ = load_wilor_results(wilor_npz)
         refined = refine_with_pad_hand(predictions, model, MANO("RIGHT", device), device)
-        all_joints, all_valid = _joints_from_refined(refined, MANO("RIGHT", device))
+        scaled_focal = np.load(wilor_npz)["scaled_focal"]
+        all_joints, all_valid, rescaled_count = _joints_from_refined(
+            refined, MANO("RIGHT", device), fx_per_frame, scaled_focal)
     finally:
         os.chdir(previous_cwd)
 
@@ -145,6 +179,12 @@ def main() -> None:
             "scale_type": methods["pad_hand"]["scale_type"],
             "coordinate_space": "camera",
             "native_frame_indices": indices.tolist(),
+            "metric_depth_rescale": (
+                "cam_t[2] *= fx / scaled_focal, following WiLoR's official demo"
+                if fx_per_frame is not None else
+                "unavailable: no intrinsics supplied, absolute depth left on WiLoR's rendering focal length"
+            ),
+            "frames_with_intrinsic_rescale": int(rescaled_count),
         },
         arrays=arrays,
         run={"status": "success", "elapsed_seconds": time.perf_counter() - start},

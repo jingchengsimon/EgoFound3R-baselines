@@ -74,6 +74,30 @@ def _materialize_30fps_video(directory: Path, rgb_paths: list[Path]) -> tuple[Pa
     return video, mapping_path
 
 
+def _intrinsics_from_frames(frames: "list[Mapping[str, object]]") -> tuple[list, list]:
+    """Per-frame 3x3 intrinsics for the method-neutral record.
+
+    Camera intrinsics are part of several methods' official input contract -- WiLoR's own
+    demo reads them to place its prediction at a metric depth -- so they travel with the
+    input rather than with the ground truth.
+    """
+    matrices: list = []
+    valid: list = []
+    for frame in frames:
+        value = frame.get("intrinsics")
+        if value is None:
+            matrices.append(None)
+            valid.append(False)
+            continue
+        matrix = np.asarray(
+            value.detach().cpu().numpy() if hasattr(value, "detach") else value, dtype=np.float64
+        )
+        good = matrix.shape == (3, 3) and bool(np.isfinite(matrix).all())
+        matrices.append(matrix.tolist() if good else None)
+        valid.append(good)
+    return matrices, valid
+
+
 def materialize_window_input(
     bridge: SixDatasetGroundTruth,
     row: Mapping[str, object],
@@ -89,6 +113,13 @@ def materialize_window_input(
     if record_path.exists():
         record = json.loads(record_path.read_text(encoding="utf-8"))
         if record.get("dataset") == dataset and record.get("sequence_id") == sequence_id and record.get("frame_ids") == frame_ids:
+            if "intrinsics" not in record:
+                # Records written before intrinsics joined the contract are completed in
+                # place; only the loader chunk is re-read, never the RGB or geometry.
+                chunk = bridge.chunk_for_window(row)
+                matrices, valid = _intrinsics_from_frames(chunk["samples"])
+                record["intrinsics"], record["intrinsics_valid"] = matrices, valid
+                _atomic_text(record_path, json.dumps(record, ensure_ascii=False, indent=2) + "\n")
             return record_path
         raise ValueError(f"existing input record differs: {record_path}")
 
@@ -120,6 +151,8 @@ def materialize_window_input(
         )
         rgb_paths.append(str(rgb_path))
         geometry_paths.append(str(geometry_path))
+    intrinsics, intrinsics_valid = _intrinsics_from_frames(frames)
+
     video_path, video_mapping_path = _materialize_30fps_video(directory, [Path(path) for path in rgb_paths])
     video_mapping = {
         "dataset": dataset,
@@ -143,6 +176,8 @@ def materialize_window_input(
         "rgb_paths": rgb_paths,
         "geometry_paths": geometry_paths,
         "object_names": [_object_name(frame, dataset) for frame in frames],
+        "intrinsics": intrinsics,
+        "intrinsics_valid": intrinsics_valid,
         "video_path": str(video_path),
         "video_mapping_path": str(video_mapping_path),
     }

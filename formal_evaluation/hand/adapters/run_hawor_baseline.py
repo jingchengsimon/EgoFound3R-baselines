@@ -643,6 +643,7 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     args = parse_args()
+    window_intrinsics = None
     if args.window_input is not None:
         if args.manifest is not None or args.data_root is not None:
             raise ValueError("--window-input cannot be combined with --manifest/--data-root")
@@ -653,6 +654,7 @@ def main():
         frame_paths = [Path(str(item)) for item in window_input["rgb_paths"]]
         dataset = str(window_input["dataset"])
         output_window_id = str(window_input["cache_id"])
+        window_intrinsics = window_input.get("intrinsics")
     else:
         if args.manifest is None or args.data_root is None:
             raise ValueError("provide --window-input or both --manifest and --data-root")
@@ -688,7 +690,22 @@ def main():
     )
     load_seconds = time.perf_counter() - load_start
     t0 = time.perf_counter()
-    arrays, native_arrays, run_hw, detail = runtime.run(frame_paths, args.img_focal)
+    # HaWoR takes the camera focal length as an official input (--img-focal); without it
+    # the runtime falls back to a max(H, W) guess that propagates through SLAM into the
+    # world-space trajectory, so pass the real fx whenever the input carries it.
+    img_focal = args.img_focal
+    if img_focal is None and window_intrinsics:
+        candidates = [float(np.asarray(m, dtype=np.float64)[0, 0]) for m in window_intrinsics if m is not None]
+        candidates = [v for v in candidates if np.isfinite(v) and v > 0]
+        if candidates:
+            img_focal = float(np.median(candidates))
+    arrays, native_arrays, run_hw, detail = runtime.run(frame_paths, img_focal)
+    detail["img_focal"] = img_focal
+    detail["img_focal_source"] = (
+        "cli" if args.img_focal is not None
+        else "window_input intrinsics fx (median)" if img_focal is not None
+        else "runtime fallback max(H, W)"
+    )
 
     elapsed = time.perf_counter() - t0
     peak_vram_gb = 0.0
