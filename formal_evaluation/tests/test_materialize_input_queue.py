@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from formal_evaluation.materialize_six_dataset_input_queue import _tasks
+from formal_evaluation.run_formal_window_queue import _input_tasks
 
 
 def test_tasks_preserve_per_dataset_50_window_bound(tmp_path: Path) -> None:
@@ -25,3 +26,25 @@ def test_tasks_preserve_per_dataset_50_window_bound(tmp_path: Path) -> None:
     h2o = [task for task in tasks if task["dataset"] == "h2o"]
     assert [task["window_count"] for task in h2o] == [50, 1]
     assert len(tasks) == 7
+
+
+def test_formal_queue_requires_completed_input_sentinel(tmp_path: Path) -> None:
+    rgb, geometry = tmp_path / "rgb.png", tmp_path / "geometry.npz"
+    rgb.write_bytes(b"rgb"); geometry.write_bytes(b"geometry")
+    record = {
+        "window_input_version": "six_dataset_window_input_v1", "dataset": "h2o", "cache_id": "cache",
+        "sequence_id": "subject4_ego/h1/0", "window_id": "window", "frame_ids": ["000000"],
+        "rgb_paths": [str(rgb)], "geometry_paths": [str(geometry)],
+    }
+    window_input = tmp_path / "window_input.json"
+    window_input.write_text(json.dumps(record), encoding="utf-8")
+    index = tmp_path / "window_inputs_h2o_shard_000_of_001.jsonl"
+    index.write_text(json.dumps({"window_input": str(window_input)}) + "\n", encoding="utf-8")
+    index.with_suffix(".status.json").write_text(json.dumps({
+        "status": "complete", "index": str(index), "window_count": 1,
+    }), encoding="utf-8")
+
+    tasks = _input_tasks([index])
+
+    assert tasks[0]["dataset"] == "h2o"
+    assert tasks[0]["records"][0]["_path"] == str(window_input)

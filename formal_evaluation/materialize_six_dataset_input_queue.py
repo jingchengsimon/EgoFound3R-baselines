@@ -9,10 +9,14 @@ import hashlib
 import json
 import math
 import subprocess
+import sys
 import tempfile
 import time
 from collections import Counter
 from pathlib import Path
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from formal_evaluation.datasets.egofound3r_gt import DATASET_LOADERS, validate_window_row
 
