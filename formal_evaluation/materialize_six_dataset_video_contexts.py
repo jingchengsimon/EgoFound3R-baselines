@@ -11,7 +11,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from formal_evaluation.datasets.egofound3r_gt import DATASET_LOADERS, SixDatasetGroundTruth
-from formal_evaluation.datasets.window_inputs import materialize_video_context
+from formal_evaluation.datasets.window_inputs import load_window_input, materialize_video_context
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -25,8 +25,11 @@ def main() -> None:
     roots = dict(value.split("=", 1) for value in args.root)
     if set(roots) != set(DATASET_LOADERS):
         raise ValueError(f"--root must name exactly {sorted(DATASET_LOADERS)}")
-    bridge = SixDatasetGroundTruth(roots, args.mano_dir)
     records = [line for line in args.window_input_index.read_text(encoding="utf-8").splitlines() if line]
+    datasets = {str(load_window_input(Path(str(json.loads(line)["window_input"])))["dataset"]) for line in records}
+    if len(datasets) != 1:
+        raise ValueError("window input index must contain one dataset")
+    bridge = SixDatasetGroundTruth(roots, args.mano_dir, datasets=tuple(datasets))
     for line in records:
         path = Path(str(json.loads(line)["window_input"]))
         print(json.dumps({"context_mapping": str(materialize_video_context(bridge, path, context_frames=args.context_frames))}), flush=True)
