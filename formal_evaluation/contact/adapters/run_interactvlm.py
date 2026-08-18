@@ -50,12 +50,12 @@ def main() -> None:
             if not rgb_value or not row.get("object_name"):
                 raise ValueError(f"manifest row {order} lacks RGB path or object_name")
             rgb = Path(rgb_value).resolve(strict=True)
-            identity = (str(row.get("sequence", "")), str(row.get("frame_id", order)))
+            identity = (str(row.get("dataset", "")), str(row.get("sequence", "")), str(row.get("frame_id", order)))
             if identity in seen:
                 raise ValueError(f"duplicate sequence/frame in manifest: {identity}")
             seen.add(identity)
             stem = (f"{_safe(row['object_name']).lower()}__{order:06d}_"
-                    f"{_safe(identity[0])}_{_safe(identity[1])}")
+                    f"{_safe(identity[0])}_{_safe(identity[1])}_{_safe(identity[2])}")
             link = input_dir / f"{stem}{rgb.suffix.lower()}"
             link.symlink_to(rgb)
             rows.append({**row, "adapter_order": order, "adapter_stem": stem,
