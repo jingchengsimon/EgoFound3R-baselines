@@ -224,7 +224,7 @@ def _original_resolution(frame_path: Path) -> tuple[int, int]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="运行 WiLoR baseline 并写入 canonical 输出")
-    parser.add_argument("--phase", choices=("smoke", "pilot"), required=True)
+    parser.add_argument("--phase", choices=("smoke", "pilot", "formal"), required=True)
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--methods-config", type=Path, required=True)
     parser.add_argument("--data-root", type=Path)
