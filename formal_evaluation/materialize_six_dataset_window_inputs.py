@@ -75,7 +75,7 @@ def main() -> None:
     if index_path.exists() or sentinel_path.exists():
         raise FileExistsError(f"refusing to replace completed shard index/sentinel: {index_stem}")
     args.output_root.mkdir(parents=True, exist_ok=True)
-    bridge = SixDatasetGroundTruth(_roots(args.root), args.mano_dir)
+    bridge = SixDatasetGroundTruth(_roots(args.root), args.mano_dir, datasets=(args.dataset,))
     records = []
     for index, row in enumerate(rows, start=1):
         record = materialize_window_input(bridge, row, args.output_root)

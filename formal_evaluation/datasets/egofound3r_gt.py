@@ -108,6 +108,7 @@ class SixDatasetGroundTruth:
     mano_dir: str | Path
     scene_visibility_device: str | None = None
     interhand_contact_compute_device: str | None = None
+    datasets: Sequence[str] | None = None
 
     def __post_init__(self) -> None:
         missing = set(DATASET_LOADERS) - set(self.roots)
@@ -116,6 +117,10 @@ class SixDatasetGroundTruth:
             raise ValueError(f"dataset roots must match {sorted(DATASET_LOADERS)}; missing={sorted(missing)}, extra={sorted(extra)}")
         if Path(self.roots["taco"]) != TACO_DATA_ROOT:
             raise ValueError(f"taco must use {TACO_DATA_ROOT}, got {self.roots['taco']}")
+        active_datasets = tuple(DATASET_LOADERS) if self.datasets is None else tuple(self.datasets)
+        unknown = set(active_datasets) - set(DATASET_LOADERS)
+        if not active_datasets or unknown:
+            raise ValueError(f"datasets must be a non-empty subset of {sorted(DATASET_LOADERS)}; got {active_datasets}")
         build_dataset, temporal_chunk, training, marker_ids = _dataloader_runtime()
         mano_builder, collator = training
         self._temporal_chunk = temporal_chunk
@@ -128,7 +133,7 @@ class SixDatasetGroundTruth:
                 load_rgb=True,
                 load_depth=True,
             )
-            for dataset, loader_name in DATASET_LOADERS.items()
+            for dataset, loader_name in DATASET_LOADERS.items() if dataset in active_datasets
         }
         self._collator = collator(
             stage="posttrain",
@@ -151,6 +156,8 @@ class SixDatasetGroundTruth:
     def chunk_for_window(self, row: Mapping[str, object]) -> dict[str, Any]:
         """Return one exact, sequence-preserving chunk from the latest FrameDataset."""
         dataset, sequence_id, frame_ids = validate_window_row(row)
+        if dataset not in self._datasets:
+            raise ValueError(f"{dataset} was not initialized for this bridge")
         parent = self._datasets[dataset]
         raw_sequence_id = canonical_sequence_id(dataset, sequence_id)
         source_indices = source_indices_for_window(parent, raw_sequence_id, frame_ids)
@@ -203,6 +210,8 @@ class SixDatasetGroundTruth:
         dataset, sequence_id, frame_ids = validate_window_row(row)
         if context_frames < len(frame_ids):
             raise ValueError("context must include every scoring frame")
+        if dataset not in self._datasets:
+            raise ValueError(f"{dataset} was not initialized for this bridge")
         parent = self._datasets[dataset]
         raw_sequence_id = canonical_sequence_id(dataset, sequence_id)
         selected = source_indices_for_window(parent, raw_sequence_id, frame_ids)
