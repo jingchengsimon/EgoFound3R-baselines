@@ -4,24 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import random
 import statistics
 import time
 from pathlib import Path
 
 
 def _select(data_root: Path) -> tuple[str, list[Path]]:
-    candidates = sorted(
-        rgb.parent.parent.relative_to(data_root).as_posix()
-        for rgb in data_root.glob("subject4_ego/*/*/cam4/rgb")
-        if sum(path.suffix.lower() in {".png", ".jpg", ".jpeg"} for path in rgb.iterdir()) >= 500
-    )
-    if not candidates:
-        raise RuntimeError("no H2O test sequence has 500 frames")
-    sequence = random.Random(0).choice(candidates)
-    frames = [path for path in sorted((data_root / sequence / "cam4/rgb").iterdir())
-              if path.suffix.lower() in {".png", ".jpg", ".jpeg"}][:500]
-    return sequence, frames
+    from formal_evaluation.datasets import get_dataset_adapter
+    selected = get_dataset_adapter("h2o", data_root).select_contiguous("test", 500, seed=0)
+    return selected.sequence_id, list(selected.frame_paths)
 
 
 def _parameter_counts(modules: dict[str, object]) -> tuple[dict[str, int], int]:

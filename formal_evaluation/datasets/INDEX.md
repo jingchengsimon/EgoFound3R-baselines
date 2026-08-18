@@ -43,19 +43,22 @@ python -m formal_evaluation.datasets.build_dataset_splits \
 Each input JSON has `sequences`, whose rows contain `sequence_id` and ordered
 `frame_ids`. H2O and TACO additionally require `official_splits`. H2O accepts
 the official frame paths and collapses them to canonical sequence IDs. For
-every dataset, candidates start at the first frame of each test sequence, use
-12 frames with stride 12, never overlap, and drop an incomplete final tail.
+every dataset, candidates start at the first frame of each selected evaluation
+sequence, use 60 frames with stride 60, never overlap, and drop an incomplete
+final tail.
 Outputs are `dataset_sequence_splits.json` and
 `evaluation_test_windows_seed0.jsonl`.
 
-H2O split keys are `train`, `val`, and `test`; TACO split keys are `train` and
-`test`, copied from the fixed EgoFound3R sequence manifest. The command fails
-unless all six available/training/test counts match the fixed protocol and
-every dataset has at least 300 valid test windows. H2O outputs `trainval/test`;
-the other five datasets output `train/test`.
+H2O split keys are `train`, `val`, and `test`; TACO preserves `train` and the
+official `test_1`–`test_4` labels (S1–S4) for every sequence. Its evaluation
+selection draws 50% of the available sequences independently from each of the
+four official test subsets. HOT3D, OakInk-v2, ARCTIC, and HOI4D use
+deterministic 10%/10%/25%/15% custom test partitions and select half of those
+test sequences for evaluation. The command outputs every valid 60-frame clip;
+H2O outputs `trainval/test`; the other five datasets output `train/test`.
 
 `export_dataset_manifests.py` is the read-only bridge from the existing
 EgoFound3R dataset indexes to the six normalized inputs used by the command
 above. Pass the copied `configs/dataset_sequence_splits.json` with
-`--sequence-splits`; this is the source of TACO's frozen train/test sequence
-membership. It is not a training dataloader.
+`--sequence-splits`; this validates TACO's frozen train/test membership against
+the vendored official S1–S4 list. It is not a training dataloader.

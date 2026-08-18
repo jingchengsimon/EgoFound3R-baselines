@@ -225,7 +225,11 @@ def main() -> None:
                 ])
             cfg = resolve_cfg_paths(cfg); cfg.paths.base_dir = str(source_root); cfg.data.frame_opts.fps = 30
             mano_cfg = {key.lower(): value for key, value in dict(cfg.MANO).items()}
-            mano_model = MANO(batch_size=len(dataset) * frame_count, pose2rot=True, **mano_cfg).to(device)
+            # Size MANO to the span Dyn-HaMR actually kept. run_mano derives
+            # seq_len from this batch size and only pads when it disagrees with
+            # the data, and its padding helper assumes B x T x D -- it cannot
+            # pad the B x T x 3 x 3 root orientation.
+            mano_model = MANO(batch_size=len(dataset) * kept_len, pose2rot=True, **mano_cfg).to(device)
             set_seed(cfg.get("seed", 42))
             _, prediction = run_opt(cfg, dataset, str(work / "unused"), device, hand_model=mano_model, save_io=False)
             world = prediction["world"]

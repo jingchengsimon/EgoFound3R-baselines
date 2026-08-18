@@ -17,6 +17,7 @@ DATASETS = {
     "hoi4d": "hoi4d",
     "taco": "taco",
 }
+TACO_DATA_ROOT = "/mnt/cpfs/sjc/DATA/TACO_resized"
 
 
 def _ordered_frames(dataset: Any) -> dict[str, list[str]]:
@@ -59,17 +60,44 @@ def _h2o_manifest(root: Path) -> dict[str, object]:
     return {"sequences": sequences, "official_splits": official_splits}
 
 
-def _taco_splits(path: Path, sequence_ids: set[str]) -> dict[str, list[str]]:
+def _taco_splits(
+    path: Path,
+    sequence_ids: set[str],
+    official_split_list: Path,
+) -> dict[str, list[str]]:
     entry = json.loads(path.read_text(encoding="utf-8"))["datasets"]["taco"]
-    result = {
+    frozen = {
         "train": list(entry["train_sequence_ids"]),
         "test": list(entry["test_sequence_ids"]),
     }
-    frozen_ids = set(result["train"]) | set(result["test"])
-    if set(result["train"]) & set(result["test"]):
+    frozen_ids = set(frozen["train"]) | set(frozen["test"])
+    if set(frozen["train"]) & set(frozen["test"]):
         raise ValueError("taco: frozen train/test split overlaps")
     if frozen_ids != sequence_ids:
         raise ValueError("taco: frozen train/test split does not exactly cover the dataset index")
+
+    by_recording_id: dict[str, str] = {}
+    for sequence_id in sequence_ids:
+        recording_id = Path(sequence_id).name
+        if recording_id in by_recording_id:
+            raise ValueError(f"taco: non-unique recording ID {recording_id}")
+        by_recording_id[recording_id] = sequence_id
+
+    result = {label: [] for label in ("train", "test_1", "test_2", "test_3", "test_4")}
+    for line_number, line in enumerate(official_split_list.read_text(encoding="utf-8").splitlines(), start=1):
+        recording_id, separator, label = line.partition(",")
+        if not separator or label not in result or not recording_id:
+            raise ValueError(f"taco: invalid official split line {line_number}: {line!r}")
+        sequence_id = by_recording_id.get(recording_id)
+        if sequence_id is not None:
+            result[label].append(sequence_id)
+    for label in result:
+        result[label].sort()
+    detailed_ids = set().union(*(set(items) for items in result.values()))
+    if detailed_ids != sequence_ids:
+        raise ValueError("taco: official split list does not exactly cover the dataset index")
+    if result["train"] != sorted(frozen["train"]) or set().union(*(set(result[label]) for label in result if label != "train")) != set(frozen["test"]):
+        raise ValueError("taco: official S1-S4 labels disagree with the frozen train/test manifest")
     return result
 
 
@@ -78,6 +106,13 @@ def export(args: argparse.Namespace) -> None:
     from egohandmetric_prompt.data.stages import build_named_frame_dataset
 
     roots = dict(value.split("=", 1) for value in args.root)
+    configured_taco_root = roots.get("taco")
+    if configured_taco_root not in (None, TACO_DATA_ROOT):
+        raise ValueError(
+            f"taco must use the official uint16 data root {TACO_DATA_ROOT}; "
+            f"got {configured_taco_root}"
+        )
+    roots["taco"] = TACO_DATA_ROOT
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for output_name, loader_name in DATASETS.items():
         if output_name == "h2o":
@@ -96,7 +131,11 @@ def export(args: argparse.Namespace) -> None:
                 for sequence_id, frame_ids in sorted(frames.items())
             ]}
             if output_name == "taco":
-                manifest["official_splits"] = _taco_splits(args.sequence_splits, set(frames))
+                manifest["official_splits"] = _taco_splits(
+                    args.sequence_splits,
+                    set(frames),
+                    args.taco_official_split_list,
+                )
         path = args.output_dir / f"{output_name}.json"
         path.write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
         print(json.dumps({
@@ -112,6 +151,11 @@ def main() -> None:
     parser.add_argument("--egofound3r-dev", type=Path, required=True)
     parser.add_argument("--root", action="append", required=True, metavar="DATASET=PATH")
     parser.add_argument("--sequence-splits", type=Path, required=True)
+    parser.add_argument(
+        "--taco-official-split-list",
+        type=Path,
+        default=Path(__file__).with_name("reference") / "taco_v1_overall_data_train_test_split.txt",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     export(parser.parse_args())
 

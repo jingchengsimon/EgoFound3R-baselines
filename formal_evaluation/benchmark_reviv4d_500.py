@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import random
 import subprocess
 import time
 from pathlib import Path
@@ -16,19 +15,9 @@ CLIP_FRAMES = 60
 
 
 def _select_sequence(data_root: Path) -> tuple[str, list[Path]]:
-    candidates = sorted(
-        rgb.parent.parent.relative_to(data_root).as_posix()
-        for rgb in data_root.glob("subject4_ego/*/*/cam4/rgb")
-        if sum(path.suffix.lower() in {".png", ".jpg", ".jpeg"} for path in rgb.iterdir()) >= 540
-    )
-    if not candidates:
-        raise RuntimeError("no H2O test sequence has the 540 frames needed for 500 ReViV targets")
-    sequence = random.Random(0).choice(candidates)
-    frames = sorted(
-        path for path in (data_root / sequence / "cam4/rgb").iterdir()
-        if path.suffix.lower() in {".png", ".jpg", ".jpeg"}
-    )
-    return sequence, frames
+    from formal_evaluation.datasets import get_dataset_adapter
+    selected = get_dataset_adapter("h2o", data_root).select_contiguous("test", 540, seed=0)
+    return selected.sequence_id, list(selected.frame_paths)
 
 
 def _clip_plan() -> list[tuple[int, int]]:

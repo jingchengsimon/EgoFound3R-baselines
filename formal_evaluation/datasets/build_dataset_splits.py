@@ -1,4 +1,4 @@
-"""Build deterministic sequence splits and 300-window evaluation manifests."""
+"""Build deterministic sequence splits and all strict 60-frame evaluation clips."""
 
 from __future__ import annotations
 
@@ -11,20 +11,27 @@ from pathlib import Path
 from typing import Mapping
 
 SEED = 0
-WINDOW_SIZE = 12
-WINDOW_COUNT = 300
+WINDOW_SIZE = 60
+TACO_EVALUATION_SEQUENCE_FRACTION = 0.5
+CUSTOM_EVALUATION_SEQUENCE_FRACTION = 0.5
+CUSTOM_TEST_FRACTIONS = {
+    "hot3d": 0.10,
+    "oakink_v2": 0.10,
+    "arctic": 0.25,
+    "hoi4d": 0.15,
+}
 DATASET_ORDER = ("h2o", "taco", "hot3d", "oakink_v2", "arctic", "hoi4d")
 EXPECTED_COUNTS = {
     "h2o": (184, 138, 46),
     "taco": (2114, 839, 1275),
-    "hot3d": (151, 113, 38),
-    "oakink_v2": (627, 470, 157),
+    "hot3d": (151, 136, 15),
+    "oakink_v2": (627, 565, 62),
     "arctic": (301, 226, 75),
-    "hoi4d": (1683, 1262, 421),
+    "hoi4d": (1683, 1431, 252),
 }
 CAPABILITIES = {
     "h2o": {"hand_evaluation_status": "available", "depth_3r_status": "available"},
-    "taco": {"hand_evaluation_status": "available", "depth_3r_status": "blocked_invalid_uint8_depth_gt"},
+    "taco": {"hand_evaluation_status": "available", "depth_3r_status": "available"},
     "hot3d": {"hand_evaluation_status": "available", "depth_3r_status": "unavailable_no_depth_gt"},
     "oakink_v2": {"hand_evaluation_status": "available", "depth_3r_status": "unavailable_no_depth_gt"},
     "arctic": {"hand_evaluation_status": "available", "depth_3r_status": "unavailable_no_usable_depth_gt"},
@@ -88,8 +95,8 @@ def _official_partition(
         required = {"train", "val", "test"}
         training_labels, test_labels = ("train", "val"), ("test",)
     else:
-        required = {"train", "test"}
-        training_labels, test_labels = ("train",), ("test",)
+        required = {"train", "test_1", "test_2", "test_3", "test_4"}
+        training_labels, test_labels = ("train",), ("test_1", "test_2", "test_3", "test_4")
     missing_labels = required - set(official)
     if missing_labels:
         raise ValueError(f"{dataset}: missing official split labels {sorted(missing_labels)}")
@@ -108,6 +115,27 @@ def _official_partition(
     missing = {label: sorted(official[label] - actual_ids) for label in sorted(required)}
     actual_counts = {label: len(actual_ids & official[label]) for label in sorted(required)}
     return training, test, missing, actual_counts
+
+
+def _taco_evaluation_selection(
+    official: Mapping[str, set[str]], actual_ids: set[str]
+) -> tuple[dict[str, list[str]], list[str]]:
+    selected_by_subset: dict[str, list[str]] = {}
+    for subset in ("test_1", "test_2", "test_3", "test_4"):
+        candidates = sorted(actual_ids & official[subset])
+        selected_count = int(len(candidates) * TACO_EVALUATION_SEQUENCE_FRACTION)
+        shuffled = list(candidates)
+        random.Random(f"{SEED}:{subset}").shuffle(shuffled)
+        selected_by_subset[subset] = sorted(shuffled[:selected_count])
+    return selected_by_subset, sorted(
+        sequence_id for subset_ids in selected_by_subset.values() for sequence_id in subset_ids
+    )
+
+
+def _custom_evaluation_selection(dataset: str, test_ids: list[str]) -> list[str]:
+    shuffled = sorted(test_ids)
+    random.Random(f"{SEED}:{dataset}:evaluation").shuffle(shuffled)
+    return sorted(shuffled[:int(len(shuffled) * CUSTOM_EVALUATION_SEQUENCE_FRACTION)])
 
 
 def _custom_partition(actual_ids: set[str], test_count: int) -> tuple[list[str], list[str]]:
@@ -139,20 +167,26 @@ def build_sequence_splits(manifests: Mapping[str, Mapping[str, object]]) -> tupl
         frames_by_dataset[dataset] = sequence_frames
         actual_ids = set(sequence_frames)
         if dataset in {"h2o", "taco"}:
+            official = _official_splits(manifest, dataset)
             training, test, missing, official_counts = _official_partition(
-                dataset, actual_ids, _official_splits(manifest, dataset)
+                dataset, actual_ids, official
             )
             split_type = "official_test_subset"
         else:
-            training, test = _custom_partition(actual_ids, EXPECTED_COUNTS[dataset][2])
+            training, test = _custom_partition(
+                actual_ids, int(len(actual_ids) * CUSTOM_TEST_FRACTIONS[dataset])
+            )
             missing, official_counts = {}, {}
-            split_type = "custom_75_25"
+            split_type = "custom_fraction_sequence"
         _validate_expected_counts(dataset, len(actual_ids), training, test)
         training_partition = "trainval" if dataset == "h2o" else "train"
-        output["datasets"][dataset] = {
+        entry = {
             "split_type": split_type,
             "split_source": "official frame-level train+val/test collapsed to sequences" if dataset == "h2o" else (
-                "official train/S1-S4 intersection" if dataset == "taco" else "sorted sequence IDs; random.Random(0); fixed 75/25 counts"
+                "official train/S1-S4 intersection" if dataset == "taco" else (
+                    "sorted sequence IDs; random.Random(0); "
+                    f"{CUSTOM_TEST_FRACTIONS[dataset]:.0%} test"
+                )
             ),
             "partition_names": [training_partition, "test"],
             "available_sequence_count": len(actual_ids),
@@ -165,6 +199,33 @@ def build_sequence_splits(manifests: Mapping[str, Mapping[str, object]]) -> tupl
             "filtered_sequence_ids": [],
             **CAPABILITIES[dataset],
         }
+        if dataset == "taco":
+            selected_by_subset, selected = _taco_evaluation_selection(official, actual_ids)
+            entry.update({
+                "official_test_subset_sequence_ids": {
+                    subset: sorted(actual_ids & official[subset])
+                    for subset in ("test_1", "test_2", "test_3", "test_4")
+                },
+                "evaluation_selection": {
+                    "unit": "sequence",
+                    "fraction_per_official_test_subset": TACO_EVALUATION_SEQUENCE_FRACTION,
+                    "seed_scheme": "random.Random(f'{seed}:{official_test_subset}')",
+                    "selected_sequence_counts": {subset: len(items) for subset, items in selected_by_subset.items()},
+                    "selected_sequence_ids_by_official_test_subset": selected_by_subset,
+                    "selected_sequence_count": len(selected),
+                    "selected_sequence_ids": selected,
+                },
+            })
+        elif dataset in CUSTOM_TEST_FRACTIONS:
+            selected = _custom_evaluation_selection(dataset, test)
+            entry["evaluation_selection"] = {
+                "unit": "sequence",
+                "fraction_of_custom_test": CUSTOM_EVALUATION_SEQUENCE_FRACTION,
+                "seed_scheme": "random.Random(f'{seed}:{dataset}:evaluation')",
+                "selected_sequence_count": len(selected),
+                "selected_sequence_ids": selected,
+            }
+        output["datasets"][dataset] = entry
     return output, frames_by_dataset
 
 
@@ -191,15 +252,15 @@ def build_evaluation_windows(
     rows = []
     split_datasets = sequence_splits["datasets"]
     for dataset in DATASET_ORDER:
-        test_ids = list(split_datasets[dataset]["test_sequence_ids"])
+        selection = split_datasets[dataset].get("evaluation_selection", {})
+        test_ids = list(selection.get("selected_sequence_ids", split_datasets[dataset]["test_sequence_ids"]))
         candidates = _generated_candidates(dataset, test_ids, frames_by_dataset[dataset])
         window_ids = [item["window_id"] for item in candidates]
         if len(window_ids) != len(set(window_ids)):
             raise ValueError(f"{dataset}: duplicate candidate window IDs")
-        if len(candidates) < WINDOW_COUNT:
-            raise ValueError(f"{dataset}: only {len(candidates)} valid windows; need {WINDOW_COUNT}")
-        selected = random.Random(SEED).sample(candidates, WINDOW_COUNT)
-        for item in sorted(selected, key=lambda row: (row["sequence_id"], row["window_id"])):
+        if not candidates:
+            raise ValueError(f"{dataset}: no valid evaluation windows")
+        for item in candidates:
             rows.append({
                 **item,
                 "split": "test",
@@ -244,8 +305,8 @@ def write_outputs(manifests: Mapping[str, Mapping[str, object]], output_dir: Pat
     windows = build_evaluation_windows(manifests, splits, frames_by_dataset)
     window_bytes = _jsonl_bytes(windows)
     splits["evaluation"] = {
-        "window_manifest": "evaluation_test_windows_seed0.jsonl",
-        "window_count_per_dataset": WINDOW_COUNT,
+        "window_manifest": "evaluation_test_windows_60f_strict.jsonl",
+        "window_count_per_dataset": dict(Counter(row["dataset"] for row in windows)),
         "total_window_count": len(windows),
         "window_size": WINDOW_SIZE,
         "window_stride": WINDOW_SIZE,
@@ -256,7 +317,7 @@ def write_outputs(manifests: Mapping[str, Mapping[str, object]], output_dir: Pat
     }
     output_dir.mkdir(parents=True, exist_ok=True)
     split_path = output_dir / "dataset_sequence_splits.json"
-    window_path = output_dir / "evaluation_test_windows_seed0.jsonl"
+    window_path = output_dir / "evaluation_test_windows_60f_strict.jsonl"
     split_bytes = _json_bytes(splits)
     split_path.write_bytes(split_bytes)
     write_dataset_split_files(splits, output_dir, split_bytes)

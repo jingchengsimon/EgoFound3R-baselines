@@ -10,7 +10,6 @@ import argparse
 import importlib.util
 import json
 import pickle
-import random
 import shutil
 import statistics
 import sys
@@ -21,17 +20,9 @@ from types import SimpleNamespace
 
 
 def _select(data_root: Path, count: int) -> tuple[str, list[Path]]:
-    candidates = sorted(
-        rgb.parent.parent.relative_to(data_root).as_posix()
-        for rgb in data_root.glob("subject4_ego/*/*/cam4/rgb")
-        if sum(p.suffix.lower() in {".png", ".jpg", ".jpeg"} for p in rgb.iterdir()) >= count
-    )
-    if not candidates:
-        raise RuntimeError(f"no H2O test sequence has {count} frames")
-    sequence = random.Random(0).choice(candidates)
-    frames = [p for p in sorted((data_root / sequence / "cam4/rgb").iterdir())
-              if p.suffix.lower() in {".png", ".jpg", ".jpeg"}][:count]
-    return sequence, frames
+    from formal_evaluation.datasets import get_dataset_adapter
+    selected = get_dataset_adapter("h2o", data_root).select_contiguous("test", count, seed=0)
+    return selected.sequence_id, list(selected.frame_paths)
 
 
 def _module(path: Path, name: str):

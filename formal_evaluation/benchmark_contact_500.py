@@ -5,24 +5,15 @@ from __future__ import annotations
 import argparse
 import gc
 import json
-import random
 import statistics
 import time
 from pathlib import Path
 
 
 def _frames(data_root: Path) -> tuple[str, list[str]]:
-    candidates = sorted(
-        rgb.parent.parent.relative_to(data_root).as_posix()
-        for rgb in data_root.glob("subject4_ego/*/*/cam4/rgb")
-        if sum(path.suffix.lower() in {".png", ".jpg", ".jpeg"} for path in rgb.iterdir()) >= 500
-    )
-    if not candidates:
-        raise RuntimeError("no H2O test sequence has 500 RGB frames")
-    sequence = random.Random(0).choice(candidates)
-    frame_ids = [path.stem for path in sorted((data_root / sequence / "cam4/rgb").iterdir())
-                 if path.suffix.lower() in {".png", ".jpg", ".jpeg"}][:500]
-    return sequence, frame_ids
+    from formal_evaluation.datasets import get_dataset_adapter
+    selected = get_dataset_adapter("h2o", data_root).select_contiguous("test", 500, seed=0)
+    return selected.sequence_id, list(selected.frame_ids)
 
 
 def _parameters(model) -> int:
@@ -64,8 +55,11 @@ def main() -> None:
     wanted = {(sequence, int(frame_id)) for frame_id in frame_ids}
     Dataset, model = _load_baseline(args.baseline, args.source_root, args.mano_right)
     dataset = Dataset(str(args.cache), min_num_cont=1)
-    indices = [index for index, row in enumerate(dataset.dataset)
-               if (str(row.get("h2o_sequence")), int(row.get("h2o_frame_id"))) in wanted]
+    indices = [
+        index for index, row in enumerate(dataset.dataset)
+        if (str(row.get("h2o_sequence")).removesuffix("/cam4"),
+            int(row.get("h2o_frame_id"))) in wanted
+    ]
     if len(indices) != 500:
         raise RuntimeError(f"cache has {len(indices)} of the selected 500 H2O samples")
     loader = DataLoader(Subset(dataset, indices), batch_size=args.batch_size, shuffle=False,

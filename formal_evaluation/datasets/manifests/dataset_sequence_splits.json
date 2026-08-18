@@ -2352,7 +2352,9 @@
       },
       "filtered_sequence_ids": [],
       "hand_evaluation_status": "available",
-      "depth_3r_status": "blocked_invalid_uint8_depth_gt"
+      "depth_3r_status": "available",
+      "depth_gt_root": "/mnt/cpfs/sjc/DATA/TACO_resized/Egocentric_Depth_Videos_official_uint16/Egocentric_Depth_Videos",
+      "depth_gt_format": "official_ffv1_gray16le_uint16_1920x1080"
     },
     "hot3d": {
       "split_type": "custom_75_25",

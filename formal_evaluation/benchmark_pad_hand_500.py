@@ -6,7 +6,6 @@ import argparse
 import gc
 import json
 import os
-import random
 import statistics
 import sys
 import time
@@ -15,17 +14,9 @@ from unittest.mock import MagicMock
 
 
 def _select(data_root: Path, frame_count: int) -> tuple[str, list[Path]]:
-    candidates = sorted(
-        rgb.parent.parent.relative_to(data_root).as_posix()
-        for rgb in data_root.glob("subject4_ego/*/*/cam4/rgb")
-        if sum(path.suffix.lower() in {".png", ".jpg", ".jpeg"} for path in rgb.iterdir()) >= frame_count
-    )
-    if not candidates:
-        raise RuntimeError("no H2O test sequence has 500 frames")
-    sequence = random.Random(0).choice(candidates)
-    frames = sorted(path for path in (data_root / sequence / "cam4/rgb").iterdir()
-                    if path.suffix.lower() in {".png", ".jpg", ".jpeg"})[:frame_count]
-    return sequence, frames
+    from formal_evaluation.datasets import get_dataset_adapter
+    selected = get_dataset_adapter("h2o", data_root).select_contiguous("test", frame_count, seed=0)
+    return selected.sequence_id, list(selected.frame_paths)
 
 
 def _parameter_counts(modules: dict[str, object]) -> tuple[dict[str, int], int]:
