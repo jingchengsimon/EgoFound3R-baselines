@@ -70,7 +70,12 @@ def main() -> None:
         if data_path.exists() and metadata_path.exists():
             entry = write_window_cache(args.output_root, row, {})
         else:
-            entry = write_window_cache(args.output_root, row, bridge.batch_for_window(row))
+            entry = write_window_cache(
+                args.output_root,
+                row,
+                bridge.batch_for_window(row),
+                geometry_frames=bridge.geometry_for_window(row),
+            )
         entries.append({
             "dataset": entry["dataset"], "sequence_id": entry["sequence_id"], "window_id": entry["window_id"],
             "frame_ids": entry["frame_ids"], "cache_id": entry["cache_id"], "array_path": entry["array_path"],

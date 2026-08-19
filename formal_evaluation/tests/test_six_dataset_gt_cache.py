@@ -31,9 +31,13 @@ class SixDatasetGTCacheTests(unittest.TestCase):
             "depth": np.ones((1, 2, 3, 4), dtype=np.float32),
             "depth_valid_mask": np.ones((1, 2, 3, 4), dtype=bool),
         }
+        geometry_frames = [
+            {"hand_vertices": [np.zeros((778, 3), dtype=np.float32), np.ones((778, 3), dtype=np.float32)]}
+            for _ in range(2)
+        ]
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            result = write_window_cache(root, row, batch)
+            result = write_window_cache(root, row, batch, geometry_frames=geometry_frames)
             self.assertEqual(result["status"], "written")
             data_path, metadata_path = cache_paths(root, row)
             self.assertTrue(data_path.is_file() and metadata_path.is_file())

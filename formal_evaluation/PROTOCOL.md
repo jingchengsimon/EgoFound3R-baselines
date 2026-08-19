@@ -1,8 +1,8 @@
 # Formal evaluation protocol
 
 This directory evaluates canonical `predictions.npz` files written by the
-adapters.  Baseline inference is separate from metric evaluation.  Every
-window is twelve frames unless the supplied manifest explicitly says otherwise.
+adapters.  Baseline inference is separate from metric evaluation; window length
+is defined exclusively by the supplied manifest.
 
 ## Shared rules
 
@@ -15,15 +15,24 @@ window is twelve frames unless the supplied manifest explicitly says otherwise.
 
 ## Hand
 
-- GT is reconstructed only from `hand_pose_mano`; hand slots are left then
-  right, and joints use the 21-point OpenPose ordering.
-- All hand metrics are compared in camera coordinates.  World-space baseline
-  outputs are converted with their predicted `camera_c2w`.
-- MPJPE, root-relative MPJPE, and PA-MPJPE call `mano_metrics` with root index
-  zero.  PA is one Sim(3) per valid frame.
-- `hand_*_sim3_mpjpe` calls `world_aligned_mpjpe(mode="all",
-  chunk_length=T)`: exactly one Sim(3) fit over every valid joint in the
-  evaluation window.
+- GT is reconstructed from `hand_pose_mano`; hand slots are left then right.
+  It caches 21 OpenPose joints, 195 fixed MeshGraphormer level-1 MANO markers,
+  and the full 778-vertex MANO mesh.
+- Each available granularity reports raw, root-relative, per-frame PA, and
+  window-global Sim(3) position errors, plus velocity and acceleration errors.
+  Names are `MPJPE/MPJVE/MPJAE`, `MPMPE/MPMVE/MPMAE`, and
+  `MPVPE/MPVVE/MPVAE`; velocities are mm/s and accelerations are mm/s² at the
+  recorded `temporal_fps` (30 by default). Invalid neighbours never form a
+  temporal difference.
+- W is unaligned world-coordinate error. WA2 fits one Sim(3) from the first
+  two valid frames in a window; WA fits one Sim(3) from all valid window points.
+  Camera-space predictions are transformed with predicted `camera_c2w` when
+  present, otherwise explicitly with GT `camera_c2w` and marked as such in the
+  window result. Native world outputs remain native world outputs.
+- WiLoR, HaWoR, PAD-Hand, and Dyn-HaMR provide native MANO-778 geometry.
+  EgoFound3R's vertex metrics are explicitly marked `derived_from_195_markers`
+  through the fixed MeshGraphormer upsampling matrix. ReViV4D remains 21-joint
+  only.
 - Presence uses `binary_metrics` on every frame, including frames with absent
   GT hands.  Undefined denominators yield `NaN`.
 
@@ -34,6 +43,8 @@ window is twelve frames unless the supplied manifest explicitly says otherwise.
   Sim(3), not the legacy mean Euclidean trajectory error.
 - Rotation is `extrinsic_metrics` geodesic rotation converted from radians to
   degrees.
+- `camera_pose_auc_30` is AUC@30° of the maximum of rotation and translation-
+  direction errors after expressing all poses relative to the first valid frame.
 - Relative-depth baselines use one explicit `median(GT/pred)` scale over all
   finite, strictly positive depth pairs in a window; metric-scale methods use
   scale one.  This scale policy is external because the metrics library does
@@ -49,8 +60,6 @@ window is twelve frames unless the supplied manifest explicitly says otherwise.
 - Contact precision, recall, F1, counts, and AP call `binary_metrics` and
   `average_precision`; scores are thresholded at 0.5 for binary metrics.
 - The registered contact baselines are S²Contact, ContactOpt, and InteractVLM.
-  S²Contact/ContactOpt use 21 points; InteractVLM uses existing cached
-  778-vertex predictions only and is not a model-inference speed measurement.
-  They retain their own GT projection adapters and must be serialized to the
-  same probability/target/mask form before this metric layer is used; their F1
-  values are not cross-protocol rankable.
+  The joint-21 table contains EgoFound3R/S²Contact/ContactOpt; the marker-195
+  table is EgoFound3R-only; InteractVLM is a separate right-hand vertex-778
+  hcontact table. These are distinct protocols and are never cross-ranked.

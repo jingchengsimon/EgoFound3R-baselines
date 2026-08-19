@@ -12,10 +12,12 @@ from typing import Any
 
 import numpy as np
 
+from formal_evaluation.common.mano_sampling import downsample_mano_vertices
+
 from .egofound3r_gt import camera_c2w_from_batch, validate_window_row
 
 
-CACHE_VERSION = "six_dataset_window_gt_v1"
+CACHE_VERSION = "six_dataset_window_gt_v2"
 
 
 def window_cache_id(row: Mapping[str, object]) -> str:
@@ -35,7 +37,28 @@ def _numpy(value: Any) -> np.ndarray:
     return np.asarray(value)
 
 
-def cache_arrays_from_batch(batch: Mapping[str, Any]) -> dict[str, np.ndarray]:
+def _geometry_arrays(frames: list[Mapping[str, Any]], *, frame_count: int) -> dict[str, np.ndarray]:
+    if len(frames) != frame_count:
+        raise ValueError(f"geometry frame count={len(frames)} differs from batch frame count={frame_count}")
+    vertices = np.full((frame_count, 2, 778, 3), np.nan, dtype=np.float32)
+    for index, frame in enumerate(frames):
+        hands = frame.get("hand_vertices")
+        if not isinstance(hands, list) or len(hands) != 2:
+            raise ValueError("geometry frame must contain two hand_vertices slots")
+        for side, hand in enumerate(hands):
+            if hand is None:
+                continue
+            value = _numpy(hand).astype(np.float32, copy=False)
+            if value.shape != (778, 3):
+                raise ValueError(f"hand_vertices must have shape (778, 3), got {value.shape}")
+            vertices[index, side] = value
+    return {
+        "hand_vertices_camera": vertices,
+        "hand_markers_camera": downsample_mano_vertices(vertices),
+    }
+
+
+def cache_arrays_from_batch(batch: Mapping[str, Any], *, geometry_frames: list[Mapping[str, Any]] | None = None) -> dict[str, np.ndarray]:
     """Extract only metric targets; RGB and source data never enter the cache."""
     camera_c2w, camera_valid = camera_c2w_from_batch(batch)
     joints = _numpy(batch["joints_3d_targets"])[0]
@@ -56,6 +79,9 @@ def cache_arrays_from_batch(batch: Mapping[str, Any]) -> dict[str, np.ndarray]:
         "marker_contact_target": _numpy(batch["marker_contact_targets"])[0],
         "marker_contact_mask": _numpy(batch["marker_contact_supervision_mask"])[0].astype(bool),
     }
+    if geometry_frames is None:
+        raise ValueError("full hand geometry is required for GT cache v2")
+    arrays.update(_geometry_arrays(geometry_frames, frame_count=joints.shape[0]))
     depth = batch.get("depth")
     depth_valid = batch.get("depth_valid_mask")
     if depth is not None and depth_valid is not None:
@@ -102,7 +128,13 @@ def _atomic_bytes(path: Path, payload: bytes) -> None:
     temporary.replace(path)
 
 
-def write_window_cache(output_root: Path, row: Mapping[str, object], batch: Mapping[str, Any]) -> dict[str, object]:
+def write_window_cache(
+    output_root: Path,
+    row: Mapping[str, object],
+    batch: Mapping[str, Any],
+    *,
+    geometry_frames: list[Mapping[str, Any]] | None = None,
+) -> dict[str, object]:
     """Atomically write one cache entry, refusing mismatched existing targets."""
     data_path, metadata_path = cache_paths(output_root, row)
     cache_id = window_cache_id(row)
@@ -115,7 +147,7 @@ def write_window_cache(output_root: Path, row: Mapping[str, object], batch: Mapp
             raise ValueError(f"existing cache metadata differs: {metadata_path}")
         return {**metadata, "array_path": str(data_path), "status": "reused"}
 
-    arrays = cache_arrays_from_batch(batch)
+    arrays = cache_arrays_from_batch(batch, geometry_frames=geometry_frames)
     data_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=data_path.parent, suffix=".npz", delete=False) as handle:
         temporary = Path(handle.name)

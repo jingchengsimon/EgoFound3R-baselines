@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 
 from formal_evaluation.common.aggregation import aggregate_windows
+from formal_evaluation.common.mano_sampling import downsample_mano_vertices, upsample_mano_markers
 from formal_evaluation.common.schema import validate_comparison_output
 from formal_evaluation.contact.metrics import compute_contact_metrics
 from formal_evaluation.datasets.six_dataset_gt_cache import load_window_cache
@@ -31,15 +32,86 @@ def _prediction_arrays(directory: Path) -> tuple[dict[str, object], dict[str, np
     return metadata, arrays
 
 
-def _camera_space_joints(predictions: Mapping[str, np.ndarray]) -> tuple[np.ndarray | None, np.ndarray | None]:
-    if "hand_joints_camera" in predictions:
-        return predictions["hand_joints_camera"], predictions.get("hand_valid")
-    if "hand_joints_world" not in predictions or "camera_c2w" not in predictions:
+_POINT_FIELDS = {"joint": "joints", "marker": "markers", "vertex": "vertices"}
+
+
+def _camera_to_world(points: np.ndarray, camera_c2w: np.ndarray) -> np.ndarray:
+    value = np.asarray(points, dtype=float)
+    pose = np.asarray(camera_c2w, dtype=float)
+    if value.ndim != 4 or value.shape[0] != pose.shape[0] or value.shape[-1] != 3 or pose.shape != (value.shape[0], 4, 4):
+        raise ValueError("camera-to-world requires (T,2,N,3) points and matching (T,4,4) c2w poses")
+    return np.einsum("tij,tnpj->tnpi", pose[:, :3, :3], value) + pose[:, None, None, :3, 3]
+
+
+def _prediction_geometry(predictions: Mapping[str, np.ndarray], granularity: str) -> tuple[np.ndarray | None, str | None, str | None]:
+    field = _POINT_FIELDS[granularity]
+    for coordinate in ("camera", "world"):
+        direct = predictions.get(f"hand_{field}_{coordinate}")
+        if direct is not None:
+            return direct, coordinate, "native"
+    if granularity == "marker":
+        for coordinate in ("camera", "world"):
+            vertices = predictions.get(f"hand_vertices_{coordinate}")
+            if vertices is not None:
+                return downsample_mano_vertices(vertices), coordinate, "derived_from_778_vertices"
+    if granularity == "vertex":
+        for coordinate in ("camera", "world"):
+            markers = predictions.get(f"hand_markers_{coordinate}")
+            if markers is not None:
+                return upsample_mano_markers(markers), coordinate, "derived_from_195_markers"
+    return None, None, None
+
+
+def _target_geometry(targets: Mapping[str, np.ndarray], field: str, coordinate: str) -> np.ndarray:
+    camera = np.asarray(targets[f"hand_{field}_camera"], dtype=float)
+    return camera if coordinate == "camera" else _camera_to_world(camera, targets["camera_c2w"])
+
+
+def _roots_in_coordinate(predictions: Mapping[str, np.ndarray], targets: Mapping[str, np.ndarray], coordinate: str) -> tuple[np.ndarray | None, np.ndarray | None]:
+    field = f"hand_joints_{coordinate}"
+    if field in predictions:
+        pred_root = predictions[field][..., 0, :]
+    elif coordinate == "world" and "hand_joints_camera" in predictions:
+        pred_root = _camera_to_world(predictions["hand_joints_camera"], _world_pose_for_prediction(predictions, targets))[..., 0, :]
+    else:
         return None, None
-    w2c = np.linalg.inv(predictions["camera_c2w"])
-    world = predictions["hand_joints_world"]
-    camera = np.einsum("tik,tnjk->tnji", w2c[:, :3, :3], world) + w2c[:, None, None, :3, 3]
-    return camera, predictions.get("hand_valid")
+    return pred_root, _target_geometry(targets, "joints", coordinate)[..., 0, :]
+
+
+def _world_pose_for_prediction(predictions: Mapping[str, np.ndarray], targets: Mapping[str, np.ndarray]) -> np.ndarray:
+    """Use a method pose where it exists; camera-only hand methods use GT pose explicitly."""
+    target_pose = np.asarray(targets["camera_c2w"], dtype=float)
+    prediction_pose = predictions.get("camera_c2w")
+    if prediction_pose is None:
+        return target_pose
+    prediction_pose = np.asarray(prediction_pose, dtype=float)
+    if prediction_pose.shape != target_pose.shape:
+        raise ValueError("prediction camera_c2w shape differs from GT cache")
+    return np.where(np.isfinite(prediction_pose).all(axis=(1, 2))[:, None, None], prediction_pose, target_pose)
+
+
+def _world_pose_source(predictions: Mapping[str, np.ndarray]) -> str:
+    prediction_pose = predictions.get("camera_c2w")
+    if prediction_pose is None:
+        return "gt_camera_c2w"
+    valid = np.isfinite(np.asarray(prediction_pose, dtype=float)).all(axis=(1, 2))
+    if np.all(valid):
+        return "predicted_camera_c2w"
+    return "mixed_predicted_and_gt_camera_c2w" if np.any(valid) else "gt_camera_c2w"
+
+
+def _world_geometry(
+    predictions: Mapping[str, np.ndarray],
+    targets: Mapping[str, np.ndarray],
+    points: np.ndarray,
+    coordinate: str,
+    granularity: str,
+) -> tuple[np.ndarray, np.ndarray, str]:
+    field = _POINT_FIELDS[granularity]
+    if coordinate == "world":
+        return points, _target_geometry(targets, field, "world"), "native_world"
+    pose = _world_pose_for_prediction(predictions, targets)
+    return _camera_to_world(points, pose), _target_geometry(targets, field, "world"), _world_pose_source(predictions)
 
 
 def _depth_pairs(prediction: Mapping[str, np.ndarray], target: Mapping[str, np.ndarray]) -> list[tuple[np.ndarray, np.ndarray]]:
@@ -70,11 +142,38 @@ def evaluate_window(
     }
     groups = set(config.get("group", []))
     if "hand" in groups:
-        pred_joints, pred_valid = _camera_space_joints(predictions)
-        if pred_joints is not None:
+        pred_valid = predictions.get("hand_valid")
+        if pred_valid is not None:
+            pred_valid = np.asarray(pred_valid, dtype=bool)
+        temporal_fps = float(metadata.get("temporal_fps", 30.0))
+        if not np.isfinite(temporal_fps) or temporal_fps <= 0.0:
+            raise ValueError(f"{method}: temporal_fps must be positive")
+        for granularity in ("joint", "marker", "vertex"):
+            pred_points, coordinate, provenance = _prediction_geometry(predictions, granularity)
+            if pred_points is None or coordinate is None:
+                continue
             if pred_valid is None:
-                pred_valid = np.ones(pred_joints.shape[:2], dtype=bool)
-            result.update(compute_hand_metrics(pred_joints, targets["hand_joints_camera"], pred_valid, targets["hand_valid"]))
+                pred_valid = np.ones(pred_points.shape[:2], dtype=bool)
+            field = _POINT_FIELDS[granularity]
+            target_points = _target_geometry(targets, field, coordinate)
+            roots_pred, roots_gt = _roots_in_coordinate(predictions, targets, coordinate)
+            world_pred, world_gt, world_pose_source = _world_geometry(
+                predictions, targets, pred_points, coordinate, granularity
+            )
+            result.update(compute_hand_metrics(
+                pred_points,
+                target_points,
+                pred_valid,
+                targets["hand_valid"],
+                granularity=granularity,
+                root_prediction=roots_pred,
+                root_target=roots_gt,
+                world_prediction=world_pred,
+                world_target=world_gt,
+                temporal_fps=temporal_fps,
+            ))
+            result[f"hand_{granularity}_geometry_provenance"] = provenance
+            result[f"hand_{granularity}_world_pose_source"] = world_pose_source
     if "scene" in groups:
         target_pose = np.where(targets["camera_valid"][:, None, None], targets["camera_c2w"], np.nan)
         result.update(compute_scene_metrics(

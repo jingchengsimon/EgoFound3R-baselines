@@ -26,6 +26,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from formal_evaluation.common.io import write_comparison_output
+from formal_evaluation.common.mano_sampling import downsample_mano_vertices
 from formal_evaluation.common.schema import SCHEMA_VERSION
 from formal_evaluation.datasets.window_inputs import load_window_input
 
@@ -39,9 +40,9 @@ def _module(path: Path, name: str):
     return module
 
 
-def _canonical_joints(
+def _canonical_geometry(
     mano_output: dict[str, object], frame_count: int, start_idx: int = 0
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Place Dyn-HaMR's optimized joints back on the full input clip.
 
     Dyn-HaMR trims the sequence to ``[start_idx, end_idx)`` -- the frames its
@@ -50,22 +51,26 @@ def _canonical_joints(
     stay invalid rather than being filled in.
     """
     joints = mano_output["joints"].detach().cpu().numpy()
+    vertices = mano_output["vertices"].detach().cpu().numpy()
     sides = mano_output["is_right"].detach().cpu().numpy().astype(bool)
     output = np.zeros((frame_count, 2, 21, 3), dtype=np.float32)
+    output_vertices = np.zeros((frame_count, 2, 778, 3), dtype=np.float32)
     valid = np.zeros((frame_count, 2), dtype=bool)
     span = min(joints.shape[1], frame_count - start_idx) if joints.shape[0] else 0
     if span <= 0:
-        return output, valid
+        return output, output_vertices, valid
     window = slice(start_idx, start_idx + span)
     for track in range(joints.shape[0]):
         slot = 1 if bool(sides[track, 0]) else 0
         if valid[:, slot].any():
             continue  # one canonical slot per side; keep official first track deterministically
         values = np.asarray(joints[track, :span], dtype=np.float32)
-        mask = np.isfinite(values).all(axis=(1, 2))
+        vertex_values = np.asarray(vertices[track, :span], dtype=np.float32)
+        mask = np.isfinite(values).all(axis=(1, 2)) & np.isfinite(vertex_values).all(axis=(1, 2))
         output[window, slot] = np.nan_to_num(values)
+        output_vertices[window, slot] = np.nan_to_num(vertex_values)
         valid[window, slot] = mask
-    return output, valid
+    return output, output_vertices, valid
 
 
 def _load_context(window_input: Path, record: dict[str, object], context_frames: int) -> tuple[list[Path], list[int]]:
@@ -212,6 +217,7 @@ def main() -> None:
                            "MIN_TRACK_LEN (60) in this clip"),
             }
             joints = np.zeros((scoring_count, 2, 21, 3), dtype=np.float32)
+            vertices = np.zeros((scoring_count, 2, 778, 3), dtype=np.float32)
             valid = np.zeros((scoring_count, 2), dtype=bool)
             kept_start, kept_len = 0, 0
         else:
@@ -234,10 +240,10 @@ def main() -> None:
             _, prediction = run_opt(cfg, dataset, str(work / "unused"), device, hand_model=mano_model, save_io=False)
             world = prediction["world"]
             mano = run_mano(mano_model, world["trans"], world["root_orient"], world["pose_body"], world["is_right"], betas=world.get("betas"))
-            joints, valid = _canonical_joints(mano, frame_count, kept_start)
+            joints, vertices, valid = _canonical_geometry(mano, frame_count, kept_start)
             # Score only the manifest frames; the surrounding context is input-only.
             selection = np.asarray(scoring_indices, dtype=np.int64)
-            joints, valid = joints[selection], valid[selection]
+            joints, vertices, valid = joints[selection], vertices[selection], valid[selection]
             torch.cuda.synchronize(device)
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -246,7 +252,10 @@ def main() -> None:
         "schema_version": SCHEMA_VERSION, "method": "dyn_hamr", "source": config["source"],
         "phase": args.phase, "dataset": record["dataset"], "sequence": record["sequence_id"],
         "window_id": record["window_id"], "frame_ids": record["frame_ids"],
-        "capabilities": {"hand_joints_world": True, "hand_valid": True},
+        "capabilities": {
+            "hand_joints_world": True, "hand_vertices_world": True,
+            "hand_markers_world": True, "hand_valid": True,
+        },
         "scale_type": config["scale_type"], "coordinate_space": "world",
         "runner_detail": "official RGB->YOLO/HaMeR/DROID-SLAM/Dyn-HaMR; smoke optimization iterations configured explicitly",
         "context_frames": frame_count,
@@ -256,7 +265,12 @@ def main() -> None:
             "with track_len <= 60, so a 60-frame scoring window cannot be run on its own"
         ),
         "official_kept_span": [kept_start, kept_start + kept_len],
-    }, arrays={"hand_joints_world": joints, "hand_valid": valid}, run=blocked or {
+    }, arrays={
+        "hand_joints_world": joints,
+        "hand_vertices_world": vertices,
+        "hand_markers_world": downsample_mano_vertices(vertices),
+        "hand_valid": valid,
+    }, run=blocked or {
         "status": "success", "elapsed_seconds": time.perf_counter() - start, "device": str(device),
         "root_iterations": args.root_iters, "smooth_iterations": args.smooth_iters,
         "context_frames": frame_count, "scored_frames": scoring_count,

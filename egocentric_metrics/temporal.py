@@ -60,6 +60,50 @@ def acceleration_error(prediction, target, *, fps: float = 30.0, unit_scale: flo
     return float(np.mean(np.linalg.norm(difference, axis=-1)) * unit_scale)
 
 
+def temporal_point_errors(
+    prediction,
+    target,
+    frame_valid,
+    *,
+    fps: float = 30.0,
+    unit_scale: float = 1.0,
+) -> dict[str, float | int]:
+    """Return mask-aware velocity and acceleration errors for one contiguous point track.
+
+    ``frame_valid`` must mark frames whose *whole hand* is valid.  Invalid or
+    non-finite neighbours never bridge a temporal finite difference.
+    """
+    pred, gt = _matching_sequences(prediction, target, name="temporal point")
+    valid = as_numpy(frame_valid, dtype=bool)
+    if valid.shape != (pred.shape[0],):
+        raise ValueError(f"frame_valid must have shape ({pred.shape[0]},), got {valid.shape}")
+    if fps <= 0.0:
+        raise ValueError("fps must be positive")
+    valid &= np.isfinite(pred).all(axis=(1, 2)) & np.isfinite(gt).all(axis=(1, 2))
+    result: dict[str, float | int] = {
+        "velocity_error": float("nan"),
+        "velocity_pair_count": 0,
+        "acceleration_error": float("nan"),
+        "acceleration_triplet_count": 0,
+    }
+    if pred.shape[0] >= 2:
+        pair_valid = valid[:-1] & valid[1:]
+        result["velocity_pair_count"] = int(np.count_nonzero(pair_valid))
+        if np.any(pair_valid):
+            difference = ((pred[1:] - pred[:-1]) - (gt[1:] - gt[:-1])) * fps
+            result["velocity_error"] = float(np.mean(np.linalg.norm(difference[pair_valid], axis=-1)) * unit_scale)
+    if pred.shape[0] >= 3:
+        triplet_valid = valid[:-2] & valid[1:-1] & valid[2:]
+        result["acceleration_triplet_count"] = int(np.count_nonzero(triplet_valid))
+        if np.any(triplet_valid):
+            difference = (
+                (pred[2:] - 2.0 * pred[1:-1] + pred[:-2])
+                - (gt[2:] - 2.0 * gt[1:-1] + gt[:-2])
+            ) * (fps**2)
+            result["acceleration_error"] = float(np.mean(np.linalg.norm(difference[triplet_valid], axis=-1)) * unit_scale)
+    return result
+
+
 def jitter(joints, *, fps: float = 30.0, divisor: float = 10.0, unit_scale: float = 1.0) -> np.ndarray:
     """Exact third finite-difference jitter used by ``compute_metric.py``."""
     value = _joint_sequence(joints)

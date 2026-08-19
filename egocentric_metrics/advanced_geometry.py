@@ -23,8 +23,9 @@ def pck_auc(errors, *, max_threshold: float, num_thresholds: int = 100) -> dict[
         pck = np.full_like(thresholds, np.nan)
         return {"auc": float("nan"), "pck": pck, "thresholds": thresholds, "valid_count": 0}
     pck = np.array([np.mean(valid <= threshold) for threshold in thresholds], dtype=float)
+    integrate = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
     return {
-        "auc": float(np.trapezoid(pck, thresholds) / max_threshold),
+        "auc": float(integrate(pck, thresholds) / max_threshold),
         "pck": pck,
         "thresholds": thresholds,
         "valid_count": int(valid.size),

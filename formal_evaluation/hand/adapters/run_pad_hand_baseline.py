@@ -17,6 +17,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from formal_evaluation.common.io import load_manifest, select_manifest_window, write_comparison_output
+from formal_evaluation.common.mano_sampling import downsample_mano_vertices
 from formal_evaluation.common.schema import SCHEMA_VERSION
 from formal_evaluation.datasets.window_inputs import load_window_input
 
@@ -48,13 +49,13 @@ def _run_wilor(args: argparse.Namespace, video: Path, native: Path) -> Path:
     return result
 
 
-def _joints_from_refined(
+def _geometry_from_refined(
     frame_predictions: list[object],
     mano: object,
     fx_per_frame: "list[float | None] | None" = None,
     scaled_focal: "np.ndarray | None" = None,
-) -> tuple[np.ndarray, np.ndarray, int]:
-    """Camera-space joints for each frame, at the depth the real camera implies.
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+    """Camera-space MANO geometry for each frame, at the real-camera depth.
 
     PAD-Hand refines WiLoR's mesh but keeps WiLoR's translation, which solves depth
     against WiLoR's rendering focal length. The official demo rescales it with the
@@ -63,6 +64,7 @@ def _joints_from_refined(
     """
     import torch
 
+    vertices_out = np.full((len(frame_predictions), 2, 778, 3), np.nan, dtype=np.float32)
     joints = np.full((len(frame_predictions), 2, 21, 3), np.nan, dtype=np.float32)
     valid = np.zeros((len(frame_predictions), 2), dtype=bool)
     rescaled = 0
@@ -78,11 +80,13 @@ def _joints_from_refined(
         if fx is not None and focal is not None and np.isfinite(focal) and focal > 1e-9:
             cam_t[2] *= fx / focal
             rescaled += 1
+        camera_vertices = vertices[0].detach().cpu().numpy() + cam_t
         hand_joints = hand_joints.detach().cpu().numpy() + cam_t
         slot = 1 if prediction["is_right"] else 0
+        vertices_out[index, slot] = camera_vertices
         joints[index, slot] = hand_joints
-        valid[index, slot] = np.isfinite(hand_joints).all()
-    return joints, valid, rescaled
+        valid[index, slot] = np.isfinite(camera_vertices).all() and np.isfinite(hand_joints).all()
+    return vertices_out, joints, valid, rescaled
 
 
 def main() -> None:
@@ -151,7 +155,7 @@ def main() -> None:
         predictions, _ = load_wilor_results(wilor_npz)
         refined = refine_with_pad_hand(predictions, model, MANO("RIGHT", device), device)
         scaled_focal = np.load(wilor_npz)["scaled_focal"]
-        all_joints, all_valid, rescaled_count = _joints_from_refined(
+        all_vertices, all_joints, all_valid, rescaled_count = _geometry_from_refined(
             refined, MANO("RIGHT", device), fx_per_frame, scaled_focal)
     finally:
         os.chdir(previous_cwd)
@@ -161,6 +165,8 @@ def main() -> None:
         raise ValueError("invalid PAD-Hand frame mapping")
     arrays = {
         "hand_joints_camera": np.nan_to_num(all_joints[indices]),
+        "hand_vertices_camera": np.nan_to_num(all_vertices[indices]),
+        "hand_markers_camera": np.nan_to_num(downsample_mano_vertices(all_vertices[indices])),
         "hand_valid": all_valid[indices],
     }
     methods = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"]
@@ -189,7 +195,7 @@ def main() -> None:
         arrays=arrays,
         run={"status": "success", "elapsed_seconds": time.perf_counter() - start},
         native_metadata={"source": "official PAD-Hand and WiLoR inference", "wilor_npz": str(wilor_npz)},
-        native_arrays={"hand_joints_camera": all_joints, "hand_valid": all_valid},
+        native_arrays={"hand_joints_camera": all_joints, "hand_vertices_camera": all_vertices, "hand_valid": all_valid},
     )
     print(json.dumps({"output_dir": str(output_dir), "status": "success"}, ensure_ascii=False))
 

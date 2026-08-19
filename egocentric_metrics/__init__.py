@@ -46,7 +46,7 @@ from .mano import (
 )
 from .pointcloud import pointcloud_metrics
 from .rendering import image_metrics, psnr, ssim
-from .temporal import acceleration, acceleration_error, contact_sliding, frame_difference_error, jitter, mpfje, mpfve, rte
+from .temporal import acceleration, acceleration_error, contact_sliding, frame_difference_error, jitter, mpfje, mpfve, rte, temporal_point_errors
 from .tracking import tracking_metrics
 
 __all__ = [
@@ -95,6 +95,7 @@ __all__ = [
     "frame_difference_error",
     "mpfje",
     "mpfve",
+    "temporal_point_errors",
     "jitter",
     "rte",
     "contact_sliding",
