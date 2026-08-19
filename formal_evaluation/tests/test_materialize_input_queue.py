@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from formal_evaluation.materialize_six_dataset_input_queue import _tasks
+from formal_evaluation.promote_window_inputs_to_oss import promote_dataset
 from formal_evaluation.run_formal_window_queue import _input_tasks
 
 
@@ -48,3 +49,29 @@ def test_formal_queue_requires_completed_input_sentinel(tmp_path: Path) -> None:
 
     assert tasks[0]["dataset"] == "h2o"
     assert tasks[0]["records"][0]["_path"] == str(window_input)
+
+
+def test_oss_promotion_rewrites_indexes_records_and_symlinks(tmp_path: Path) -> None:
+    source, destination = tmp_path / "cpfs", tmp_path / "oss"
+    source.mkdir(); destination.mkdir()
+    input_dir = source / "h2o" / "cache"
+    rgb = input_dir / "rgb.png"; geometry = input_dir / "geometry.npz"
+    input_dir.mkdir(parents=True); rgb.write_bytes(b"rgb"); geometry.write_bytes(b"geometry")
+    (input_dir / "rgb_link.png").symlink_to(rgb)
+    record = {
+        "window_input_version": "six_dataset_window_input_v1", "dataset": "h2o", "cache_id": "cache",
+        "sequence_id": "s", "window_id": "w", "frame_ids": ["000000"],
+        "rgb_paths": [str(rgb)], "geometry_paths": [str(geometry)], "video_path": str(input_dir / "video.mp4"),
+    }
+    (input_dir / "video.mp4").write_bytes(b"video")
+    window_input = input_dir / "window_input.json"; window_input.write_text(json.dumps(record), encoding="utf-8")
+    index = source / "window_inputs_h2o_shard_000_of_001.jsonl"
+    index.write_text(json.dumps({"window_input": str(window_input)}) + "\n", encoding="utf-8")
+    index.with_suffix(".status.json").write_text(json.dumps({"status": "complete", "index": str(index), "window_count": 1}), encoding="utf-8")
+
+    result = promote_dataset(source, destination, "h2o")
+
+    assert result["window_count"] == 1
+    promoted = json.loads((destination / "h2o" / "cache" / "window_input.json").read_text(encoding="utf-8"))
+    assert promoted["rgb_paths"] == [str(destination / "h2o" / "cache" / "rgb.png")]
+    assert (destination / "h2o" / "cache" / "rgb_link.png").resolve() == destination / "h2o" / "cache" / "rgb.png"
