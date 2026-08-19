@@ -34,6 +34,7 @@ class FormalMetricTests(unittest.TestCase):
         )
         self.assertAlmostEqual(values["hand_left_w_mpjpe"], 1.0, places=6)
         self.assertLess(values["hand_left_wa_mpjpe"], 1e-8)
+        self.assertNotIn("hand_left_wa2_mpjpe", values)
         self.assertAlmostEqual(values["hand_right_mpjve"], 0.0, places=8)
         self.assertAlmostEqual(values["hand_right_mpjae"], 0.0, places=8)
 

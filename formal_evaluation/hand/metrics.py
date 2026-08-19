@@ -44,7 +44,7 @@ def compute_hand_metrics(
 ) -> dict[str, float | int]:
     """Evaluate one hand geometry granularity.
 
-    Native metrics use the supplied coordinate frame. W/WA/WA2 are emitted
+    Native metrics use the supplied coordinate frame. W/WA are emitted
     only when the caller supplies explicit world-coordinate tensors.
     """
     if granularity not in _GRANULARITIES:
@@ -97,11 +97,10 @@ def compute_hand_metrics(
         if world_pred is not None:
             world_mask = point_mask & np.isfinite(world_pred[:, hand_index]).all(axis=-1) & np.isfinite(world_gt[:, hand_index]).all(axis=-1)
             result[f"{prefix}w_{position_name}"] = _mean_per_frame(world_mpjpe(world_pred[:, hand_index], world_gt[:, hand_index], world_mask, unit_scale=1000.0))
-            for mode, name in (("first2", "wa2"), ("all", "wa")):
-                result[f"{prefix}{name}_{position_name}"] = _mean_per_frame(world_aligned_mpjpe(
-                    world_pred[:, hand_index], world_gt[:, hand_index], joint_mask=world_mask,
-                    mode=mode, chunk_length=pred.shape[0], unit_scale=1000.0,
-                ))
+            result[f"{prefix}wa_{position_name}"] = _mean_per_frame(world_aligned_mpjpe(
+                world_pred[:, hand_index], world_gt[:, hand_index], joint_mask=world_mask,
+                mode="all", chunk_length=pred.shape[0], unit_scale=1000.0,
+            ))
         if granularity == "joint":
             presence = binary_metrics(pred_valid[:, hand_index], gt_valid[:, hand_index])
             result.update({

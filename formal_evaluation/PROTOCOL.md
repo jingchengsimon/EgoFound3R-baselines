@@ -24,8 +24,8 @@ is defined exclusively by the supplied manifest.
   `MPVPE/MPVVE/MPVAE`; velocities are mm/s and accelerations are mm/s² at the
   recorded `temporal_fps` (30 by default). Invalid neighbours never form a
   temporal difference.
-- W is unaligned world-coordinate error. WA2 fits one Sim(3) from the first
-  two valid frames in a window; WA fits one Sim(3) from all valid window points.
+- W is unaligned world-coordinate error. WA fits one Sim(3) from all valid
+  window points. WA2 is not a formal metric.
   Camera-space predictions are transformed with predicted `camera_c2w` when
   present, otherwise explicitly with GT `camera_c2w` and marked as such in the
   window result. Native world outputs remain native world outputs.
