@@ -42,6 +42,11 @@ HAND_MARKER_ONLY_DATASET_NAMES: set[str] = set()
 DEFAULT_HUMAN_MODEL_ROOT = default_human_model_root_path()
 VERTEX_VISIBILITY_RASTER_MAX_SIZE = 64
 SCENE_VISIBILITY_RASTER_MAX_FACES_PER_BIN = 200_000
+# PyTorch3D's CUDA rasterizer can issue an illegal-memory-access error for a
+# 60-frame Meshes batch even when every individual mesh is finite and indexed
+# correctly.  Bound the batch only at the rasterization boundary; the per-frame
+# z-buffer semantics and returned order remain unchanged.
+SCENE_VISIBILITY_RASTER_MAX_BATCH_SIZE = 8
 SCENE_VISIBILITY_OBJECT_RASTER_MAX_FACES = 100_000
 SCENE_VISIBILITY_MARKER_DEPTH_ATOL = 1e-4
 SCENE_VISIBILITY_MARKER_DEPTH_RTOL = 2e-3
@@ -1635,6 +1640,42 @@ def _batched_scene_marker_visibility_targets_from_mesh(
     return all_outputs
 
 
+def _bounded_scene_marker_visibility_targets_from_mesh(
+    frames: Sequence[
+        tuple[
+            Sequence[torch.Tensor | None],
+            torch.Tensor | None,
+            Sequence[Sequence[int]],
+            tuple[torch.Tensor, torch.Tensor] | None,
+        ]
+    ],
+    faces: torch.Tensor,
+    *,
+    image_height: int,
+    image_width: int,
+    device: torch.device,
+    depths: Sequence[torch.Tensor | None] | None = None,
+    object_ray_accelerators: Sequence[SceneObjectAccel | None] | None = None,
+    object_face_counts: Sequence[int | None] | None = None,
+    object_mesh_factories: Sequence[Callable[[], tuple[torch.Tensor, torch.Tensor] | None] | None] | None = None,
+) -> list[list[tuple[torch.Tensor, torch.Tensor]]]:
+    """Preserve framewise visibility while bounding each CUDA rasterizer batch."""
+    outputs = []
+    for start in range(0, len(frames), SCENE_VISIBILITY_RASTER_MAX_BATCH_SIZE):
+        stop = start + SCENE_VISIBILITY_RASTER_MAX_BATCH_SIZE
+        outputs.extend(_batched_scene_marker_visibility_targets_from_mesh(
+            frames[start:stop], faces,
+            image_height=image_height,
+            image_width=image_width,
+            device=device,
+            depths=None if depths is None else depths[start:stop],
+            object_ray_accelerators=None if object_ray_accelerators is None else object_ray_accelerators[start:stop],
+            object_face_counts=None if object_face_counts is None else object_face_counts[start:stop],
+            object_mesh_factories=None if object_mesh_factories is None else object_mesh_factories[start:stop],
+        ))
+    return outputs
+
+
 def _segment_triangle_intersection_depths(
     endpoint: torch.Tensor,
     vertices: torch.Tensor,
@@ -2475,7 +2516,7 @@ class MarkerBatchCollator:
             scene_device = self.scene_visibility_device
             if scene_device is None:
                 scene_device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-            scene_marker_outputs = _batched_scene_marker_visibility_targets_from_mesh(
+            scene_marker_outputs = _bounded_scene_marker_visibility_targets_from_mesh(
                 [
                     (full_vertices, intrinsics_for_vis, frame_vertex_ids, object_mesh)
                     for _, _, full_vertices, _, intrinsics_for_vis, frame_vertex_ids, object_mesh, _, _, _ in scene_visibility_frames
