@@ -109,9 +109,18 @@ def prepare_oss_destination(destination_root: Path) -> Path:
     matching = [item for item in mounts if probe == item[0] or item[0] in probe.parents]
     if not matching or max(matching, key=lambda item: len(str(item[0])))[1] != "fuse.ossfs2":
         raise RuntimeError(f"destination is not on an ossfs2 mount: {destination_root}")
-    connections = Path("/sys/fs/fuse/connections")
-    if not connections.is_dir() or not any(connections.iterdir()):
-        raise RuntimeError(f"ossfs2 mount has no live FUSE connection: {destination_root}")
+    # /sys/fs/fuse/connections is host-level and not populated inside this
+    # container (observed empty even on a genuinely live ossfs2 mount), so a
+    # real write+read+delete probe is used instead to catch a stale mount.
+    probe_file = probe / f".ossfs2_liveness_probe_{os.getpid()}"
+    try:
+        probe_file.write_text("probe", encoding="utf-8")
+        if probe_file.read_text(encoding="utf-8") != "probe":
+            raise RuntimeError(f"ossfs2 mount failed a write/read probe: {destination_root}")
+    except OSError as error:
+        raise RuntimeError(f"ossfs2 mount is not writable: {destination_root} ({error})") from error
+    finally:
+        probe_file.unlink(missing_ok=True)
     destination_root.mkdir(parents=True, exist_ok=True)
     return destination_root.resolve(strict=True)
 

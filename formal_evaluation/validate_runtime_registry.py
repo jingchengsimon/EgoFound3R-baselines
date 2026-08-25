@@ -27,6 +27,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--method", action="append", dest="methods", help="Method key to check; repeatable. Defaults to all.")
+    parser.add_argument("--dataset", help="Dataset-specific runtime contract to validate when a method declares one.")
     parser.add_argument("--strict", action="store_true", help="Return nonzero for required missing paths or size mismatches.")
     args = parser.parse_args()
 
@@ -48,6 +49,14 @@ def main() -> int:
     for method in selected:
         spec = known[method]
         required = list(spec.get("required_paths", []))
+        dataset_required = spec.get("dataset_required_paths", {})
+        if dataset_required:
+            if args.dataset is None:
+                parser.error(f"--dataset is required for dataset-specific runtime validation of {method}")
+            if args.dataset not in dataset_required:
+                failures.append(f"{method}: no dataset-specific runtime contract for {args.dataset}")
+            else:
+                required.extend(dataset_required[args.dataset])
         for key in ("source_root", "python", "conda_executable"):
             if spec.get(key):
                 required.append({"role": key, "path": spec[key], "state": "present"})

@@ -195,9 +195,25 @@
       "input_contract": "Prepared H2O GT hand/object geometry; cache read is excluded from model-forward timing.",
       "execution_status": "checkpoint forward and formal H2O geometry pipeline verified; future datasets require a dataset-specific geometry-cache builder",
       "required_paths": [
-        {"role": "S2Contact checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact/checkpoints/20211027-212322.pt", "bytes": 2392568, "state": "present"},
-        {"role": "H2O right-hand prepared geometry cache", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/s2_right_h2o_30724.pkl", "bytes": 46831283519, "state": "present"}
-      ]
+        {"role": "S2Contact checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact/checkpoints/20211027-212322.pt", "bytes": 2392568, "state": "present"}
+      ],
+      "dataset_required_paths": {
+        "h2o": [
+          {"role": "H2O right-hand prepared geometry cache", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/s2_right_h2o_30724.pkl", "bytes": 46831283519, "state": "present"}
+        ],
+        "hot3d": [
+          {"role": "Hot3D first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/s2_right_hot3d_400.pkl", "state": "present"},
+          {"role": "Hot3D first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/s2_right_hot3d_400_index.jsonl", "state": "present"}
+        ],
+        "arctic": [
+          {"role": "ARCTIC first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/s2_right_arctic_400.pkl", "state": "present"},
+          {"role": "ARCTIC first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/s2_right_arctic_400_index.jsonl", "state": "present"}
+        ],
+        "oakink_v2": [
+          {"role": "OakInk-v2 first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/s2_right_oakink_v2_400.pkl", "state": "present"},
+          {"role": "OakInk-v2 first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/s2_right_oakink_v2_400_index.jsonl", "state": "present"}
+        ]
+      }
     },
     "contactopt": {
       "category": "contact",
@@ -209,9 +225,25 @@
       "input_contract": "Prepared H2O GT hand/object geometry; cache read is excluded from model-forward timing.",
       "execution_status": "checkpoint forward and formal H2O geometry pipeline verified; future datasets require a dataset-specific geometry-cache builder",
       "required_paths": [
-        {"role": "ContactOpt checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt/checkpoints/deepcontact_checkpoint.pt", "bytes": 5751948, "state": "present"},
-        {"role": "H2O right-hand prepared geometry cache", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/contactopt_right_h2o_30724.pkl", "bytes": 46831283522, "state": "present"}
-      ]
+        {"role": "ContactOpt checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt/checkpoints/deepcontact_checkpoint.pt", "bytes": 5751948, "state": "present"}
+      ],
+      "dataset_required_paths": {
+        "h2o": [
+          {"role": "H2O right-hand prepared geometry cache", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/contactopt_right_h2o_30724.pkl", "bytes": 46831283522, "state": "present"}
+        ],
+        "hot3d": [
+          {"role": "Hot3D first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/contactopt_right_hot3d_400.pkl", "state": "present"},
+          {"role": "Hot3D first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/contactopt_right_hot3d_400_index.jsonl", "state": "present"}
+        ],
+        "arctic": [
+          {"role": "ARCTIC first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/contactopt_right_arctic_400.pkl", "state": "present"},
+          {"role": "ARCTIC first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/contactopt_right_arctic_400_index.jsonl", "state": "present"}
+        ],
+        "oakink_v2": [
+          {"role": "OakInk-v2 first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/contactopt_right_oakink_v2_400.pkl", "state": "present"},
+          {"role": "OakInk-v2 first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/contactopt_right_oakink_v2_400_index.jsonl", "state": "present"}
+        ]
+      }
     },
     "vggt": {
       "category": "scene reconstruction",
