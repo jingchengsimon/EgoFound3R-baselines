@@ -63,6 +63,7 @@ def main() -> None:
         _roots(args.root), args.mano_dir,
         scene_visibility_device=args.scene_visibility_device,
         interhand_contact_compute_device=args.interhand_contact_compute_device,
+        datasets=args.datasets,
     )
     entries = []
     for index, row in enumerate(selected, start=1):
