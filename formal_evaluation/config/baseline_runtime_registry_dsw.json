@@ -199,7 +199,8 @@
       ],
       "dataset_required_paths": {
         "h2o": [
-          {"role": "H2O right-hand prepared geometry cache", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/s2_right_h2o_30724.pkl", "bytes": 46831283519, "state": "present"}
+          {"role": "H2O 283-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/s2_right_h2o_283.pkl", "state": "present"},
+          {"role": "H2O 283-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/s2_right_h2o_283_index.jsonl", "state": "present"}
         ],
         "hot3d": [
           {"role": "Hot3D first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/s2_right_hot3d_400.pkl", "state": "present"},
@@ -212,6 +213,14 @@
         "oakink_v2": [
           {"role": "OakInk-v2 first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/s2_right_oakink_v2_400.pkl", "state": "present"},
           {"role": "OakInk-v2 first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/s2_right_oakink_v2_400_index.jsonl", "state": "present"}
+        ],
+        "taco": [
+          {"role": "TACO 400-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/s2_right_taco_400.pkl", "state": "present"},
+          {"role": "TACO 400-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/s2_right_taco_400_index.jsonl", "state": "present"}
+        ],
+        "hoi4d": [
+          {"role": "HOI4D 461-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/s2_right_hoi4d_461.pkl", "state": "present"},
+          {"role": "HOI4D 461-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/s2_right_hoi4d_461_index.jsonl", "state": "present"}
         ]
       }
     },
@@ -229,7 +238,8 @@
       ],
       "dataset_required_paths": {
         "h2o": [
-          {"role": "H2O right-hand prepared geometry cache", "path": "/mnt/workspace/sjc/DATA/H2O/h2o_contact_baseline/cache/contactopt_right_h2o_30724.pkl", "bytes": 46831283522, "state": "present"}
+          {"role": "H2O 283-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/contactopt_right_h2o_283.pkl", "state": "present"},
+          {"role": "H2O 283-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/contactopt_right_h2o_283_index.jsonl", "state": "present"}
         ],
         "hot3d": [
           {"role": "Hot3D first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/contactopt_right_hot3d_400.pkl", "state": "present"},
@@ -242,6 +252,14 @@
         "oakink_v2": [
           {"role": "OakInk-v2 first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/contactopt_right_oakink_v2_400.pkl", "state": "present"},
           {"role": "OakInk-v2 first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/contactopt_right_oakink_v2_400_index.jsonl", "state": "present"}
+        ],
+        "taco": [
+          {"role": "TACO 400-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/contactopt_right_taco_400.pkl", "state": "present"},
+          {"role": "TACO 400-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/contactopt_right_taco_400_index.jsonl", "state": "present"}
+        ],
+        "hoi4d": [
+          {"role": "HOI4D 461-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/contactopt_right_hoi4d_461.pkl", "state": "present"},
+          {"role": "HOI4D 461-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/contactopt_right_hoi4d_461_index.jsonl", "state": "present"}
         ]
       }
     },
