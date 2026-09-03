@@ -39,13 +39,15 @@ def compute_hand_metrics(
     root_prediction=None,
     root_target=None,
     world_prediction=None,
+    world_aligned_prediction=None,
     world_target=None,
     temporal_fps: float = 30.0,
+    emit_point_metrics: bool = True,
 ) -> dict[str, float | int]:
     """Evaluate one hand geometry granularity.
 
-    Native metrics use the supplied coordinate frame. W/WA are emitted
-    only when the caller supplies explicit world-coordinate tensors.
+    Point metrics use the supplied canonical coordinate frame. W and WA are
+    emitted only from world tensors already aligned by the camera trajectory.
     """
     if granularity not in _GRANULARITIES:
         raise ValueError(f"unknown hand granularity: {granularity}")
@@ -66,11 +68,14 @@ def compute_hand_metrics(
         roots_gt = np.asarray(root_target, dtype=float)
         if roots_pred.shape != roots_gt.shape or roots_pred.shape != pred.shape[:2] + (3,):
             raise ValueError(f"roots must have shape {pred.shape[:2] + (3,)}")
-    world_pred = world_gt = None
-    if world_prediction is not None or world_target is not None:
-        if world_prediction is None or world_target is None:
-            raise ValueError("world prediction and target must be provided together")
-        world_pred = _check_points("world prediction", world_prediction, point_count=point_count, frame_count=pred.shape[0])
+    world_pred = world_aligned_pred = world_gt = None
+    if world_prediction is not None or world_aligned_prediction is not None or world_target is not None:
+        if world_target is None or (world_prediction is None and world_aligned_prediction is None):
+            raise ValueError("at least one aligned world prediction and its target must be provided")
+        if world_prediction is not None:
+            world_pred = _check_points("world prediction", world_prediction, point_count=point_count, frame_count=pred.shape[0])
+        if world_aligned_prediction is not None:
+            world_aligned_pred = _check_points("world aligned prediction", world_aligned_prediction, point_count=point_count, frame_count=pred.shape[0])
         world_gt = _check_points("world target", world_target, point_count=point_count, frame_count=pred.shape[0])
 
     result: dict[str, float | int] = {"hand_coverage": float(np.mean(np.any(pred_valid, axis=1)))} if granularity == "joint" else {}
@@ -79,27 +84,29 @@ def compute_hand_metrics(
         valid_frames = pred_valid[:, hand_index] & gt_valid[:, hand_index]
         point_mask = np.broadcast_to(valid_frames[:, None], (pred.shape[0], point_count))
         result[f"{prefix}valid_frame_count"] = int(np.count_nonzero(valid_frames))
-        result[f"{prefix}{position_name}"] = float(keypoint_mpjpe(pred[:, hand_index], gt[:, hand_index], point_mask, alignment="none", unit_scale=1000.0))
-        result[f"{prefix}pa_{position_name}"] = float(keypoint_mpjpe(pred[:, hand_index], gt[:, hand_index], point_mask, alignment="procrustes", unit_scale=1000.0))
-        result[f"{prefix}global_sim3_{position_name}"] = _mean_per_frame(world_aligned_mpjpe(
-            pred[:, hand_index], gt[:, hand_index], joint_mask=point_mask,
-            mode="all", chunk_length=pred.shape[0], unit_scale=1000.0,
-        ))
-        if roots_pred is not None:
-            relative_pred = pred[:, hand_index] - roots_pred[:, hand_index, None, :]
-            relative_gt = gt[:, hand_index] - roots_gt[:, hand_index, None, :]
-            result[f"{prefix}rr_{position_name}"] = float(keypoint_mpjpe(relative_pred, relative_gt, point_mask, alignment="none", unit_scale=1000.0))
-        temporal = temporal_point_errors(pred[:, hand_index], gt[:, hand_index], valid_frames, fps=temporal_fps, unit_scale=1000.0)
-        result[f"{prefix}{velocity_name}"] = float(temporal["velocity_error"])
-        result[f"{prefix}{velocity_name}_pair_count"] = int(temporal["velocity_pair_count"])
-        result[f"{prefix}{acceleration_name}"] = float(temporal["acceleration_error"])
-        result[f"{prefix}{acceleration_name}_triplet_count"] = int(temporal["acceleration_triplet_count"])
+        if emit_point_metrics:
+            result[f"{prefix}{position_name}"] = float(keypoint_mpjpe(pred[:, hand_index], gt[:, hand_index], point_mask, alignment="none", unit_scale=1000.0))
+            result[f"{prefix}pa_{position_name}"] = float(keypoint_mpjpe(pred[:, hand_index], gt[:, hand_index], point_mask, alignment="procrustes", unit_scale=1000.0))
+            result[f"{prefix}global_sim3_{position_name}"] = _mean_per_frame(world_aligned_mpjpe(
+                pred[:, hand_index], gt[:, hand_index], joint_mask=point_mask,
+                mode="all", chunk_length=pred.shape[0], unit_scale=1000.0,
+            ))
+            if roots_pred is not None:
+                relative_pred = pred[:, hand_index] - roots_pred[:, hand_index, None, :]
+                relative_gt = gt[:, hand_index] - roots_gt[:, hand_index, None, :]
+                result[f"{prefix}rr_{position_name}"] = float(keypoint_mpjpe(relative_pred, relative_gt, point_mask, alignment="none", unit_scale=1000.0))
+            temporal = temporal_point_errors(pred[:, hand_index], gt[:, hand_index], valid_frames, fps=temporal_fps, unit_scale=1000.0)
+            result[f"{prefix}{velocity_name}"] = float(temporal["velocity_error"])
+            result[f"{prefix}{velocity_name}_pair_count"] = int(temporal["velocity_pair_count"])
+            result[f"{prefix}{acceleration_name}"] = float(temporal["acceleration_error"])
+            result[f"{prefix}{acceleration_name}_triplet_count"] = int(temporal["acceleration_triplet_count"])
         if world_pred is not None:
             world_mask = point_mask & np.isfinite(world_pred[:, hand_index]).all(axis=-1) & np.isfinite(world_gt[:, hand_index]).all(axis=-1)
             result[f"{prefix}w_{position_name}"] = _mean_per_frame(world_mpjpe(world_pred[:, hand_index], world_gt[:, hand_index], world_mask, unit_scale=1000.0))
-            result[f"{prefix}wa_{position_name}"] = _mean_per_frame(world_aligned_mpjpe(
-                world_pred[:, hand_index], world_gt[:, hand_index], joint_mask=world_mask,
-                mode="all", chunk_length=pred.shape[0], unit_scale=1000.0,
+        if world_aligned_pred is not None:
+            world_mask = point_mask & np.isfinite(world_aligned_pred[:, hand_index]).all(axis=-1) & np.isfinite(world_gt[:, hand_index]).all(axis=-1)
+            result[f"{prefix}wa_{position_name}"] = _mean_per_frame(world_mpjpe(
+                world_aligned_pred[:, hand_index], world_gt[:, hand_index], world_mask, unit_scale=1000.0,
             ))
         if granularity == "joint":
             presence = binary_metrics(pred_valid[:, hand_index], gt_valid[:, hand_index])
@@ -107,6 +114,7 @@ def compute_hand_metrics(
                 f"hand_{side}_presence_precision": float(presence["precision"]),
                 f"hand_{side}_presence_recall": float(presence["recall"]),
                 f"hand_{side}_presence_f1": float(presence["f1"]),
-                f"hand_{side}_sim3_mpjpe": result[f"{prefix}global_sim3_mpjpe"],
             })
+            if emit_point_metrics:
+                result[f"hand_{side}_sim3_mpjpe"] = result[f"{prefix}global_sim3_mpjpe"]
     return result

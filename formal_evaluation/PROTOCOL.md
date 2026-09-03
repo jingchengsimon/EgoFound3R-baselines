@@ -24,11 +24,21 @@ is defined exclusively by the supplied manifest.
   `MPVPE/MPVVE/MPVAE`; velocities are mm/s and accelerations are mm/s² at the
   recorded `temporal_fps` (30 by default). Invalid neighbours never form a
   temporal difference.
-- W is unaligned world-coordinate error. WA fits one Sim(3) from all valid
-  window points. WA2 is not a formal metric.
-  Camera-space predictions are transformed with predicted `camera_c2w` when
-  present, otherwise explicitly with GT `camera_c2w` and marked as such in the
-  window result. Native world outputs remain native world outputs.
+- Raw joint `MPJPE` and marker `MPMPE` are always evaluated in camera space.
+  Native world-space outputs such as HaWoR are transformed back with that
+  method's own predicted `camera_c2w`; GT camera poses are not used for this
+  conversion. If a world-space output has no predicted camera pose, its raw
+  joint/marker point metrics are undefined instead of mixing coordinates.
+- World metrics first fit one transform from the predicted camera-centre
+  trajectory to the GT camera-centre trajectory for the complete window. The
+  same transform is then applied to both hands and every geometry granularity;
+  hand points never determine this alignment. W uses fixed-scale SE(3) and is
+  emitted only for metric-scale methods. WA uses scale-adjusting Sim(3) and is
+  emitted for metric- and relative-scale methods. Raw unaligned W and the old
+  hand-point-aligned WA/WA2 values are not formal metrics.
+- Camera-only methods without predicted `camera_c2w` do not emit W/WA. Native
+  world outputs also require their own predicted `camera_c2w` so their map can
+  be aligned to GT without using GT hand points.
 - WiLoR, HaWoR, PAD-Hand, and Dyn-HaMR provide native MANO-778 geometry.
   EgoFound3R's vertex metrics are explicitly marked `derived_from_195_markers`
   through the fixed MeshGraphormer upsampling matrix. ReViV4D remains 21-joint
@@ -41,8 +51,10 @@ is defined exclusively by the supplied manifest.
 - Poses are `camera_c2w` in the OpenCV convention.  Aligned camera ATE is
   `ate(..., alignment="similarity")`, i.e. trajectory RMSE after window-level
   Sim(3), not the legacy mean Euclidean trajectory error.
-- Rotation is `extrinsic_metrics` geodesic rotation converted from radians to
-  degrees.
+- Rotation is the mean geodesic error in degrees after expressing predicted
+  and GT poses relative to their first valid frame, so a constant global world
+  rotation does not dominate the score. The previous absolute-frame value is
+  retained only as `camera_rot_absolute_error_deg` for diagnosis.
 - `camera_pose_auc_30` is AUC@30° of the maximum of rotation and translation-
   direction errors after expressing all poses relative to the first valid frame.
 - Relative-depth baselines use one explicit `median(GT/pred)` scale over all

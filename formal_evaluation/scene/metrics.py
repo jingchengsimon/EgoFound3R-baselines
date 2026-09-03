@@ -38,6 +38,18 @@ def camera_pose_auc(prediction_pose: np.ndarray, target_pose: np.ndarray, valid:
     return {"auc": float(values["auc"]), "valid_count": int(values["valid_count"])}
 
 
+def camera_relative_rotation_error(prediction_pose: np.ndarray, target_pose: np.ndarray, valid: np.ndarray) -> float:
+    """Mean rotation error after removing the first-valid-frame world gauge."""
+    indices = np.flatnonzero(valid)
+    if indices.size < 2:
+        return float("nan")
+    anchor = int(indices[0])
+    pred_relative = np.matmul(np.linalg.inv(prediction_pose[anchor]), prediction_pose[indices[1:]])
+    target_relative = np.matmul(np.linalg.inv(target_pose[anchor]), target_pose[indices[1:]])
+    errors = relative_rotation_angle(pred_relative[:, :3, :3], target_relative[:, :3, :3])
+    return float(np.mean(np.rad2deg(errors)))
+
+
 def compute_scene_metrics(prediction_pose, target_pose, depth_pairs, *, scale_type: str) -> dict[str, float]:
     result: dict[str, float] = {}
     if prediction_pose is not None and target_pose is not None:
@@ -47,7 +59,8 @@ def compute_scene_metrics(prediction_pose, target_pose, depth_pairs, *, scale_ty
         if np.any(valid):
             result["camera_ate_aligned"] = ate(pred[valid, :3, 3], gt[valid, :3, 3], alignment="similarity")
             pose_values = extrinsic_metrics(pred, gt, mask=valid)
-            result["camera_rot_error_deg"] = float(np.rad2deg(pose_values["rotation_geodesic_rad"]))
+            result["camera_rot_error_deg"] = camera_relative_rotation_error(pred, gt, valid)
+            result["camera_rot_absolute_error_deg"] = float(np.rad2deg(pose_values["rotation_geodesic_rad"]))
             auc = camera_pose_auc(pred, gt, valid)
             result["camera_pose_auc_30"] = float(auc["auc"])
             result["camera_pose_auc_30_valid_count"] = int(auc["valid_count"])

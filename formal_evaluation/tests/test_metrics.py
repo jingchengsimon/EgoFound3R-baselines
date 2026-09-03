@@ -30,7 +30,7 @@ class FormalMetricTests(unittest.TestCase):
         shifted = joints + np.array([0.001, 0.0, 0.0])
         values = compute_hand_metrics(
             shifted, joints, valid, valid,
-            world_prediction=shifted, world_target=joints,
+            world_prediction=shifted, world_aligned_prediction=joints, world_target=joints,
         )
         self.assertAlmostEqual(values["hand_left_w_mpjpe"], 1.0, places=6)
         self.assertLess(values["hand_left_wa_mpjpe"], 1e-8)
@@ -57,7 +57,22 @@ class FormalMetricTests(unittest.TestCase):
         self.assertAlmostEqual(values["auc"], 1.0, places=8)
         self.assertEqual(values["valid_count"], 3)
 
-    def test_evaluator_derives_egofound3r_vertices_and_uses_gt_pose_fallback(self) -> None:
+    def test_scene_rotation_removes_global_world_gauge(self) -> None:
+        target = np.repeat(np.eye(4)[None], 4, axis=0)
+        target[:, 0, 3] = np.arange(4)
+        angle = np.deg2rad(150.0)
+        gauge = np.eye(4)
+        gauge[:3, :3] = np.array([
+            [np.cos(angle), -np.sin(angle), 0.0],
+            [np.sin(angle), np.cos(angle), 0.0],
+            [0.0, 0.0, 1.0],
+        ])
+        prediction = np.matmul(gauge[None], target)
+        values = compute_scene_metrics(prediction, target, [], scale_type="metric")
+        self.assertAlmostEqual(values["camera_rot_error_deg"], 0.0, places=8)
+        self.assertAlmostEqual(values["camera_rot_absolute_error_deg"], 150.0, places=8)
+
+    def test_evaluator_derives_egofound3r_vertices_without_formal_gt_pose_lifted_world_metrics(self) -> None:
         rng = np.random.default_rng(3)
         T = 3
         vertices = rng.normal(size=(T, 2, 778, 3)).astype(np.float32)
@@ -84,8 +99,92 @@ class FormalMetricTests(unittest.TestCase):
             targets=target,
         )
         self.assertEqual(result["hand_vertex_geometry_provenance"], "derived_from_195_markers")
-        self.assertEqual(result["hand_vertex_world_pose_source"], "gt_camera_c2w")
-        self.assertTrue(np.isfinite(result["hand_left_vertex_w_mpvpe"]))
+        self.assertEqual(result["hand_vertex_world_pose_source"], "unavailable_without_predicted_camera_c2w")
+        self.assertNotIn("hand_left_vertex_w_mpvpe", result)
+        self.assertNotIn("hand_left_w_mpjpe", result)
+
+    def test_evaluator_converts_world_joints_and_markers_to_camera(self) -> None:
+        rng = np.random.default_rng(4)
+        frame_count = 4
+        joints_camera = rng.normal(size=(frame_count, 2, 21, 3)).astype(np.float32)
+        markers_camera = rng.normal(size=(frame_count, 2, 195, 3)).astype(np.float32)
+        vertices_camera = upsample_mano_markers(markers_camera)
+        target_pose = np.repeat(np.eye(4, dtype=np.float32)[None], frame_count, axis=0)
+        target_pose[:, :3, 3] = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [2.0, 1.0, 1.0]])
+        angle = np.deg2rad(120.0)
+        gauge = np.eye(4, dtype=np.float32)
+        gauge[:3, :3] = np.array([
+            [np.cos(angle), -np.sin(angle), 0.0],
+            [np.sin(angle), np.cos(angle), 0.0],
+            [0.0, 0.0, 1.0],
+        ])
+        gauge[:3, 3] = np.array([3.0, -2.0, 4.0])
+        prediction_pose = np.matmul(gauge[None], target_pose)
+
+        def camera_to_world(points: np.ndarray) -> np.ndarray:
+            return np.einsum("tij,tnpj->tnpi", prediction_pose[:, :3, :3], points) + prediction_pose[:, None, None, :3, 3]
+
+        target = {
+            "camera_c2w": target_pose,
+            "camera_valid": np.ones(frame_count, dtype=bool),
+            "hand_joints_camera": joints_camera,
+            "hand_vertices_camera": vertices_camera,
+            "hand_markers_camera": markers_camera,
+            "hand_valid": np.ones((frame_count, 2), dtype=bool),
+        }
+        prediction = {
+            "camera_c2w": prediction_pose,
+            "camera_valid": np.ones(frame_count, dtype=bool),
+            "hand_joints_world": camera_to_world(joints_camera),
+            "hand_markers_world": camera_to_world(markers_camera),
+            "hand_valid": np.ones((frame_count, 2), dtype=bool),
+        }
+        result = evaluate_window(
+            method="hawor", config={"group": ["hand"], "scale_type": "metric_world_hand"},
+            metadata={"frame_ids": ["0", "1", "2", "3"]}, predictions=prediction,
+            gt_metadata={"dataset": "h2o", "sequence_id": "s", "window_id": "w", "frame_ids": ["0", "1", "2", "3"]},
+            targets=target,
+        )
+        self.assertLess(result["hand_left_mpjpe"], 1e-3)
+        self.assertLess(result["hand_right_marker_mpmpe"], 1e-3)
+        self.assertLess(result["hand_left_vertex_mpvpe"], 1e-3)
+        self.assertEqual(result["hand_joint_metric_coordinate"], "camera")
+        self.assertEqual(result["hand_joint_metric_coordinate_source"], "world_to_camera_via_predicted_camera_c2w")
+        self.assertEqual(result["hand_vertex_metric_coordinate_source"], "world_to_camera_via_predicted_camera_c2w")
+        self.assertLess(result["hand_left_w_mpjpe"], 1e-3)
+        self.assertLess(result["hand_right_marker_wa_mpmpe"], 1e-3)
+        self.assertEqual(result["hand_world_alignment_source"], "camera_trajectory")
+        self.assertNotIn("hand_left_diagnostic_se3_w_mpjpe", result)
+
+    def test_relative_world_metric_uses_camera_trajectory_sim3_only(self) -> None:
+        rng = np.random.default_rng(5)
+        frame_count = 4
+        joints = rng.normal(size=(frame_count, 2, 21, 3)).astype(np.float32)
+        target_pose = np.repeat(np.eye(4, dtype=np.float32)[None], frame_count, axis=0)
+        target_pose[:, :3, 3] = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [2.0, 1.0, 1.0]])
+        prediction_pose = target_pose.copy()
+        prediction_pose[:, :3, 3] *= 2.0
+        target = {
+            "camera_c2w": target_pose,
+            "camera_valid": np.ones(frame_count, dtype=bool),
+            "hand_joints_camera": joints,
+            "hand_valid": np.ones((frame_count, 2), dtype=bool),
+        }
+        prediction = {
+            "camera_c2w": prediction_pose,
+            "camera_valid": np.ones(frame_count, dtype=bool),
+            "hand_joints_camera": joints * 2.0,
+            "hand_valid": np.ones((frame_count, 2), dtype=bool),
+        }
+        result = evaluate_window(
+            method="reviv4d", config={"group": ["hand"], "scale_type": "relative"},
+            metadata={"frame_ids": ["0", "1", "2", "3"]}, predictions=prediction,
+            gt_metadata={"dataset": "h2o", "sequence_id": "s", "window_id": "w", "frame_ids": ["0", "1", "2", "3"]},
+            targets=target,
+        )
+        self.assertNotIn("hand_left_w_mpjpe", result)
+        self.assertLess(result["hand_left_wa_mpjpe"], 1e-3)
+        self.assertAlmostEqual(result["hand_world_alignment_sim3_scale"], 0.5, places=6)
 
     def test_depth_keeps_small_positive_gt(self) -> None:
         poses = np.repeat(np.eye(4)[None], 3, axis=0)

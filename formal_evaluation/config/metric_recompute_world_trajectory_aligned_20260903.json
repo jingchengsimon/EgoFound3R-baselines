@@ -1,0 +1,44 @@
+{
+  "methods": [
+    "egofound3r",
+    "hawor",
+    "reviv4d"
+  ],
+  "datasets": {
+    "h2o": {
+      "expected_windows": 283,
+      "main_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_60f_20260822T112000Z_continuation",
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/h2o/gt_cache/index_shard_000_of_001.jsonl",
+      "history_roots": {
+        "hawor": "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_hot3d_backfill_20260824T074500Z/hawor",
+        "reviv4d": "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_hot3d_backfill_20260824T074500Z/reviv4d"
+      }
+    },
+    "hot3d": {
+      "expected_windows": 400,
+      "main_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_hot3d_60f_20260819T203000Z_e6c4a5e_6001",
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/hot3d/gt_cache/index_shard_000_of_001.jsonl",
+      "history_roots": {
+        "reviv4d": "/mnt/oss/pre-train/ego/eval_artifacts/formal_hot3d_60f_20260819T202019Z_e6c4a5e/reviv4d"
+      }
+    },
+    "arctic": {
+      "expected_windows": 434,
+      "main_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_arctic_60f_20260820T0400Z_e6c4a5e",
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/arctic/gt_cache/index_shard_000_of_001.jsonl"
+    },
+    "oakink_v2": {
+      "expected_windows": 400,
+      "main_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_oakink_v2_60f_20260820T0022Z_e6c4a5e",
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache/index_shard_000_of_001.jsonl"
+    },
+    "taco": {
+      "expected_windows": 400,
+      "main_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_taco_60f_20260822T112000Z_continuation",
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/taco/gt_cache/index_shard_000_of_001.jsonl",
+      "history_roots": {
+        "reviv4d": "/mnt/oss/pre-train/ego/eval_artifacts/formal_taco_hoi4d_backfill_20260825T103000Z/taco_reviv4d"
+      }
+    }
+  }
+}
