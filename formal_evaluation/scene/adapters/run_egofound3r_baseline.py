@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import tempfile
@@ -82,6 +83,19 @@ def _load_training_config_compat(config_path: Path):
             return load_project_config(compatible_path)
 
 
+def _verified_checkpoint_sha256(path: Path, expected: str) -> str:
+    if not expected:
+        raise ValueError("EgoFound3R requires a registered checkpoint_sha256")
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+            digest.update(chunk)
+    actual = digest.hexdigest()
+    if actual != expected:
+        raise ValueError(f"checkpoint SHA-256 mismatch: expected={expected}, actual={actual}")
+    return actual
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="运行 EgoFound3R 并写入 comparison canonical 输出")
     parser.add_argument("--phase", choices=("smoke", "pilot", "formal"), required=True)
@@ -96,7 +110,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sequence")
     parser.add_argument("--window-id")
     parser.add_argument("--device", default="cuda:0")
-    parser.add_argument("--global-stride", type=int, choices=range(1, 6))
+    parser.add_argument("--global-stride", type=int, choices=range(1, 6), default=5)
     return parser.parse_args()
 
 
@@ -125,11 +139,14 @@ def main() -> None:
     method_config = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"][
         "egofound3r"
     ]
+    checkpoint_sha256 = _verified_checkpoint_sha256(
+        args.checkpoint, method_config.get("checkpoint_sha256")
+    )
     project_config = _load_training_config_compat(args.config)
     if project_config.marker_runtime.backend != "vggt_omega":
         raise ValueError(f"EgoFound3R 正式比较要求 vggt_omega backend，实际为 {project_config.marker_runtime.backend}")
     project_config.marker_runtime.vggt_checkpoint_path = str(args.backbone_checkpoint)
-    global_stride = args.global_stride or int(active_marker_model_config(project_config).global_stride)
+    global_stride = args.global_stride
     global_anchor_phase = global_stride // 2
 
     if not torch.cuda.is_available():
@@ -224,7 +241,7 @@ def main() -> None:
         "source_tag": method_config.get("source_tag"),
         "inference_commit": method_config.get("inference_commit"),
         "checkpoint": str(args.checkpoint),
-        "checkpoint_sha256": method_config.get("checkpoint_sha256"),
+        "checkpoint_sha256": checkpoint_sha256,
         "checkpoint_role": method_config["checkpoint_role"],
         "model_compute_dtype": str(marker_model_floating_dtype(model)),
         "global_stride": global_stride,
@@ -259,6 +276,12 @@ def main() -> None:
         "peak_gpu_memory_bytes": peak_memory,
         "device": args.device,
         "frame_count": len(frame_ids),
+        "provenance": {
+            key: metadata[key] for key in (
+                "source_commit", "source_tag", "inference_commit", "checkpoint",
+                "checkpoint_sha256", "model_compute_dtype", "global_stride", "global_anchor_phase",
+            )
+        },
     }
     native_arrays = {
         "camera_w2c": camera_w2c,

@@ -1,8 +1,81 @@
+import argparse
+import ast
+import hashlib
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+import pytest
+
 from formal_evaluation.run_egofound3r_smoke import _idle_gpu
+
+
+def _adapter_ast():
+    # Exercise the adapter without importing the deployment-only model runtime.
+    path = Path(__file__).parents[1] / "scene/adapters/run_egofound3r_baseline.py"
+    return ast.parse(path.read_text()), str(path)
+
+
+def test_adapter_stride_parser_and_checkpoint_hash(tmp_path) -> None:
+    tree, filename = _adapter_ast()
+    functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
+                 and node.name in {"parse_args", "_verified_checkpoint_sha256"}]
+    namespace = {"argparse": argparse, "Path": Path, "hashlib": hashlib}
+    exec(compile(ast.Module(body=functions, type_ignores=[]), filename, "exec"), namespace)
+    required = ["adapter", "--phase", "formal"]
+    for flag in ("methods-config", "config", "checkpoint", "backbone-checkpoint", "output-root"):
+        required.extend([f"--{flag}", "unused"])
+    for stride in (None, 1, 2, 3, 4, 5):
+        argv = required + ([] if stride is None else ["--global-stride", str(stride)])
+        with mock.patch.object(sys, "argv", argv):
+            assert namespace["parse_args"]().global_stride == (5 if stride is None else stride)
+    for invalid in ("0", "6", "mixed"):
+        with mock.patch.object(sys, "argv", required + ["--global-stride", invalid]):
+            with pytest.raises(SystemExit):
+                namespace["parse_args"]()
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"checkpoint fixture")
+    digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    verify = namespace["_verified_checkpoint_sha256"]
+    assert verify(checkpoint, digest) == digest
+    for expected in (None, "0" * 64):
+        with pytest.raises(ValueError):
+            verify(checkpoint, expected)
+
+
+@pytest.mark.parametrize("stride", range(1, 6))
+def test_stride_reaches_forward_contract_and_saved_provenance(stride) -> None:
+    tree, filename = _adapter_ast()
+    main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "main")
+    assignments = {node.targets[0].id: node for node in main.body
+                   if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)}
+    contract_call = next(node for node in ast.walk(main) if isinstance(node, ast.Call)
+                         and isinstance(node.func, ast.Name)
+                         and node.func.id == "_build_prediction_marker_forward_contract")
+    forward = mock.Mock(return_value=({}, None))
+    method = {"source_commit": "training", "source_tag": "tag", "inference_commit": "inference"}
+    namespace = {"args": SimpleNamespace(global_stride=stride, checkpoint=Path("checkpoint.pt")),
+                 "project_config": object(), "frames": object(),
+                 "_build_prediction_marker_forward_contract": forward,
+                 "method_config": method, "checkpoint_sha256": "verified-sha",
+                 "model": object(), "marker_model_floating_dtype": lambda model: "torch.bfloat16"}
+    setup = [assignments["global_stride"], assignments["global_anchor_phase"]]
+    exec(compile(ast.Module(body=setup, type_ignores=[]), filename, "exec"), namespace)
+    eval(compile(ast.Expression(contract_call), filename, "eval"), namespace)
+    assert forward.call_args.kwargs["global_stride"] == stride
+    assert forward.call_args.kwargs["global_anchor_phase"] == stride // 2
+    expected = {**method, "checkpoint": "checkpoint.pt", "checkpoint_sha256": "verified-sha",
+                "model_compute_dtype": "torch.bfloat16", "global_stride": stride,
+                "global_anchor_phase": stride // 2}
+    metadata = assignments["metadata"].value
+    namespace["metadata"] = {key.value: eval(compile(ast.Expression(value), filename, "eval"), namespace)
+                             for key, value in zip(metadata.keys, metadata.values)
+                             if isinstance(key, ast.Constant) and key.value in expected}
+    assert namespace["metadata"] == expected
+    run = assignments["run"].value
+    provenance = next(value for key, value in zip(run.keys, run.values) if key.value == "provenance")
+    assert eval(compile(ast.Expression(provenance), filename, "eval"), namespace) == expected
 
 
 def test_adapter_uses_dynamic_multirate_bf16_contract() -> None:
@@ -14,7 +87,7 @@ def test_adapter_uses_dynamic_multirate_bf16_contract() -> None:
         "marker_model_floating_dtype",
         "_build_prediction_marker_forward_contract",
         "_call_marker_model",
-        'parser.add_argument("--global-stride", type=int, choices=range(1, 6))',
+        'parser.add_argument("--global-stride", type=int, choices=range(1, 6), default=5)',
         "global_stride=global_stride",
         "global_anchor_phase=global_anchor_phase",
         '"global_stride": global_stride',

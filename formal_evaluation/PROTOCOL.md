@@ -11,7 +11,30 @@ is defined exclusively by the supplied manifest.
 - Undefined metrics remain `NaN`; aggregation excludes them and records the
   corresponding `*_undefined_window_count`.  It never converts an undefined
   precision, recall, or F1 into zero.
-- No SHA/digest, smoke run, or scheduler submission is performed by this tree.
+- EgoFound3R verifies its checkpoint SHA-256 before inference. Managed runs
+  are registered through taskctl before submission; a task status of `done`
+  alone does not prove that a physical `COMPLETE` file exists.
+
+## Final EgoFound3R stride comparison
+
+- Training tag: `final-root-depth-fusion-v2-dynamic-multirate-20260904`;
+  source commit: `e73dcd8a51b0a06c1790fc18e1b1aa7b5180aea8`;
+  inference commit: `8b0c44a721bded978373a3d9a8222b096d8c9930`.
+- Use the registered step-1599 checkpoint with native BF16 weights and
+  SHA-256 `f358de97ff0c9f9ba4f35f48a68f62582403580a2095f08a9362b94ad2416a6f`.
+- The adapter defaults to `--global-stride 5`, independently of training
+  config defaults. Evaluate five separate fixed strides, 1 through 5, with
+  `global_anchor_phase = global_stride // 2`; there is no mixed evaluation.
+  Both metadata and run provenance record the stride, phase, and model identity.
+- Each stride uses the same 2,378 windows: H2O 283, HOT3D 400, ARCTIC 434,
+  OakInk-v2 400, TACO 400, HOI4D 461. Keep checkpoint, GT cache, preprocessing,
+  and metric code identical. Reuse each prediction for all applicable metrics;
+  do not fabricate native vertex predictions from this model's marker output.
+- Before formal submission, verify the default smoke's `COMPLETE` and
+  `smoke_summary.json`, then validate a stride-1 single-window smoke. Each
+  stride needs its own registered logical task and unique output root. Run
+  independent single-GPU jobs only on taskctl-confirmed idle resources on
+  5000/5001/6001. Deployment and formal results remain separate from local tests.
 
 ## Hand
 
