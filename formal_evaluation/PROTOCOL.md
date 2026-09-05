@@ -26,6 +26,10 @@ is defined exclusively by the supplied manifest.
   config defaults. Evaluate five separate fixed strides, 1 through 5, with
   `global_anchor_phase = global_stride // 2`; there is no mixed evaluation.
   Both metadata and run provenance record the stride, phase, and model identity.
+- Decode the typed multi-rate output using its native H/G fields. Refined H-axis
+  cameras are already metric and clip-local. G-axis depth is scaled once with
+  the runtime's scene factor and is valid only at the registered global anchors;
+  non-anchor depth/intrinsics remain NaN, with false validity masks.
 - Each stride uses the same 2,378 windows: H2O 283, HOT3D 400, ARCTIC 434,
   OakInk-v2 400, TACO 400, HOI4D 461. Keep checkpoint, GT cache, preprocessing,
   and metric code identical. Reuse each prediction for all applicable metrics;

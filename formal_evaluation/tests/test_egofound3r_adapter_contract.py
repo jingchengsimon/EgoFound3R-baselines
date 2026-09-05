@@ -7,8 +7,35 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
+import numpy as np
 
 from formal_evaluation.run_egofound3r_smoke import _idle_gpu
+
+
+def test_multirate_scene_uses_native_anchors_without_double_scaling():
+    tree, filename = _adapter_ast()
+    function = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_multirate_scene_arrays")
+    namespace = {"np": np, "_as_numpy": np.asarray}
+    exec(compile(ast.Module(body=[function], type_ignores=[]), filename, "exec"), namespace)
+    camera = np.tile(np.eye(4), (1, 6, 1, 1))
+    camera[..., 0, 3] = 7
+    output = {"camera_pose_refined_high": camera,
+              "camera_refined_valid_high": np.ones((1, 6), dtype=bool),
+              "interpolation_scene_metric_scale_valid": np.array([True]),
+              "interpolation_scene_metric_scale_factor": np.array([3.0]),
+              "intrinsics_global": np.tile(np.eye(3), (1, 2, 1, 1)),
+              "depth_global": np.full((1, 2, 2, 2, 1), 2.0),
+              "depth_conf_global": np.ones((1, 2, 2, 2, 1))}
+    frame_map = SimpleNamespace(global_anchor_indices=np.array([[1, 4]]),
+                                global_frame_present=np.array([[True, True]]))
+    poses, intrinsics, depth, confidence = namespace["_multirate_scene_arrays"](output, frame_map)
+    assert np.all(poses[:, 0, 3] == 7)
+    assert np.all(depth[[1, 4]] == 6)
+    assert np.isnan(depth[[0, 2, 3, 5]]).all()
+    assert np.isnan(intrinsics[[0, 2, 3, 5]]).all()
+    assert np.all(confidence[[1, 4]] == 1)
+    output["interpolation_scene_metric_scale_valid"][:] = False
+    assert np.isnan(namespace["_multirate_scene_arrays"](output, frame_map)[2]).all()
 
 
 def _adapter_ast():
