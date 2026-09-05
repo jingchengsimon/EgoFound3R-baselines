@@ -65,6 +65,7 @@ def test_stride_reaches_forward_contract_and_saved_provenance(stride) -> None:
     eval(compile(ast.Expression(contract_call), filename, "eval"), namespace)
     assert forward.call_args.kwargs["global_stride"] == stride
     assert forward.call_args.kwargs["global_anchor_phase"] == stride // 2
+    assert forward.call_args.kwargs["batch"] == {}
     expected = {**method, "checkpoint": "checkpoint.pt", "checkpoint_sha256": "verified-sha",
                 "model_compute_dtype": "torch.bfloat16", "global_stride": stride,
                 "global_anchor_phase": stride // 2}

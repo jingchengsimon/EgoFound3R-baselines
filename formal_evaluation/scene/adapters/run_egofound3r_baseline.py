@@ -173,7 +173,8 @@ def main() -> None:
     with torch.inference_mode():
         forward_contract, _ = _build_prediction_marker_forward_contract(
             project_config=project_config,
-            batch=None,
+            # These RGB windows have no padding or teacher/GT observations.
+            batch={},
             images=frames,
             global_stride=global_stride,
             global_anchor_phase=global_anchor_phase,
