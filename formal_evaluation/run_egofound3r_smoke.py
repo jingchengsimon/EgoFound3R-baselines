@@ -21,12 +21,17 @@ def _idle_gpu(initial: str) -> str:
         return initial
     while True:
         probe = subprocess.run(
-            ["nvidia-smi", "--query-gpu=index,memory.used", "--format=csv,noheader,nounits"],
+            ["nvidia-smi", "--query-gpu=index,uuid,memory.used", "--format=csv,noheader,nounits"],
             text=True, capture_output=True, check=False,
         )
+        apps = subprocess.run(
+            ["nvidia-smi", "--query-compute-apps=gpu_uuid", "--format=csv,noheader,nounits"],
+            text=True, capture_output=True, check=False,
+        )
+        busy = {row.strip() for row in apps.stdout.splitlines() if row.strip()}
         for row in probe.stdout.splitlines() if probe.returncode == 0 else []:
-            index, memory = (value.strip() for value in row.split(",", 1))
-            if memory.isdigit() and int(memory) <= 10:
+            index, uuid, memory = (value.strip() for value in row.split(",", 2))
+            if apps.returncode == 0 and uuid not in busy and memory.isdigit() and int(memory) <= 1024:
                 return index
         time.sleep(60)
 
@@ -52,6 +57,7 @@ def main() -> None:
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--inference-commit", required=True)
     parser.add_argument("--checkpoint-sha256", required=True)
+    parser.add_argument("--global-stride", type=int, choices=range(1, 6), default=5)
     args = parser.parse_args()
 
     window_input = _first_window(args.input_index)
@@ -68,6 +74,7 @@ def main() -> None:
         "--backbone-checkpoint", str(args.backbone_checkpoint),
         "--output-root", str(args.output_root),
         "--device", "cuda:0",
+        "--global-stride", str(args.global_stride),
     ], env=environment, check=True)
 
     output = args.output_root / "egofound3r" / "smoke" / str(record["cache_id"])
@@ -82,6 +89,8 @@ def main() -> None:
         "checkpoint_sha256": args.checkpoint_sha256,
         "model_compute_dtype": "torch.bfloat16",
         "phase": "smoke",
+        "global_stride": args.global_stride,
+        "global_anchor_phase": args.global_stride // 2,
     }
     mismatches = {key: metadata.get(key) for key, value in expected.items() if metadata.get(key) != value}
     if mismatches or run.get("status") != "success":

@@ -96,6 +96,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sequence")
     parser.add_argument("--window-id")
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--global-stride", type=int, choices=range(1, 6))
     return parser.parse_args()
 
 
@@ -128,6 +129,8 @@ def main() -> None:
     if project_config.marker_runtime.backend != "vggt_omega":
         raise ValueError(f"EgoFound3R 正式比较要求 vggt_omega backend，实际为 {project_config.marker_runtime.backend}")
     project_config.marker_runtime.vggt_checkpoint_path = str(args.backbone_checkpoint)
+    global_stride = args.global_stride or int(active_marker_model_config(project_config).global_stride)
+    global_anchor_phase = global_stride // 2
 
     if not torch.cuda.is_available():
         raise RuntimeError("EgoFound3R smoke/pilot 需要 CUDA")
@@ -155,6 +158,8 @@ def main() -> None:
             project_config=project_config,
             batch=None,
             images=frames,
+            global_stride=global_stride,
+            global_anchor_phase=global_anchor_phase,
         )
         outputs = reconstruct_metric_scale_outputs(
             _call_marker_model(model, frames, **forward_contract)
@@ -222,6 +227,8 @@ def main() -> None:
         "checkpoint_sha256": method_config.get("checkpoint_sha256"),
         "checkpoint_role": method_config["checkpoint_role"],
         "model_compute_dtype": str(marker_model_floating_dtype(model)),
+        "global_stride": global_stride,
+        "global_anchor_phase": global_anchor_phase,
         "phase": args.phase,
         "dataset": dataset,
         "sequence": sequence,
