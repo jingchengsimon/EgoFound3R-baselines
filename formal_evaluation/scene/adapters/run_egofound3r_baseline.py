@@ -259,7 +259,12 @@ def main() -> None:
         "checkpoint": str(args.checkpoint),
         "checkpoint_sha256": checkpoint_sha256,
         "checkpoint_role": method_config["checkpoint_role"],
-        "model_compute_dtype": str(marker_model_floating_dtype(model)),
+        "model_compute_dtype": str(frames.dtype),
+        "model_input_dtype": str(frames.dtype),
+        "model_floating_dtypes_after_forward": sorted({
+            str(value.dtype) for value in (*model.parameters(), *model.buffers())
+            if value.is_floating_point()
+        }),
         "global_stride": global_stride,
         "global_anchor_phase": global_anchor_phase,
         "phase": args.phase,

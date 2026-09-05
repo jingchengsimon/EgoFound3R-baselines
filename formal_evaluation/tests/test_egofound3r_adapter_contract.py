@@ -83,10 +83,10 @@ def test_stride_reaches_forward_contract_and_saved_provenance(stride) -> None:
     forward = mock.Mock(return_value=({}, None))
     method = {"source_commit": "training", "source_tag": "tag", "inference_commit": "inference"}
     namespace = {"args": SimpleNamespace(global_stride=stride, checkpoint=Path("checkpoint.pt")),
-                 "project_config": object(), "frames": object(),
+                 "project_config": object(), "frames": SimpleNamespace(dtype="torch.bfloat16"),
                  "_build_prediction_marker_forward_contract": forward,
                  "method_config": method, "checkpoint_sha256": "verified-sha",
-                 "model": object(), "marker_model_floating_dtype": lambda model: "torch.bfloat16"}
+                 "model": object(), "marker_model_floating_dtype": mock.Mock(side_effect=ValueError("mixed after forward"))}
     setup = [assignments["global_stride"], assignments["global_anchor_phase"]]
     exec(compile(ast.Module(body=setup, type_ignores=[]), filename, "exec"), namespace)
     eval(compile(ast.Expression(contract_call), filename, "eval"), namespace)
