@@ -16,7 +16,13 @@ from PIL import Image
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from egohandmetric_prompt import build_runtime_marker_model, load_marker_model_weights, load_project_config
+from egohandmetric_prompt import (
+    build_runtime_marker_model,
+    load_marker_model_weights,
+    load_project_config,
+    marker_model_floating_dtype,
+)
+from egohandmetric_prompt.configs import active_marker_model_config
 from egohandmetric_prompt.marker_runtime import reconstruct_metric_scale_outputs
 from formal_evaluation.common.io import (
     load_manifest,
@@ -26,6 +32,7 @@ from formal_evaluation.common.io import (
 )
 from formal_evaluation.common.schema import SCHEMA_VERSION
 from formal_evaluation.datasets.window_inputs import load_window_input
+from train_marker_model import _build_prediction_marker_forward_contract, _call_marker_model
 
 
 def _as_numpy(tensor: torch.Tensor) -> np.ndarray:
@@ -130,16 +137,27 @@ def main() -> None:
     start = time.perf_counter()
 
     model = build_runtime_marker_model(project_config).to(device)
-    load_marker_model_weights(model, args.checkpoint)
+    load_marker_model_weights(
+        model,
+        args.checkpoint,
+        model_config=active_marker_model_config(project_config),
+        resume_mode="weights",
+        align_model_floating_dtype=True,
+    )
     model.eval()
     frames = _load_frames(
         frame_paths,
         height=project_config.marker_runtime.image_height,
         width=project_config.marker_runtime.image_width,
-    ).to(device)
+    ).to(device=device, dtype=marker_model_floating_dtype(model))
     with torch.inference_mode():
+        forward_contract, _ = _build_prediction_marker_forward_contract(
+            project_config=project_config,
+            batch=None,
+            images=frames,
+        )
         outputs = reconstruct_metric_scale_outputs(
-            model(frames, inference_egocentric=project_config.marker_model.inference_egocentric)
+            _call_marker_model(model, frames, **forward_contract)
         )
     torch.cuda.synchronize()
     elapsed = time.perf_counter() - start
@@ -156,8 +174,16 @@ def main() -> None:
         depth_confidence = depth_confidence[..., 0]
     joints_camera = _as_numpy(outputs["dense_joint_xyz"])[0]
     markers_camera = _as_numpy(outputs["dense_vertex_xyz"])[0]
-    hand_valid = _as_numpy(outputs["presence_mask"])[0].astype(bool)
-    presence_probability = torch.sigmoid(outputs["presence_logits"])[0].detach().float().cpu().numpy()
+    presence_probability = _as_numpy(outputs["in_view_probability"])[0]
+    root_translation_valid = outputs.get("root_translation_valid")
+    if (
+        not isinstance(root_translation_valid, torch.Tensor)
+        or tuple(root_translation_valid.shape[:3]) != tuple(outputs["dense_joint_xyz"].shape[:3])
+    ):
+        raise ValueError(
+            "EgoFound3R comparison requires root_translation_valid aligned with [B, T, side]"
+        )
+    hand_valid = _as_numpy(root_translation_valid)[0].astype(bool, copy=False)
     joint_visibility = torch.sigmoid(outputs["dense_joint_visibility_logits"])[0].detach().float().cpu().numpy()
     marker_visibility = torch.sigmoid(outputs["dense_vertex_visibility_logits"])[0].detach().float().cpu().numpy()
     joint_contact = torch.sigmoid(outputs["dense_joint_contact_logits"])[0].detach().float().cpu().numpy()
@@ -190,8 +216,12 @@ def main() -> None:
         "method": "egofound3r",
         "source": method_config["source"],
         "source_commit": method_config["source_commit"],
+        "source_tag": method_config.get("source_tag"),
+        "inference_commit": method_config.get("inference_commit"),
         "checkpoint": str(args.checkpoint),
+        "checkpoint_sha256": method_config.get("checkpoint_sha256"),
         "checkpoint_role": method_config["checkpoint_role"],
+        "model_compute_dtype": str(marker_model_floating_dtype(model)),
         "phase": args.phase,
         "dataset": dataset,
         "sequence": sequence,
@@ -209,7 +239,11 @@ def main() -> None:
         "runner_detail": {
             "hand_geometry": "native 21 joints and 195 MANO markers; no fabricated 778-vertex mesh",
             "world_hand_geometry": "derived from native camera-space hands and predicted camera_c2w",
-            "metric_reconstruction": "reconstruct_metric_scale_outputs",
+            "metric_reconstruction": (
+                "reconstruct_metric_scale_outputs applies only to VGGT depth/camera; "
+                "Hand XYZ is already metric"
+            ),
+            "hand_valid_semantics": "analytic Root translation validity per physical side",
         },
     }
     run = {

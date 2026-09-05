@@ -59,12 +59,13 @@
       "execution_mode": "real_model_forward",
       "runner": "formal_evaluation/scene/adapters/run_egofound3r_baseline.py",
       "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
-      "source_root": "/mnt/workspace/sjc/EgoFound3R_dev_dataloader_shm_compat_20260808",
-      "input_contract": "RGB video; 12-frame windows, stride 12, final window padded for 500 outputs.",
+      "source_root": "/mnt/cpfs/sjc/EgoFound3R_final_bf16_inference_8b0c44a_20260905",
+      "input_contract": "RGB formal windows; dynamic H:G stride 1..5 model evaluated with the registered formal config.",
       "execution_status": "runtime_paths_verified",
       "required_paths": [
-        {"role": "runtime config", "path": "/mnt/workspace/sjc/EgoFound3R_dev_dataloader_shm_compat_20260808/configs/h2o_contact_or_conf_flow_workers4_step006099_100steps_20260809.toml", "bytes": 5095, "state": "present"},
-        {"role": "model checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R_dev/outputs/experiments/step_006099_newflow.pt", "bytes": 2924621790, "state": "present"},
+        {"role": "runtime config", "path": "/mnt/cpfs/sjc/EgoFound3R_archive/20260905/protected_checkpoints/final_dynamic_multirate_root_fusion_v2_e73dcd8_step001599/seven_dataset_dynamic_multirate_resume1400_memory_safe_1600_8gpu_zero2_20260904.toml", "bytes": 6681, "state": "present"},
+        {"role": "model checkpoint", "path": "/mnt/cpfs/sjc/EgoFound3R_archive/20260905/protected_checkpoints/final_dynamic_multirate_root_fusion_v2_e73dcd8_step001599/checkpoints/step_001599.pt", "bytes": 425716721, "state": "present"},
+        {"role": "model comparison adapter", "path": "/mnt/cpfs/sjc/EgoFound3R_final_bf16_inference_8b0c44a_20260905/scripts/comparison/run_egofound3r_baseline.py", "bytes": 10561, "state": "present"},
         {"role": "VGGT-Omega backbone", "path": "/mnt/workspace/sjc/models/pretrained/VGGT-Omega/vggt_omega_1b_512.pt", "bytes": 4576706117, "state": "present"}
       ]
     },
