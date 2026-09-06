@@ -103,14 +103,25 @@ def main() -> None:
         if summary.get("global_anchor_phase") != stride // 2:
             raise ValueError(f"smoke phase mismatch: {path}")
         smoke_strides.add(stride)
-    if not {1, 5}.issubset(smoke_strides):
-        raise ValueError("default and stride-1 smoke are required")
+    required_smoke_strides = set(spec.get("required_smoke_strides", [1, 5]))
+    if not required_smoke_strides or not required_smoke_strides.issubset({1, 2, 5}):
+        raise ValueError("invalid required_smoke_strides")
+    # Preserve the original formal gate; single-stride ablations explicitly require [5].
+    if not required_smoke_strides.issubset(smoke_strides):
+        raise ValueError(f"required smoke strides missing: {sorted(required_smoke_strides - smoke_strides)}")
+    if "required_smoke_strides" in spec and args.global_stride not in required_smoke_strides:
+        raise ValueError("requested stride must be included in required_smoke_strides")
+    methods_path = Path(spec.get("methods_config", worktree / "formal_evaluation/config/methods_v1.json"))
+    methods = json.loads(methods_path.read_text())
+    method = methods["methods"]["egofound3r"]
+    for key in ("source_commit", "inference_commit", "checkpoint_sha256"):
+        if method.get(key) != spec[key]:
+            raise ValueError(f"method configuration model identity mismatch: {key}")
     if args.output_root.exists():
         raise FileExistsError(args.output_root)
     args.output_root.mkdir(parents=True)
-    methods = json.loads((worktree / "formal_evaluation/config/methods_v1.json").read_text())
     selected_methods = args.work_root / "methods.json"
-    selected_methods.write_text(json.dumps({"methods": {"egofound3r": methods["methods"]["egofound3r"]}}))
+    selected_methods.write_text(json.dumps({"methods": {"egofound3r": method}}))
     errors, reports = {}, {}
     for dataset, (index, gt, records) in prepared.items():
         root = args.output_root / dataset
