@@ -9,6 +9,8 @@ MANO joints reconstructed from Dyn-HaMR's official optimized parameters.
 from __future__ import annotations
 
 import argparse
+from functools import lru_cache
+import gc
 import importlib.util
 import json
 import os
@@ -109,10 +111,26 @@ def _load_context(window_input: Path, record: dict[str, object], context_frames:
     return paths, scoring_indices
 
 
-def main() -> None:
+@lru_cache(maxsize=1)
+def _frontend(source_root, checkpoint_root, detector_weight, droid_weight, device):
+    """Keep only frozen networks resident; all tracking/optimization state is per window."""
+    from ultralytics import YOLO
+    from droid import Droid
+    hamer = _module(Path(source_root) / "third-party/hamer/run.py", "dyn_hamr_window_hamer")
+    model, config = hamer.load_hamer(checkpoint_root)
+    model = model.to(device).eval()
+    detector = YOLO(detector_weight)
+    detector.to(device)
+    return hamer, model, config, detector, Droid.load_network(droid_weight)
+
+
+def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--phase", choices=("smoke", "pilot", "formal"), required=True)
-    parser.add_argument("--window-input", type=Path, required=True)
+    inputs = parser.add_mutually_exclusive_group(required=True)
+    inputs.add_argument("--window-input", type=Path)
+    inputs.add_argument("--window-input-index", type=Path,
+                        help="JSONL window_input paths processed with one resident model set")
     parser.add_argument("--methods-config", type=Path, required=True)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--hamer-checkpoint-root", type=Path, required=True)
@@ -126,7 +144,21 @@ def main() -> None:
     parser.add_argument("--context-frames", type=int,
                         help="feed this many contiguous RGB frames to the official pipeline and score only "
                              "the manifest frames; required because Dyn-HaMR drops tracks of 60 frames or fewer")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    if args.window_input_index is None:
+        _run_window(args)
+        return
+    rows = [json.loads(line) for line in args.window_input_index.read_text().splitlines() if line.strip()]
+    paths = [str(Path(row["window_input"]).resolve(strict=True)) for row in rows]
+    if not paths or len(paths) != len(set(paths)):
+        raise ValueError("batch input index is empty or has duplicate windows")
+    for completed, path in enumerate(paths, 1):
+        _run_window(SimpleNamespace(**{**vars(args), "window_input": Path(path)}))
+        gc.collect()
+        print(json.dumps({"completed_windows": completed, "target_windows": len(paths)}), flush=True)
+
+
+def _run_window(args):
     if args.output_root.exists() and (args.output_root / "dyn_hamr" / args.phase).exists():
         # Per-window directory below is still checked before writing; this only
         # avoids implying a shared overwrite policy.
@@ -135,7 +167,6 @@ def main() -> None:
     import cv2
     import torch
     from hydra import compose, initialize_config_dir
-    from ultralytics import YOLO
 
     record = load_window_input(args.window_input)
     scoring_count = len(record["frame_ids"])
@@ -157,13 +188,11 @@ def main() -> None:
     for path in (dyn_root, hamer_root, droid_root, args.hamer_checkpoint_root, args.detector_weight, args.droid_weight, args.scratch_dir):
         path.resolve(strict=True)
     sys.path[:0] = [str(dyn_root), str(hamer_root), str(droid_root), str(droid_root / "droid_slam")]
-    hamer = _module(hamer_root / "run.py", "dyn_hamr_window_hamer")
     from body_model import MANO
     from body_model.utils import run_mano
     from data.dataset import MultiPeopleDataset
     from preproc.export_hamer import export_sequence_results
     from preproc.run_slam import get_slam_parser, run_loaded, save_cameras
-    from droid import Droid
     from run_opt import run_opt, set_seed
     from util.loaders import resolve_cfg_paths
 
@@ -174,10 +203,10 @@ def main() -> None:
     images = [image if image.shape[:2] == (height, width) else cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA) for image in images]
     device = torch.device(args.device)
     torch.cuda.set_device(device)
-    hamer_model, hamer_cfg = hamer.load_hamer(str(args.hamer_checkpoint_root))
-    hamer_model = hamer_model.to(device).eval()
-    detector = YOLO(str(args.detector_weight)); detector.to(device)
-    droid_net = Droid.load_network(str(args.droid_weight))
+    hamer, hamer_model, hamer_cfg, detector, droid_net = _frontend(
+        str(source_root), str(args.hamer_checkpoint_root.resolve()),
+        str(args.detector_weight.resolve()), str(args.droid_weight.resolve()), str(device),
+    )
     sequence_name = f"dyn_hamr_{cache_id}"
     work = Path(tempfile.mkdtemp(prefix="dyn_hamr_window_", dir=args.scratch_dir))
     start = time.perf_counter()
