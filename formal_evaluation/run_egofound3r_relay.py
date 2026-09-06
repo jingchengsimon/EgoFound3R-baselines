@@ -91,7 +91,7 @@ def main():
         plans = json.loads((args.plan_root / 'plan.json').read_text())
         if args.smoke:
             plans = {'h2o': {**plans['h2o'], 'records': plans['h2o']['records'][:1]}}
-        elif not all((Path(root) / 'COMPLETE').is_file() for root in spec['relay_smoke_roots']):
+        elif not all(Path(path).is_file() for path in spec['relay_smoke_receipts']):
             raise RuntimeError('RELAY_SMOKE_NOT_COMPLETE')
         if args.role == 'consumer':
             args.output_root.mkdir(parents=True, exist_ok=False)
