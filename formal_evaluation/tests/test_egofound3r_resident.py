@@ -24,7 +24,7 @@ class ResidentTest(unittest.TestCase):
                   _load_training_config_compat=lambda p: config,
                   torch=SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: True)),
                   build_runtime_marker_model=build, load_marker_model_weights=load,
-                  active_marker_model_config=lambda p: p)
+                  active_marker_model_config=lambda p: p, marker_model_floating_dtype=lambda m: "bf16")
         exec(compile(ast.Module(body=[fn], type_ignores=[]), str(path), 'exec'), ns)
         args = ('config', 'checkpoint', 'backbone', 'verified', 'cuda:0', 12, 34)
         self.assertIs(ns['_runtime'](*args), ns['_runtime'](*args))

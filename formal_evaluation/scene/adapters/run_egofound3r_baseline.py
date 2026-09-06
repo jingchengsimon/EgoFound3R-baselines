@@ -151,7 +151,7 @@ def _runtime(config, checkpoint, backbone, expected_sha256, device, size, mtime_
         resume_mode="weights", align_model_floating_dtype=True,
     )
     model.eval()
-    return checkpoint_sha256, project_config, model
+    return checkpoint_sha256, project_config, model, marker_model_floating_dtype(model)
 
 
 def main(argv=None) -> None:
@@ -183,7 +183,7 @@ def main(argv=None) -> None:
     torch.cuda.reset_peak_memory_stats()
     device = torch.device(args.device)
     start = time.perf_counter()
-    checkpoint_sha256, project_config, model = _runtime(
+    checkpoint_sha256, project_config, model, input_dtype = _runtime(
         str(args.config), str(args.checkpoint), str(args.backbone_checkpoint),
         method_config.get("checkpoint_sha256"), args.device,
         args.checkpoint.stat().st_size, args.checkpoint.stat().st_mtime_ns,
@@ -194,7 +194,7 @@ def main(argv=None) -> None:
         frame_paths,
         height=project_config.marker_runtime.image_height,
         width=project_config.marker_runtime.image_width,
-    ).to(device=device, dtype=marker_model_floating_dtype(model))
+    ).to(device=device, dtype=input_dtype)
     with torch.inference_mode():
         forward_contract, _ = _build_prediction_marker_forward_contract(
             project_config=project_config,
