@@ -22,7 +22,6 @@ from egohandmetric_prompt import (
     build_runtime_marker_model,
     load_marker_model_weights,
     load_project_config,
-    marker_model_floating_dtype,
 )
 from egohandmetric_prompt.configs import active_marker_model_config
 from formal_evaluation.common.io import (
@@ -38,6 +37,12 @@ from train_marker_model import _build_prediction_marker_forward_contract, _call_
 
 def _as_numpy(tensor: torch.Tensor) -> np.ndarray:
     return tensor.detach().float().cpu().numpy()
+
+
+def marker_model_floating_dtype(model):
+    # Older ablation runtimes do not export the formal inference dtype helper.
+    from egohandmetric_prompt.checkpoints import marker_model_floating_dtype as floating_dtype
+    return floating_dtype(model)
 
 
 def _invert_w2c(w2c: np.ndarray) -> np.ndarray:
@@ -136,8 +141,11 @@ def parse_args(argv=None) -> argparse.Namespace:
 
 
 @lru_cache(maxsize=1)
-def _runtime(config, checkpoint, backbone, expected_sha256, device, size, mtime_ns):
+def _runtime(config, checkpoint, backbone, expected_sha256, device, size, mtime_ns,
+             runtime_mode="checkpoint_native"):
     """One immutable checkpoint per worker; retain no per-window predictions."""
+    if runtime_mode not in {"checkpoint_native", "ablation_bf16"}:
+        raise ValueError(f"unsupported runtime_mode: {runtime_mode}")
     checkpoint_sha256 = _verified_checkpoint_sha256(Path(checkpoint), expected_sha256)
     project_config = _load_training_config_compat(Path(config))
     if project_config.marker_runtime.backend != "vggt_omega":
@@ -146,12 +154,22 @@ def _runtime(config, checkpoint, backbone, expected_sha256, device, size, mtime_
     if not torch.cuda.is_available():
         raise RuntimeError("EgoFound3R comparison requires CUDA")
     model = build_runtime_marker_model(project_config).to(device)
-    load_marker_model_weights(
-        model, Path(checkpoint), model_config=active_marker_model_config(project_config),
-        resume_mode="weights", align_model_floating_dtype=True,
-    )
+    if runtime_mode == "ablation_bf16":
+        # Match ZeRO-2 training conversion. MANO's own _apply keeps frozen LBS layers FP32.
+        model.to(dtype=torch.bfloat16)
+        load_marker_model_weights(
+            model, Path(checkpoint), model_config=active_marker_model_config(project_config),
+            resume_mode="weights",
+        )
+        input_dtype = torch.bfloat16
+    else:
+        load_marker_model_weights(
+            model, Path(checkpoint), model_config=active_marker_model_config(project_config),
+            resume_mode="weights", align_model_floating_dtype=True,
+        )
+        input_dtype = marker_model_floating_dtype(model)
     model.eval()
-    return checkpoint_sha256, project_config, model, marker_model_floating_dtype(model)
+    return checkpoint_sha256, project_config, model, input_dtype
 
 
 def main(argv=None) -> None:
@@ -187,6 +205,7 @@ def main(argv=None) -> None:
         str(args.config), str(args.checkpoint), str(args.backbone_checkpoint),
         method_config.get("checkpoint_sha256"), args.device,
         args.checkpoint.stat().st_size, args.checkpoint.stat().st_mtime_ns,
+        method_config.get("runtime_mode", "checkpoint_native"),
     )
     global_stride = args.global_stride
     global_anchor_phase = global_stride // 2
