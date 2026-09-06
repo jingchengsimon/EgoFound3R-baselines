@@ -187,6 +187,7 @@ def main():
                 print(json.dumps({'role': args.role, 'uploaded_windows' if args.role == 'consumer' else 'produced_windows': completed, 'dataset': dataset, 'reused': previous is not None}), flush=True)
             if args.role == 'consumer':
                 index = args.output_root / dataset / 'predictions.jsonl'
+                index.parent.mkdir(parents=True, exist_ok=True)
                 index.write_text(''.join(json.dumps(row) + '\n' for row in predictions))
                 gt = Path(plan['gt'])
                 if args.smoke:
