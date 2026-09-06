@@ -96,6 +96,14 @@ def main() -> None:
         summary = json.loads((path / "smoke_summary.json").read_text())
         if not (path / "COMPLETE").is_file() or summary.get("status") != "complete":
             raise ValueError(f"smoke gate not complete: {path}")
+        if spec.get("require_metric_smoke"):
+            if summary.get("dataset") not in spec["datasets"] or summary.get("metric_validation") != "complete":
+                raise ValueError(f"dataset metric smoke not complete: {path}")
+            report = json.loads(Path(summary["metric_report"]).read_text())
+            method_report = report["methods"]["egofound3r"]
+            if (report.get("gt_windows") != 1 or method_report.get("missing_prediction_windows") != 0
+                    or method_report.get("datasets", {}).get(summary["dataset"], {}).get("n_windows") != 1):
+                raise ValueError(f"dataset metric smoke coverage mismatch: {path}")
         for key in ("source_commit", "inference_commit", "checkpoint_sha256"):
             if summary.get(key) != spec[key]:
                 raise ValueError(f"smoke model identity mismatch: {path}:{key}")

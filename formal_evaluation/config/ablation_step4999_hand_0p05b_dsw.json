@@ -1,0 +1,62 @@
+{
+  "method_order": [
+    "egofound3r"
+  ],
+  "methods": {
+    "egofound3r": {
+      "group": [
+        "hand",
+        "scene",
+        "contact"
+      ],
+      "source": "isolated ablation training checkout",
+      "source_commit": "64c9f850b91f83e188bb6862917ef57542404976",
+      "source_tag": "",
+      "inference_commit": "64c9f850b91f83e188bb6862917ef57542404976",
+      "checkpoint_sha256": "16ae6d6f6bfc3ddbfc6fcaf7a9decde6b26fc1f643ed97ad1f11473c7ea6ecf7",
+      "checkpoint_role": "hand_0p05b final 5000 optimizer steps checkpoint",
+      "scale_type": "metric",
+      "native_outputs": [
+        "camera_c2w",
+        "intrinsics",
+        "depth",
+        "hand_joints_camera",
+        "hand_markers_camera",
+        "hand_presence_probability",
+        "hand_visibility",
+        "marker_visibility",
+        "joint_contact_probability",
+        "marker_contact_probability"
+      ],
+      "runtime_mode": "ablation_bf16",
+      "source_root": "/mnt/cpfs/sjc/EgoFound3R_ablation_hand_0p05b_e73dcd8_20260904",
+      "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+      "execution_status": "pending_strict_runtime_validation_and_smoke",
+      "required_paths": [
+        {
+          "role": "runtime config",
+          "path": "/mnt/cpfs/sjc/EgoFound3R_ablation_hand_0p05b_e73dcd8_20260904/outputs/ablation_hand_0p05b_5k_4gpu_b4_h12_22_gas1_scratch_64c9f85_5000_20260905_20260905_083438_124130/ablation_hand_0p05b_dynamic_5k_3gpu_20260904.toml",
+          "bytes": 6014,
+          "state": "present"
+        },
+        {
+          "role": "model checkpoint",
+          "path": "/mnt/cpfs/sjc/EgoFound3R_ablation_hand_0p05b_e73dcd8_20260904/outputs/ablation_hand_0p05b_5k_4gpu_b4_h12_22_gas1_scratch_64c9f85_5000_20260905_20260905_083438_124130/checkpoints/step_004999.pt",
+          "bytes": 103480569,
+          "state": "present"
+        },
+        {
+          "role": "VGGT-Omega backbone",
+          "path": "/mnt/workspace/sjc/models/pretrained/VGGT-Omega/vggt_omega_1b_512.pt",
+          "bytes": 4576706117,
+          "state": "present"
+        },
+        {
+          "role": "human model root",
+          "path": "/mnt/workspace/sjc/models/human",
+          "state": "present"
+        }
+      ]
+    }
+  }
+}

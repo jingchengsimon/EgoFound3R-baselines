@@ -8,6 +8,7 @@
 - 在该独立 method 配置设置 `runtime_mode: "ablation_bf16"`：按 ZeRO-2 训练路径将模型转为 BF16，再调用各消融自身的严格 checkpoint 加载器，仍检查结构、shape 和 dtype。MANO 自身的 `_apply` 会保留冻结几何层的 FP32。其他评测默认仍用 `checkpoint_native`，不自动回退。
 - `required_smoke_strides: [5]`：只评测 stride5 的显式 smoke 门槛。未指定时保留原正式评测 `[1, 5]` 门槛。指定时必须包含请求评测的 stride。
 - `smoke_roots`：对应消融的已验证 smoke，不能借用正式模型回执。来源、stride/phase、完成状态必须一致。
+- `require_metric_smoke: true`：使用 `run_ablation_dataset_smoke.py --spec <单数据集spec> --output-root <独立smoke目录>`。它先复用完整输入核验与单窗推理，再复用正式指标入口验证同一 GT 窗口；覆盖完整后才写顶层完成标记。正式入口同时核对该数据集的单窗指标报告。未定义指标仍保留 NaN。
 - `datasets`：单个数据集，沿用正式模型固定的完整窗口清单及 GT；窗口数分别为 283/400/434/400/400/461。
 
 入口在推理前检查 methods 配置和 spec 的模型来源一致性；现有逐窗口校验、指标计算及 COMPLETE 流程保持不变。模型级六数据集汇总另做 CPU 步骤。
@@ -21,3 +22,5 @@
 ```sh
 python -m unittest formal_evaluation.tests.test_egofound3r_single_dataset
 ```
+
+`config/ablation_step4999_hand_0p1b_dsw.json` 和 `config/ablation_step4999_hand_0p05b_dsw.json` 各自同时提供独立 methods 配置和 strict runtime 路径配置；不改变固定 14-method registry。checkpoint 摘要来自已登记的 CPU 核验，运行时路径仍须在实际提交节点逐项通过 strict 检查。
