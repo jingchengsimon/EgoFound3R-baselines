@@ -66,7 +66,7 @@ def main():
     parser.add_argument('--plan-root', type=Path, required=True)
     parser.add_argument('--mailbox', type=Path, required=True)
     parser.add_argument('--output-root', type=Path, required=True)
-    parser.add_argument('--stride', type=int, choices=(4, 5), required=True)
+    parser.add_argument('--stride', type=int, choices=(1, 2, 3, 4, 5), required=True)
     parser.add_argument('--smoke', action='store_true')
     args = parser.parse_args()
     spec = json.loads(args.spec.read_text())
