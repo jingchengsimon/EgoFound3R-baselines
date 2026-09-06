@@ -1,5 +1,6 @@
-"""One-window CPFS mailbox between an inference node and an OSS reader node."""
+"""Bounded CPFS relay with optional resident inference and verified prior receipts."""
 import argparse
+from collections import deque
 import hashlib
 import json
 import os
@@ -68,7 +69,14 @@ def main():
     parser.add_argument('--output-root', type=Path, required=True)
     parser.add_argument('--stride', type=int, choices=(1, 2, 3, 4, 5), required=True)
     parser.add_argument('--smoke', action='store_true')
+    parser.add_argument('--smoke-count', type=int, default=1)
+    parser.add_argument('--persistent', action='store_true')
+    parser.add_argument('--max-inflight', type=int, default=1)
+    parser.add_argument('--previous-mailbox', type=Path, action='append', default=[])
+
     args = parser.parse_args()
+    if not 1 <= args.max_inflight <= 8 or args.smoke_count < 1:
+        raise ValueError('invalid relay bounds')
     spec = json.loads(args.spec.read_text())
     repo = Path(__file__).resolve().parents[1]
     args.mailbox.mkdir(parents=True, exist_ok=True)
@@ -90,7 +98,7 @@ def main():
             raise RuntimeError('INPUT_PREFLIGHT_NOT_COMPLETE')
         plans = json.loads((args.plan_root / 'plan.json').read_text())
         if args.smoke:
-            plans = {'h2o': {**plans['h2o'], 'records': plans['h2o']['records'][:1]}}
+            plans = {'h2o': {**plans['h2o'], 'records': plans['h2o']['records'][:args.smoke_count]}}
         elif not all(Path(path).is_file() for path in spec['relay_smoke_receipts']):
             raise RuntimeError('RELAY_SMOKE_NOT_COMPLETE')
         if args.role == 'consumer':
@@ -98,6 +106,10 @@ def main():
             write_json(args.mailbox / 'CONSUMER_READY.json', {'output': str(args.output_root)})
         else:
             wait_for(args.mailbox / 'CONSUMER_READY.json', failure)
+        pending = deque()
+        if args.role == 'producer' and args.persistent:
+            os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['TASKCTL_GPU']
+            from formal_evaluation.scene.adapters.run_egofound3r_baseline import main as infer_window
         completed = 0
         reports = {}
         for dataset, plan in plans.items():
@@ -111,7 +123,30 @@ def main():
                 receipt = args.mailbox / 'receipts' / (token + '.json')
                 source = args.mailbox / 'pending' / 'egofound3r' / 'formal' / cache_id
                 target = args.output_root / dataset / 'egofound3r' / 'formal' / cache_id
-                if args.role == 'producer':
+                previous = next((p / 'receipts' / (token + '.json') for p in args.previous_mailbox
+                                 if (p / 'receipts' / (token + '.json')).is_file()), None)
+                if previous is not None:
+                    prior = json.loads(previous.read_text())
+                    if args.role == 'consumer':
+                        target = Path(prior['target'])
+                        metadata = json.loads((target / 'metadata.json').read_text())
+                        expected = {'global_stride': args.stride, 'global_anchor_phase': args.stride // 2,
+                                    **{k: spec[k] for k in ('checkpoint_sha256', 'source_commit', 'inference_commit')}}
+                        if any(metadata.get(k) != v for k, v in expected.items()):
+                            raise ValueError('REUSED_PROVENANCE_MISMATCH')
+                        if metadata['dataset'] != dataset or metadata['frame_ids'] != record['frame_ids'] or metadata['window_id'] != record['window_id']:
+                            raise ValueError('REUSED_WINDOW_IDENTITY_MISMATCH')
+                        for name in ('metadata.json', 'run.json'):
+                            if digest(target / name) != prior['sha256'][name]:
+                                raise ValueError('REUSED_RECEIPT_HASH_MISMATCH')
+                        if (target / 'predictions.npz').stat().st_size <= 0:
+                            raise ValueError('REUSED_PREDICTION_EMPTY')
+                        write_json(receipt, {**prior, 'reused_receipt': str(previous)})
+                        predictions.append({'method': 'egofound3r', 'dataset': dataset,
+                                            'window_id': record['window_id'], 'prediction_dir': str(target)})
+                elif args.role == 'producer':
+                    while len(pending) >= args.max_inflight:
+                        wait_for(pending.popleft(), failure)
                     if shutil.disk_usage(args.mailbox).free < 20 * 1024**3:
                         raise RuntimeError('CPFS_FREE_BELOW_20_GIB')
                     command = [sys.executable, str(repo / 'formal_evaluation/scene/adapters/run_egofound3r_baseline.py'),
@@ -120,15 +155,19 @@ def main():
                                '--config', spec['config'], '--checkpoint', spec['checkpoint'],
                                '--backbone-checkpoint', spec['backbone'], '--global-stride', str(args.stride),
                                '--output-root', str(args.mailbox / 'pending')]
-                    subprocess.run(command, check=True, env={**os.environ, 'CUDA_VISIBLE_DEVICES': os.environ['TASKCTL_GPU']})
+                    window_started = time.monotonic()
+                    if args.persistent:
+                        infer_window(command[2:])
+                    else:
+                        subprocess.run(command, check=True, env={**os.environ, 'CUDA_VISIBLE_DEVICES': os.environ['TASKCTL_GPU']})
+                    print(json.dumps({'inference_wall_seconds': time.monotonic() - window_started,
+                                      'cache_id': cache_id, 'persistent': args.persistent}), flush=True)
                     _validated_output(source, record, 'egofound3r')
                     size = sum(p.stat().st_size for p in source.rglob('*') if p.is_file())
                     if size > 2 * 1024**3:
                         raise RuntimeError('WINDOW_EXCEEDS_2_GIB_RELAY_LIMIT')
                     write_json(ready, {'cache_id': cache_id, 'bytes': size})
-                    wait_for(receipt, failure)
-                    if source.exists():
-                        raise RuntimeError('RECEIPT_WITH_UNRELEASED_SOURCE')
+                    pending.append(receipt)
                 else:
                     wait_for(ready, failure)
                     _validated_output(source, record, 'egofound3r')
@@ -145,7 +184,7 @@ def main():
                     predictions.append({'method': 'egofound3r', 'dataset': dataset,
                                         'window_id': record['window_id'], 'prediction_dir': str(target)})
                 completed += 1
-                print(json.dumps({'role': args.role, 'uploaded_windows': completed, 'dataset': dataset}), flush=True)
+                print(json.dumps({'role': args.role, 'uploaded_windows' if args.role == 'consumer' else 'produced_windows': completed, 'dataset': dataset, 'reused': previous is not None}), flush=True)
             if args.role == 'consumer':
                 index = args.output_root / dataset / 'predictions.jsonl'
                 index.write_text(''.join(json.dumps(row) + '\n' for row in predictions))
@@ -153,7 +192,7 @@ def main():
                 if args.smoke:
                     rows = [json.loads(line) for line in gt.read_text().splitlines() if line.strip()]
                     gt = args.mailbox / 'smoke_gt.jsonl'
-                    gt.write_text(json.dumps(rows[0]) + '\n')
+                    gt.write_text(''.join(json.dumps(row) + '\n' for row in rows[:args.smoke_count]))
                 methods = args.mailbox / 'methods.json'
                 config = json.loads((repo / 'formal_evaluation/config/methods_v1.json').read_text())
                 write_json(methods, {'methods': {'egofound3r': config['methods']['egofound3r']}})
@@ -162,6 +201,8 @@ def main():
                                 '--gt-index', str(gt), '--prediction-index', str(index),
                                 '--methods-config', str(methods), '--report-path', str(report)], check=True)
                 reports[dataset] = str(report)
+        for receipt in pending:
+            wait_for(receipt, failure)
         if args.role == 'consumer':
             write_json(args.output_root / 'summary.json', {'status': 'complete', 'reports': reports,
                        'windows': completed, 'global_stride': args.stride, 'global_anchor_phase': args.stride // 2})

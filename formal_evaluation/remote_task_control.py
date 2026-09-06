@@ -89,7 +89,7 @@ def statuses(paths: list[str]) -> dict[str, object]:
     return {"handles": result}
 
 
-def send_signal(paths: list[str], signal_name: str) -> dict[str, object]:
+def send_signal(paths: list[str], signal_name: str, drain_relay: bool = False) -> dict[str, object]:
     number = {"STOP": signal.SIGSTOP, "CONT": signal.SIGCONT}[signal_name]
     result: dict[str, object] = {}
     for value in paths:
@@ -98,11 +98,41 @@ def send_signal(paths: list[str], signal_name: str) -> dict[str, object]:
         if current is None:
             result[value] = {"status": "exited"}
             continue
-        os.killpg(int(registered["pgid"]), number)
+        if drain_relay:
+            if signal_name != "STOP":
+                raise ValueError("drain relay only supports STOP")
+            # Stop only the registered relay coordinator; its current inference finishes.
+            frontier = [int(registered["pid"])]
+            producers = []
+            for _ in range(8):
+                children = []
+                for pid in frontier:
+                    proc = Path(f"/proc/{pid}")
+                    try:
+                        argv = proc.joinpath("cmdline").read_bytes().decode().split("\0")
+                        identity = proc_identity(pid)
+                        if identity is None or identity['pgid'] != registered['pgid']:
+                            continue
+                        if any(arg.endswith('/run_egofound3r_relay.py') for arg in argv) and '--role' in argv and argv[argv.index('--role') + 1] == 'producer':
+                            producers.append(pid)
+                        children.extend(int(v) for v in proc.joinpath(f'task/{pid}/children').read_text().split())
+                    except FileNotFoundError:
+                        continue
+                frontier = children
+                if not frontier:
+                    break
+            if len(producers) != 1:
+                raise RuntimeError(f'EXPECTED_ONE_REGISTERED_RELAY_PRODUCER:{producers}')
+            os.kill(producers[0], number)
+            if producers[0] != registered['pid']:
+                os.kill(int(registered['pid']), number)
+        else:
+            os.killpg(int(registered["pgid"]), number)
         after = proc_identity(int(registered["pid"]))
         result[value] = {
             "status": "signal_sent",
             "signal": signal_name,
+            "drain_relay": drain_relay,
             "observed_state": None if after is None else after["state"],
         }
     return {"handles": result}
@@ -121,6 +151,7 @@ def main() -> None:
         child.add_argument("--handle", action="append", required=True)
         if action == "signal":
             child.add_argument("--signal", choices=("STOP", "CONT"), required=True)
+            child.add_argument("--drain-relay", action="store_true")
     args = parser.parse_args()
     try:
         if args.action == "launch":
@@ -128,7 +159,7 @@ def main() -> None:
         elif args.action == "status":
             result = statuses(args.handle)
         else:
-            result = send_signal(args.handle, args.signal)
+            result = send_signal(args.handle, args.signal, args.drain_relay)
         print(json.dumps({"ok": True, **result}, sort_keys=True))
     except Exception as error:  # one bounded machine-readable failure
         print(json.dumps({"ok": False, "error": str(error)}, sort_keys=True))

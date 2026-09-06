@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+from functools import lru_cache
 import json
 import sys
 import tempfile
@@ -116,7 +117,7 @@ def _verified_checkpoint_sha256(path: Path, expected: str) -> str:
     return actual
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="运行 EgoFound3R 并写入 comparison canonical 输出")
     parser.add_argument("--phase", choices=("smoke", "pilot", "formal"), required=True)
     parser.add_argument("--manifest", type=Path)
@@ -131,11 +132,30 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--window-id")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--global-stride", type=int, choices=range(1, 6), default=5)
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main() -> None:
-    args = parse_args()
+@lru_cache(maxsize=1)
+def _runtime(config, checkpoint, backbone, expected_sha256, device, size, mtime_ns):
+    """One immutable checkpoint per worker; retain no per-window predictions."""
+    checkpoint_sha256 = _verified_checkpoint_sha256(Path(checkpoint), expected_sha256)
+    project_config = _load_training_config_compat(Path(config))
+    if project_config.marker_runtime.backend != "vggt_omega":
+        raise RuntimeError("Unsupported backbone for this registered comparison adapter")
+    project_config.marker_runtime.vggt_checkpoint_path = backbone
+    if not torch.cuda.is_available():
+        raise RuntimeError("EgoFound3R comparison requires CUDA")
+    model = build_runtime_marker_model(project_config).to(device)
+    load_marker_model_weights(
+        model, Path(checkpoint), model_config=active_marker_model_config(project_config),
+        resume_mode="weights", align_model_floating_dtype=True,
+    )
+    model.eval()
+    return checkpoint_sha256, project_config, model
+
+
+def main(argv=None) -> None:
+    args = parse_args(argv)
     if args.window_input is not None:
         if args.manifest is not None or args.data_root is not None:
             raise ValueError("--window-input cannot be combined with --manifest/--data-root")
@@ -159,32 +179,17 @@ def main() -> None:
     method_config = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"][
         "egofound3r"
     ]
-    checkpoint_sha256 = _verified_checkpoint_sha256(
-        args.checkpoint, method_config.get("checkpoint_sha256")
-    )
-    project_config = _load_training_config_compat(args.config)
-    if project_config.marker_runtime.backend != "vggt_omega":
-        raise ValueError(f"EgoFound3R 正式比较要求 vggt_omega backend，实际为 {project_config.marker_runtime.backend}")
-    project_config.marker_runtime.vggt_checkpoint_path = str(args.backbone_checkpoint)
-    global_stride = args.global_stride
-    global_anchor_phase = global_stride // 2
-
-    if not torch.cuda.is_available():
-        raise RuntimeError("EgoFound3R smoke/pilot 需要 CUDA")
     torch.cuda.set_device(args.device)
     torch.cuda.reset_peak_memory_stats()
     device = torch.device(args.device)
     start = time.perf_counter()
-
-    model = build_runtime_marker_model(project_config).to(device)
-    load_marker_model_weights(
-        model,
-        args.checkpoint,
-        model_config=active_marker_model_config(project_config),
-        resume_mode="weights",
-        align_model_floating_dtype=True,
+    checkpoint_sha256, project_config, model = _runtime(
+        str(args.config), str(args.checkpoint), str(args.backbone_checkpoint),
+        method_config.get("checkpoint_sha256"), args.device,
+        args.checkpoint.stat().st_size, args.checkpoint.stat().st_mtime_ns,
     )
-    model.eval()
+    global_stride = args.global_stride
+    global_anchor_phase = global_stride // 2
     frames = _load_frames(
         frame_paths,
         height=project_config.marker_runtime.image_height,
