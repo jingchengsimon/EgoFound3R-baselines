@@ -337,10 +337,14 @@
       "python": "/mnt/workspace/sjc/envs/interactvlm_eval/bin/python",
       "source_root": "/mnt/workspace/sjc/external/InteractVLM",
       "input_contract": "Dataset-neutral JSONL with RGB path, object name, sequence and frame ID; adapter invokes official file-mode hcontact inference and emits an output JSONL pointing to 6890-vertex SMPL-H contact predictions.",
-      "execution_status": "official source/config/runtime verified on DSW; dedicated loaded-once 500-frame speed driver ready for a full checkpoint-load smoke test",
+      "execution_status": "strict CPU runtime validation passed; prepared 100-window names and bilateral MANO topology verified; full GPU forward pending a non-reserved large-memory GPU",
+      "prepared_evaluation_runner": "formal_evaluation.contact.run_interactvlm_prepared",
       "local_evaluation_status": "formal_cached_prediction_evaluation_supported",
       "required_paths": [
-        {"role": "CLIP ViT-L/14 local snapshot", "path": "/mnt/workspace/sjc/models/pretrained/CLIP/clip-vit-large-patch14", "state": "present"}
+        {"role": "CLIP ViT-L/14 local snapshot", "path": "/mnt/workspace/sjc/models/pretrained/CLIP/clip-vit-large-patch14", "state": "present"},
+        {"role": "SMPL-H hand segmentation", "path": "/mnt/workspace/sjc/external/InteractVLM/data/smpl_segmentation_merged.pkl", "state": "present"},
+        {"role": "SMPL-H topology", "path": "/mnt/workspace/sjc/external/InteractVLM/data/body_models/smplh/SMPLH_NEUTRAL.npz", "state": "present"},
+        {"role": "SMPL-X official visualization asset", "path": "/mnt/workspace/sjc/external/InteractVLM/data/body_models/smplx/SMPLX_NEUTRAL.pkl", "state": "present"}
       ],
       "runner_deployment": {
         "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/adapters/run_interactvlm.py",
