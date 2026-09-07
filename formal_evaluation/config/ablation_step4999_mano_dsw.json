@@ -28,7 +28,7 @@
         "joint_contact_probability",
         "marker_contact_probability"
       ],
-      "runtime_mode": "ablation_bf16",
+      "runtime_mode": "ablation_checkpoint_dtypes_bf16",
       "source_root": "/mnt/cpfs/sjc/EgoFound3R_ablation_mano_regression_e73dcd8_20260905_fbc505e",
       "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
       "execution_status": "pending_strict_runtime_validation_and_smoke",

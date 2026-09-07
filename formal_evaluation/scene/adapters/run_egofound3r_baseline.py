@@ -140,11 +140,19 @@ def parse_args(argv=None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _align_checkpoint_dtypes(model, checkpoint):
+    # mmap reads metadata here; the native loader still validates and loads every weight.
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=False, mmap=True)["model"]
+    for name, tensor in model.state_dict(keep_vars=True).items():
+        if name in saved and tensor.is_floating_point() and saved[name].is_floating_point():
+            tensor.data = tensor.data.to(dtype=saved[name].dtype)
+
+
 @lru_cache(maxsize=1)
 def _runtime(config, checkpoint, backbone, expected_sha256, device, size, mtime_ns,
              runtime_mode="checkpoint_native"):
     """One immutable checkpoint per worker; retain no per-window predictions."""
-    if runtime_mode not in {"checkpoint_native", "ablation_bf16"}:
+    if runtime_mode not in {"checkpoint_native", "ablation_bf16", "ablation_checkpoint_dtypes_bf16"}:
         raise ValueError(f"unsupported runtime_mode: {runtime_mode}")
     checkpoint_sha256 = _verified_checkpoint_sha256(Path(checkpoint), expected_sha256)
     project_config = _load_training_config_compat(Path(config))
@@ -154,13 +162,19 @@ def _runtime(config, checkpoint, backbone, expected_sha256, device, size, mtime_
     if not torch.cuda.is_available():
         raise RuntimeError("EgoFound3R comparison requires CUDA")
     model = build_runtime_marker_model(project_config).to(device)
-    if runtime_mode == "ablation_bf16":
-        # Match ZeRO-2 training conversion. MANO's own _apply keeps frozen LBS layers FP32.
-        model.to(dtype=torch.bfloat16)
+    if runtime_mode in {"ablation_bf16", "ablation_checkpoint_dtypes_bf16"}:
+        # Resumed MANO checkpoints contain both FP32 and BF16 model state.
+        if runtime_mode == "ablation_bf16":
+            model.to(dtype=torch.bfloat16)
+        else:
+            _align_checkpoint_dtypes(model, checkpoint)
         load_marker_model_weights(
             model, Path(checkpoint), model_config=active_marker_model_config(project_config),
             resume_mode="weights",
         )
+        if runtime_mode == "ablation_checkpoint_dtypes_bf16":
+            # MANO's own _apply retains frozen geometry in FP32.
+            model.to(dtype=torch.bfloat16)
         input_dtype = torch.bfloat16
     else:
         load_marker_model_weights(

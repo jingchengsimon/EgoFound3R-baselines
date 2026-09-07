@@ -24,3 +24,5 @@ python -m unittest formal_evaluation.tests.test_egofound3r_single_dataset
 ```
 
 `config/ablation_step4999_hand_0p1b_dsw.json` 和 `config/ablation_step4999_hand_0p05b_dsw.json` 各自同时提供独立 methods 配置和 strict runtime 路径配置；不改变固定 14-method registry。checkpoint 摘要来自已登记的 CPU 核验，运行时路径仍须在实际提交节点逐项通过 strict 检查。
+
+- MANO续训最终checkpoint混存FP32/BF16，使用 `ablation_checkpoint_dtypes_bf16`：只通过mmap读取保存dtype，逐张量对齐后调用原有严格加载器，再转BF16推理；MANO `_apply` 保留冻结几何FP32。旧BF16 checkpoint仍用 `ablation_bf16`，不自动回退或跳过contract/shape校验。
