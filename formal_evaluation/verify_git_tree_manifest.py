@@ -26,9 +26,32 @@ def main() -> int:
     if manifest.get("commit") != args.expected_commit:
         raise SystemExit("manifest commit mismatch")
 
-    failures: list[dict[str, object]] = []
+    entries = manifest.get("entries", [])
+    expected_paths = {str(entry["path"]) for entry in entries}
+    observed_paths: set[str] = set()
+    for directory, dirnames, filenames in os.walk(args.root, followlinks=False):
+        base = Path(directory)
+        for name in list(dirnames):
+            candidate = base / name
+            relative = candidate.relative_to(args.root)
+            if name == ".git" or "__pycache__" in relative.parts:
+                dirnames.remove(name)
+                continue
+            if candidate.is_symlink():
+                observed_paths.add(relative.as_posix())
+                dirnames.remove(name)
+        for name in filenames:
+            relative = (base / name).relative_to(args.root)
+            if "__pycache__" in relative.parts or relative.suffix in {".pyc", ".pyo"}:
+                continue
+            observed_paths.add(relative.as_posix())
+
+    failures: list[dict[str, object]] = [
+        {"path": path, "error": "unexpected file"}
+        for path in sorted(observed_paths - expected_paths)
+    ]
     checked = 0
-    for entry in manifest.get("entries", []):
+    for entry in entries:
         relative = PurePosixPath(str(entry["path"]))
         if relative.is_absolute() or ".." in relative.parts:
             raise SystemExit(f"unsafe manifest path: {relative}")
@@ -62,7 +85,8 @@ def main() -> int:
     result = {
         "commit": manifest["commit"],
         "root": str(args.root),
-        "expected_files": len(manifest.get("entries", [])),
+        "expected_files": len(entries),
+        "observed_files": len(observed_paths),
         "checked_files": checked,
         "failures": failures[:20],
         "failure_count": len(failures),
