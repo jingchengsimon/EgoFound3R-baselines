@@ -10,6 +10,13 @@ from formal_evaluation.run_egofound3r_relay import transfer
 
 
 class ResidentTest(unittest.TestCase):
+    def test_resident_b1_worker_pins_protocol_and_rejects_reuse(self):
+        source = (Path(__file__).parents[1] / 'run_egofound3r_resident_b1.py').read_text()
+        for required in ("len(spec[\"datasets\"]) != 1", '"--global-stride", "5"',
+                         '"--input-resolution", args.input_resolution', 'if cache.misses != 1',
+                         '"clip_frames": 60', 'exist_ok=False'):
+            self.assertIn(required, source)
+
     def test_runtime_loads_once_and_rejects_wrong_checkpoint(self):
         path = Path(__file__).parents[1] / 'scene/adapters/run_egofound3r_baseline.py'
         fn = next(n for n in ast.parse(path.read_text()).body if isinstance(n, ast.FunctionDef) and n.name == '_runtime')
