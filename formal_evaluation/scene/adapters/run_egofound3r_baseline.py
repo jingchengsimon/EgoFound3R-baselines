@@ -244,6 +244,16 @@ def main(argv=None) -> None:
     elapsed = time.perf_counter() - start
     peak_memory = torch.cuda.max_memory_allocated()
 
+    export_window(args, (sequence, window_id, frame_ids, frame_paths, dataset, output_window_id),
+                  project_config, model, input_dtype, checkpoint_sha256, method_config,
+                  outputs, forward_contract, elapsed, peak_memory)
+
+
+def export_window(args, window, project_config, model, input_dtype, checkpoint_sha256,
+                  method_config, outputs, forward_contract, elapsed, peak_memory):
+    sequence, window_id, frame_ids, frame_paths, dataset, output_window_id = window
+    global_stride = args.global_stride
+    global_anchor_phase = global_stride // 2
     camera_w2c, intrinsics, depth, depth_confidence = _multirate_scene_arrays(
         outputs, forward_contract["multirate_frame_map"]
     )
@@ -297,8 +307,8 @@ def main(argv=None) -> None:
         "checkpoint": str(args.checkpoint),
         "checkpoint_sha256": checkpoint_sha256,
         "checkpoint_role": method_config["checkpoint_role"],
-        "model_compute_dtype": str(frames.dtype),
-        "model_input_dtype": str(frames.dtype),
+        "model_compute_dtype": str(input_dtype),
+        "model_input_dtype": str(input_dtype),
         "model_floating_dtypes_after_forward": sorted({
             str(value.dtype) for value in (*model.parameters(), *model.buffers())
             if value.is_floating_point()
