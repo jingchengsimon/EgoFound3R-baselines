@@ -1,0 +1,30 @@
+{
+  "methods": {
+    "egofound3r": {
+      "group": [
+        "hand",
+        "scene",
+        "contact"
+      ],
+      "source": "this repository",
+      "source_commit": "e73dcd8a51b0a06c1790fc18e1b1aa7b5180aea8",
+      "source_tag": "final-root-depth-fusion-v2-dynamic-multirate-20260904",
+      "inference_commit": "3e533881af4cd98642fc4bf7e06e7212e723bded",
+      "checkpoint_sha256": "f358de97ff0c9f9ba4f35f48a68f62582403580a2095f08a9362b94ad2416a6f",
+      "checkpoint_role": "final dynamic multi-rate Root Fusion V2 step_001599 checkpoint",
+      "scale_type": "metric",
+      "native_outputs": [
+        "camera_c2w",
+        "intrinsics",
+        "depth",
+        "hand_joints_camera",
+        "hand_markers_camera",
+        "hand_presence_probability",
+        "hand_visibility",
+        "marker_visibility",
+        "joint_contact_probability",
+        "marker_contact_probability"
+      ]
+    }
+  }
+}
