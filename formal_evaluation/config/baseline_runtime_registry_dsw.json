@@ -59,14 +59,14 @@
       "execution_mode": "real_model_forward",
       "runner": "formal_evaluation/scene/adapters/run_egofound3r_baseline.py",
       "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
-      "source_root": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_pair_3e533881_bundle_20260908",
+      "source_root": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_pair_new_3e533881_20260907",
       "input_contract": "RGB formal windows; checkpoint-training center crop at an explicit registered target shape; dynamic H:G stride 1..5 model evaluated with the registered formal config.",
       "execution_status": "runtime_paths_verified",
       "required_paths": [
         {"role": "runtime config", "path": "/mnt/cpfs/sjc/EgoFound3R_archive/20260905/protected_checkpoints/final_dynamic_multirate_root_fusion_v2_e73dcd8_step001599/seven_dataset_dynamic_multirate_resume1400_memory_safe_1600_8gpu_zero2_20260904.toml", "bytes": 6681, "state": "present"},
         {"role": "model checkpoint", "path": "/mnt/cpfs/sjc/EgoFound3R_archive/20260905/protected_checkpoints/final_dynamic_multirate_root_fusion_v2_e73dcd8_step001599/checkpoints/step_001599.pt", "bytes": 425716721, "state": "present"},
-        {"role": "3e533881 marker runtime", "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_pair_3e533881_bundle_20260908/egohandmetric_prompt/marker_runtime.py", "bytes": 456073, "state": "present"},
-        {"role": "3e533881 forward contract", "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_pair_3e533881_bundle_20260908/train_marker_model.py", "bytes": 352081, "state": "present"},
+        {"role": "3e533881 marker runtime", "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_pair_new_3e533881_20260907/egohandmetric_prompt/marker_runtime.py", "bytes": 456073, "state": "present"},
+        {"role": "3e533881 forward contract", "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_pair_new_3e533881_20260907/train_marker_model.py", "bytes": 352081, "state": "present"},
         {"role": "VGGT-Omega backbone", "path": "/mnt/workspace/sjc/models/pretrained/VGGT-Omega/vggt_omega_1b_512.pt", "bytes": 4576706117, "state": "present"}
       ]
     },
