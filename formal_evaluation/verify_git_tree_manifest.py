@@ -34,7 +34,7 @@ def main() -> int:
         for name in list(dirnames):
             candidate = base / name
             relative = candidate.relative_to(args.root)
-            if name == ".git" or "__pycache__" in relative.parts:
+            if name in {".git", ".pytest_cache"} or "__pycache__" in relative.parts:
                 dirnames.remove(name)
                 continue
             if candidate.is_symlink():
@@ -42,6 +42,8 @@ def main() -> int:
                 dirnames.remove(name)
         for name in filenames:
             relative = (base / name).relative_to(args.root)
+            if name == ".git" or ".pytest_cache" in relative.parts:
+                continue
             if "__pycache__" in relative.parts or relative.suffix in {".pyc", ".pyo"}:
                 continue
             observed_paths.add(relative.as_posix())
