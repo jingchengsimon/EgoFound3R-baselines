@@ -24,7 +24,8 @@ def test_multirate_scene_uses_native_anchors_without_double_scaling():
               "interpolation_scene_metric_scale_valid": np.array([True]),
               "interpolation_scene_metric_scale_factor": np.array([3.0]),
               "intrinsics_global": np.tile(np.eye(3), (1, 2, 1, 1)),
-              "depth_global": np.full((1, 2, 2, 2, 1), 2.0),
+              # Official inference reconstruction has already applied the factor.
+              "depth_global": np.full((1, 2, 2, 2, 1), 6.0),
               "depth_conf_global": np.ones((1, 2, 2, 2, 1))}
     frame_map = SimpleNamespace(global_anchor_indices=np.array([[1, 4]]),
                                 global_frame_present=np.array([[True, True]]))
@@ -136,6 +137,9 @@ def test_adapter_uses_dynamic_multirate_bf16_contract() -> None:
         "marker_model_floating_dtype",
         "_build_prediction_marker_forward_contract",
         "_call_marker_model",
+        "reconstruct_multirate_metric_scene_outputs",
+        "apply_hand_depth_scale",
+        "HandDepthScaleOptions()",
         'parser.add_argument("--global-stride", type=int, choices=range(1, 6), default=5)',
         'parser.add_argument("--input-resolution", choices=tuple(INPUT_RESOLUTIONS_HW), required=True)',
         "global_stride=global_stride",
@@ -156,6 +160,7 @@ def test_adapter_uses_dynamic_multirate_bf16_contract() -> None:
     assert "inference_egocentric=" not in source
     assert 'outputs["presence_mask"]' not in source
     assert 'outputs["presence_logits"]' not in source
+    assert 'factor if key == "depth_global"' not in source
 
 
 def test_label_independent_training_crop_and_eval_contract() -> None:

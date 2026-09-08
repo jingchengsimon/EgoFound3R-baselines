@@ -26,6 +26,11 @@ from egohandmetric_prompt import (
 )
 from egohandmetric_prompt.configs import active_marker_model_config
 from egohandmetric_prompt.data import MediaRef, load_media_ref
+from egohandmetric_prompt.inference_contracts import reconstruct_multirate_metric_scene_outputs
+from egohandmetric_prompt.inference_hand_depth_scale import (
+    HandDepthScaleOptions,
+    apply_hand_depth_scale,
+)
 from egohandmetric_prompt.marker_runtime import MarkerRuntimeCollator
 from formal_evaluation.common.io import (
     load_manifest,
@@ -47,14 +52,13 @@ def _invert_w2c(w2c: np.ndarray) -> np.ndarray:
 
 
 def _multirate_scene_arrays(outputs, frame_map):
-    # The runtime already makes refined H-axis cameras metric and clip-local.
+    # Official inference reconstruction already makes cameras/depth metric and clip-local.
     camera = _as_numpy(outputs["camera_pose_refined_high"])[0].copy()
     camera_valid = _as_numpy(outputs["camera_refined_valid_high"])[0].astype(bool)
     camera[~camera_valid] = np.nan
     indices = _as_numpy(frame_map.global_anchor_indices)[0].astype(np.int64)
     present = _as_numpy(frame_map.global_frame_present)[0].astype(bool)
     scale_valid = bool(_as_numpy(outputs["interpolation_scene_metric_scale_valid"])[0])
-    factor = float(_as_numpy(outputs["interpolation_scene_metric_scale_factor"])[0])
     selected = present & scale_valid
     values = []
     for key in ("intrinsics_global", "depth_global", "depth_conf_global"):
@@ -62,7 +66,7 @@ def _multirate_scene_arrays(outputs, frame_map):
         if key != "intrinsics_global" and source.ndim == 4 and source.shape[-1] == 1:
             source = source[..., 0]
         dense = np.full((len(camera), *source.shape[1:]), np.nan, dtype=np.float32)
-        dense[indices[selected]] = source[selected] * (factor if key == "depth_global" else 1.0)
+        dense[indices[selected]] = source[selected]
         values.append(dense)
     return camera, *values
 
@@ -248,12 +252,25 @@ def main(argv=None) -> None:
         outputs = _public_marker_outputs(
             _call_marker_model(model, frames, **forward_contract)
         )
+        frame_map = forward_contract["multirate_frame_map"]
+        query_map = forward_contract["temporal_interpolation_query_map"]
+        outputs = reconstruct_multirate_metric_scene_outputs(
+            outputs,
+            global_frame_present=frame_map.global_frame_present,
+        )
+        outputs, hand_depth_scale = apply_hand_depth_scale(
+            outputs,
+            frame_map,
+            query_map,
+            30.0,
+            HandDepthScaleOptions(),
+        )
     torch.cuda.synchronize()
     elapsed = time.perf_counter() - start
     peak_memory = torch.cuda.max_memory_allocated()
 
     camera_w2c, intrinsics, depth, depth_confidence = _multirate_scene_arrays(
-        outputs, forward_contract["multirate_frame_map"]
+        outputs, frame_map
     )
     camera_c2w = _invert_w2c(camera_w2c)
     joints_camera = _as_numpy(outputs["dense_joint_xyz"])[0]
@@ -322,6 +339,7 @@ def main(argv=None) -> None:
         "scale_type": "metric",
         "camera_convention": "OpenCV x-right y-down z-forward; camera_c2w maps camera to world",
         "units": "meters",
+        "temporal_fps": 30.0,
         "source_resolution_hw": [source_height, source_width],
         "input_resolution": args.input_resolution,
         "processed_resolution_hw": [input_height, input_width],
@@ -333,9 +351,10 @@ def main(argv=None) -> None:
             "hand_geometry": "native 21 joints and 195 MANO markers; no fabricated 778-vertex mesh",
             "world_hand_geometry": "derived from native camera-space hands and predicted camera_c2w",
             "metric_reconstruction": (
-                "runtime refined H cameras and hand XYZ are already metric; "
-                "G depth uses interpolation_scene_metric_scale_factor once"
+                "official inference_contracts reconstruction followed by "
+                "official inference_hand_depth_scale fusion; outputs are consumed as metric once"
             ),
+            "hand_depth_scale": hand_depth_scale,
             "scene_sampling": "native G depth/intrinsics only at registered global anchors; other frames are NaN/invalid",
             "hand_valid_semantics": "analytic Root translation validity per physical side",
             "image_preprocessing": (
@@ -363,6 +382,7 @@ def main(argv=None) -> None:
         "camera_pose_encoding_global": _as_numpy(outputs["camera_pose_encoding_global"])[0],
         "global_anchor_indices": _as_numpy(forward_contract["multirate_frame_map"].global_anchor_indices)[0],
         "metric_scale_factor": _as_numpy(outputs["interpolation_scene_metric_scale_factor"]),
+        "metric_scale_factor_fused": _as_numpy(outputs["raw_to_meter_fused"]),
     }
     write_comparison_output(
         output_dir,
