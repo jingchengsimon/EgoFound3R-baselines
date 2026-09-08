@@ -68,6 +68,7 @@ def main():
     parser.add_argument('--mailbox', type=Path, required=True)
     parser.add_argument('--output-root', type=Path, required=True)
     parser.add_argument('--stride', type=int, choices=(1, 2, 3, 4, 5), required=True)
+    parser.add_argument('--input-resolution', choices=('384x512', '448x448', '512x512'), required=True)
     parser.add_argument('--smoke', action='store_true')
     parser.add_argument('--smoke-count', type=int, default=1)
     parser.add_argument('--persistent', action='store_true')
@@ -131,6 +132,7 @@ def main():
                         target = Path(prior['target'])
                         metadata = json.loads((target / 'metadata.json').read_text())
                         expected = {'global_stride': args.stride, 'global_anchor_phase': args.stride // 2,
+                                    'input_resolution': args.input_resolution,
                                     **{k: spec[k] for k in ('checkpoint_sha256', 'source_commit', 'inference_commit')}}
                         if any(metadata.get(k) != v for k, v in expected.items()):
                             raise ValueError('REUSED_PROVENANCE_MISMATCH')
@@ -154,6 +156,7 @@ def main():
                                '--methods-config', str(repo / 'formal_evaluation/config/methods_v1.json'),
                                '--config', spec['config'], '--checkpoint', spec['checkpoint'],
                                '--backbone-checkpoint', spec['backbone'], '--global-stride', str(args.stride),
+                               '--input-resolution', args.input_resolution,
                                '--output-root', str(args.mailbox / 'pending')]
                     window_started = time.monotonic()
                     if args.persistent:
@@ -173,6 +176,7 @@ def main():
                     _validated_output(source, record, 'egofound3r')
                     metadata = json.loads((source / 'metadata.json').read_text())
                     expected = {'global_stride': args.stride, 'global_anchor_phase': args.stride // 2,
+                                'input_resolution': args.input_resolution,
                                 **{k: spec[k] for k in ('checkpoint_sha256', 'source_commit', 'inference_commit')}}
                     if any(metadata.get(k) != v for k, v in expected.items()):
                         raise ValueError('PREDICTION_PROVENANCE_MISMATCH')
@@ -206,7 +210,9 @@ def main():
             wait_for(receipt, failure)
         if args.role == 'consumer':
             write_json(args.output_root / 'summary.json', {'status': 'complete', 'reports': reports,
-                       'windows': completed, 'global_stride': args.stride, 'global_anchor_phase': args.stride // 2})
+                       'windows': completed, 'global_stride': args.stride,
+                       'global_anchor_phase': args.stride // 2,
+                       'input_resolution': args.input_resolution})
             (args.output_root / 'COMPLETE').write_text('complete\n')
         (args.mailbox / (args.role.upper() + '_COMPLETE')).write_text('complete\n')
     except Exception as error:

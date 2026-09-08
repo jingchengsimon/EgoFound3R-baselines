@@ -15,7 +15,12 @@ class ResidentTest(unittest.TestCase):
         fn = next(n for n in ast.parse(path.read_text()).body if isinstance(n, ast.FunctionDef) and n.name == '_runtime')
         model = Mock(); model.to.return_value = model
         build = Mock(return_value=model); load = Mock()
-        config = SimpleNamespace(marker_runtime=SimpleNamespace(backend='vggt_omega'))
+        config = SimpleNamespace(marker_runtime=SimpleNamespace(
+            backend='vggt_omega',
+            random_crop_resize=SimpleNamespace(target_shapes=[[384, 512], [448, 448], [512, 512]]),
+            image_height=256,
+            image_width=256,
+        ))
         def verify(path, expected):
             if expected != 'verified':
                 raise ValueError('checkpoint mismatch')
@@ -26,9 +31,10 @@ class ResidentTest(unittest.TestCase):
                   build_runtime_marker_model=build, load_marker_model_weights=load,
                   active_marker_model_config=lambda p: p, marker_model_floating_dtype=lambda m: "bf16")
         exec(compile(ast.Module(body=[fn], type_ignores=[]), str(path), 'exec'), ns)
-        args = ('config', 'checkpoint', 'backbone', 'verified', 'cuda:0', 12, 34)
+        args = ('config', 'checkpoint', 'backbone', 'verified', 'cuda:0', 12, 34, 448, 448)
         self.assertIs(ns['_runtime'](*args), ns['_runtime'](*args))
         self.assertEqual(build.call_count, 1); self.assertEqual(load.call_count, 1)
+        self.assertEqual((config.marker_runtime.image_height, config.marker_runtime.image_width), (448, 448))
         with self.assertRaises(ValueError):
             ns['_runtime'](*args[:3], 'wrong', *args[4:])
         self.assertEqual(build.call_count, 1)

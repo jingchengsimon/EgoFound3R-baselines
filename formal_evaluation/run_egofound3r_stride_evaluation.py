@@ -79,6 +79,9 @@ def main() -> None:
     parser.add_argument("--output-root", required=True, type=Path)
     parser.add_argument("--work-root", required=True, type=Path)
     parser.add_argument("--global-stride", required=True, type=int, choices=(1, 2, 5))
+    parser.add_argument(
+        "--input-resolution", choices=("384x512", "448x448", "512x512"), required=True
+    )
     parser.add_argument("--preflight-only", action="store_true")
     args = parser.parse_args()
     spec = json.loads(args.spec.read_text())
@@ -87,8 +90,8 @@ def main() -> None:
     prepared = {dataset: prepare_inputs(dataset, item, args.work_root / dataset)
                 for dataset, item in spec["datasets"].items()}
     if args.preflight_only:
-        print(json.dumps({"status": "preflight_complete", "windows": {
-            d: len(value[2]) for d, value in prepared.items()}}), flush=True)
+        print(json.dumps({"status": "preflight_complete", "input_resolution": args.input_resolution,
+                          "windows": {d: len(value[2]) for d, value in prepared.items()}}), flush=True)
         return
     smoke_strides = set()
     for root in spec["smoke_roots"]:
@@ -99,6 +102,8 @@ def main() -> None:
         for key in ("source_commit", "inference_commit", "checkpoint_sha256"):
             if summary.get(key) != spec[key]:
                 raise ValueError(f"smoke model identity mismatch: {path}:{key}")
+        if summary.get("input_resolution") != args.input_resolution:
+            raise ValueError(f"smoke input resolution mismatch: {path}")
         stride = summary.get("global_stride")
         if summary.get("global_anchor_phase") != stride // 2:
             raise ValueError(f"smoke phase mismatch: {path}")
@@ -118,7 +123,8 @@ def main() -> None:
         runner_args = ["--phase", "formal", "--window-input", "{window_input}",
                        "--methods-config", str(selected_methods), "--config", spec["config"],
                        "--checkpoint", spec["checkpoint"], "--backbone-checkpoint", spec["backbone"],
-                       "--output-root", "{output_root}", "--global-stride", str(args.global_stride)]
+                       "--output-root", "{output_root}", "--global-stride", str(args.global_stride),
+                       "--input-resolution", args.input_resolution]
         try:
             subprocess.run([
                 sys.executable, str(worktree / "formal_evaluation/run_formal_window_queue.py"),
@@ -134,6 +140,7 @@ def main() -> None:
                 directory = root / "egofound3r/formal" / str(record["cache_id"])
                 metadata = json.loads((directory / "metadata.json").read_text())
                 expected = {"global_stride": args.global_stride, "global_anchor_phase": args.global_stride // 2,
+                            "input_resolution": args.input_resolution,
                             **{key: spec[key] for key in ("source_commit", "inference_commit", "checkpoint_sha256")}}
                 if any(metadata.get(key) != value for key, value in expected.items()):
                     raise ValueError(f"prediction provenance mismatch: {directory}")
@@ -152,7 +159,8 @@ def main() -> None:
             errors[dataset] = repr(error)
             print(json.dumps({"dataset": dataset, "status": "failed", "error": repr(error)}), flush=True)
     summary = {"status": "failed" if errors else "complete", "reports": reports, "errors": errors,
-               "global_stride": args.global_stride, "global_anchor_phase": args.global_stride // 2}
+               "global_stride": args.global_stride, "global_anchor_phase": args.global_stride // 2,
+               "input_resolution": args.input_resolution}
     (args.output_root / "summary.json").write_text(json.dumps(summary, indent=2))
     if errors:
         raise SystemExit(1)

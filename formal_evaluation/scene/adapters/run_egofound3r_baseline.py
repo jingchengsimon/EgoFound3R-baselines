@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import hashlib
 from functools import lru_cache
 import json
@@ -10,7 +11,6 @@ import tempfile
 import time
 from pathlib import Path
 
-import cv2
 import numpy as np
 import torch
 from PIL import Image
@@ -25,6 +25,8 @@ from egohandmetric_prompt import (
     marker_model_floating_dtype,
 )
 from egohandmetric_prompt.configs import active_marker_model_config
+from egohandmetric_prompt.data import MediaRef, load_media_ref
+from egohandmetric_prompt.marker_runtime import MarkerRuntimeCollator
 from formal_evaluation.common.io import (
     load_manifest,
     resolve_rgb_paths,
@@ -71,16 +73,41 @@ def _camera_to_world(points: np.ndarray, camera_c2w: np.ndarray) -> np.ndarray:
     ]
 
 
-def _load_frames(frame_paths: list[Path], *, height: int, width: int) -> torch.Tensor:
-    frames = []
+INPUT_RESOLUTIONS_HW = {
+    "384x512": (384, 512),
+    "448x448": (448, 448),
+    "512x512": (512, 512),
+}
+
+
+def _first_chunk(chunks: list[dict]) -> dict:
+    return chunks[0]
+
+
+def _load_frames(frame_paths: list[Path], *, target_hw: tuple[int, int], crop_config) -> torch.Tensor:
+    """Use the label-independent center-crop path from the checkpoint training code."""
+    if not hasattr(MarkerRuntimeCollator, "_should_apply_center_crop"):
+        raise RuntimeError("EgoFound3R inference requires the label-independent training crop implementation")
+    samples = []
     for path in frame_paths:
-        image_bgr = cv2.imread(str(path), cv2.IMREAD_COLOR)
-        if image_bgr is None:
-            raise FileNotFoundError(path)
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-        image_rgb = cv2.resize(image_rgb, (width, height), interpolation=cv2.INTER_LINEAR)
-        frames.append(torch.from_numpy(image_rgb).permute(2, 0, 1).float() / 255.0)
-    return torch.stack(frames).unsqueeze(0)
+        samples.append({
+            "rgb": load_media_ref(MediaRef(kind="path", path=str(path)), is_rgb=True),
+            "hand_annos": [],
+        })
+    deterministic_crop = replace(
+        crop_config,
+        enabled=True,
+        crop_probability=1.0,
+        target_shapes=[list(target_hw)],
+    )
+    collator = MarkerRuntimeCollator(
+        _first_chunk,
+        target_height=target_hw[0],
+        target_width=target_hw[1],
+        random_crop_resize=deterministic_crop,
+    )
+    chunk = collator([{"samples": samples, "target_image_size_hw": target_hw}])
+    return chunk["rgb"].unsqueeze(0)
 
 
 def _load_training_config_compat(config_path: Path):
@@ -132,16 +159,28 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--window-id")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--global-stride", type=int, choices=range(1, 6), default=5)
+    parser.add_argument("--input-resolution", choices=tuple(INPUT_RESOLUTIONS_HW), required=True)
     return parser.parse_args(argv)
 
 
 @lru_cache(maxsize=1)
-def _runtime(config, checkpoint, backbone, expected_sha256, device, size, mtime_ns):
+def _runtime(config, checkpoint, backbone, expected_sha256, device, size, mtime_ns, height, width):
     """One immutable checkpoint per worker; retain no per-window predictions."""
     checkpoint_sha256 = _verified_checkpoint_sha256(Path(checkpoint), expected_sha256)
     project_config = _load_training_config_compat(Path(config))
     if project_config.marker_runtime.backend != "vggt_omega":
         raise RuntimeError("Unsupported backbone for this registered comparison adapter")
+    configured_shapes = {
+        tuple(int(value) for value in shape)
+        for shape in project_config.marker_runtime.random_crop_resize.target_shapes
+    }
+    if (height, width) not in configured_shapes:
+        raise ValueError(
+            f"input resolution {(height, width)} is absent from training target_shapes "
+            f"{sorted(configured_shapes)}"
+        )
+    project_config.marker_runtime.image_height = height
+    project_config.marker_runtime.image_width = width
     project_config.marker_runtime.vggt_checkpoint_path = backbone
     if not torch.cuda.is_available():
         raise RuntimeError("EgoFound3R comparison requires CUDA")
@@ -182,18 +221,20 @@ def main(argv=None) -> None:
     torch.cuda.set_device(args.device)
     torch.cuda.reset_peak_memory_stats()
     device = torch.device(args.device)
+    input_height, input_width = INPUT_RESOLUTIONS_HW[args.input_resolution]
     start = time.perf_counter()
     checkpoint_sha256, project_config, model, input_dtype = _runtime(
         str(args.config), str(args.checkpoint), str(args.backbone_checkpoint),
         method_config.get("checkpoint_sha256"), args.device,
         args.checkpoint.stat().st_size, args.checkpoint.stat().st_mtime_ns,
+        input_height, input_width,
     )
     global_stride = args.global_stride
     global_anchor_phase = global_stride // 2
     frames = _load_frames(
         frame_paths,
-        height=project_config.marker_runtime.image_height,
-        width=project_config.marker_runtime.image_width,
+        target_hw=(input_height, input_width),
+        crop_config=project_config.marker_runtime.random_crop_resize,
     ).to(device=device, dtype=input_dtype)
     with torch.inference_mode():
         forward_contract, _ = _build_prediction_marker_forward_contract(
@@ -282,10 +323,12 @@ def main(argv=None) -> None:
         "camera_convention": "OpenCV x-right y-down z-forward; camera_c2w maps camera to world",
         "units": "meters",
         "source_resolution_hw": [source_height, source_width],
-        "processed_resolution_hw": [
-            project_config.marker_runtime.image_height,
-            project_config.marker_runtime.image_width,
-        ],
+        "input_resolution": args.input_resolution,
+        "processed_resolution_hw": [input_height, input_width],
+        "image_preprocessing": "training_marker_runtime_collator_label_independent_center_crop",
+        "preprocessing_uses_hand_annotations": False,
+        "preprocessing_random_crop": False,
+        "preprocessing_center_crop": True,
         "runner_detail": {
             "hand_geometry": "native 21 joints and 195 MANO markers; no fabricated 778-vertex mesh",
             "world_hand_geometry": "derived from native camera-space hands and predicted camera_c2w",
@@ -295,6 +338,10 @@ def main(argv=None) -> None:
             ),
             "scene_sampling": "native G depth/intrinsics only at registered global anchors; other frames are NaN/invalid",
             "hand_valid_semantics": "analytic Root translation validity per physical side",
+            "image_preprocessing": (
+                "checkpoint training MarkerRuntimeCollator with its label-independent centered "
+                "aspect crop forced on deterministically and the selected training target shape"
+            ),
         },
     }
     run = {
@@ -307,6 +354,7 @@ def main(argv=None) -> None:
             key: metadata[key] for key in (
                 "source_commit", "source_tag", "inference_commit", "checkpoint",
                 "checkpoint_sha256", "model_compute_dtype", "global_stride", "global_anchor_phase",
+                "input_resolution", "processed_resolution_hw", "image_preprocessing",
             )
         },
     }

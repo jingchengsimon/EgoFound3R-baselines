@@ -58,6 +58,9 @@ def main() -> None:
     parser.add_argument("--inference-commit", required=True)
     parser.add_argument("--checkpoint-sha256", required=True)
     parser.add_argument("--global-stride", type=int, choices=range(1, 6), default=5)
+    parser.add_argument(
+        "--input-resolution", choices=("384x512", "448x448", "512x512"), required=True
+    )
     args = parser.parse_args()
 
     window_input = _first_window(args.input_index)
@@ -75,6 +78,7 @@ def main() -> None:
         "--output-root", str(args.output_root),
         "--device", "cuda:0",
         "--global-stride", str(args.global_stride),
+        "--input-resolution", args.input_resolution,
     ], env=environment, check=True)
 
     output = args.output_root / "egofound3r" / "smoke" / str(record["cache_id"])
@@ -91,6 +95,9 @@ def main() -> None:
         "phase": "smoke",
         "global_stride": args.global_stride,
         "global_anchor_phase": args.global_stride // 2,
+        "input_resolution": args.input_resolution,
+        "processed_resolution_hw": [int(value) for value in args.input_resolution.split("x")],
+        "image_preprocessing": "training_marker_runtime_collator_label_independent_center_crop",
     }
     mismatches = {key: metadata.get(key) for key, value in expected.items() if metadata.get(key) != value}
     if mismatches or run.get("status") != "success":

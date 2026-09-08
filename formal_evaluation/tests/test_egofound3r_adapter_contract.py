@@ -48,11 +48,21 @@ def test_adapter_stride_parser_and_checkpoint_hash(tmp_path) -> None:
     tree, filename = _adapter_ast()
     functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
                  and node.name in {"parse_args", "_verified_checkpoint_sha256"}]
-    namespace = {"argparse": argparse, "Path": Path, "hashlib": hashlib}
+    namespace = {
+        "argparse": argparse,
+        "Path": Path,
+        "hashlib": hashlib,
+        "INPUT_RESOLUTIONS_HW": {
+            "384x512": (384, 512),
+            "448x448": (448, 448),
+            "512x512": (512, 512),
+        },
+    }
     exec(compile(ast.Module(body=functions, type_ignores=[]), filename, "exec"), namespace)
     required = ["adapter", "--phase", "formal"]
     for flag in ("methods-config", "config", "checkpoint", "backbone-checkpoint", "output-root"):
         required.extend([f"--{flag}", "unused"])
+    required.extend(["--input-resolution", "448x448"])
     for stride in (None, 1, 2, 3, 4, 5):
         argv = required + ([] if stride is None else ["--global-stride", str(stride)])
         with mock.patch.object(sys, "argv", argv):
@@ -61,6 +71,13 @@ def test_adapter_stride_parser_and_checkpoint_hash(tmp_path) -> None:
         with mock.patch.object(sys, "argv", required + ["--global-stride", invalid]):
             with pytest.raises(SystemExit):
                 namespace["parse_args"]()
+    for resolution in ("384x512", "448x448", "512x512"):
+        argv = [*required[:-1], resolution]
+        with mock.patch.object(sys, "argv", argv):
+            assert namespace["parse_args"]().input_resolution == resolution
+    with mock.patch.object(sys, "argv", [*required[:-1], "256x256"]):
+        with pytest.raises(SystemExit):
+            namespace["parse_args"]()
     checkpoint = tmp_path / "checkpoint.pt"
     checkpoint.write_bytes(b"checkpoint fixture")
     digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
@@ -82,10 +99,12 @@ def test_stride_reaches_forward_contract_and_saved_provenance(stride) -> None:
                          and node.func.id == "_build_prediction_marker_forward_contract")
     forward = mock.Mock(return_value=({}, None))
     method = {"source_commit": "training", "source_tag": "tag", "inference_commit": "inference"}
-    namespace = {"args": SimpleNamespace(global_stride=stride, checkpoint=Path("checkpoint.pt")),
+    namespace = {"args": SimpleNamespace(global_stride=stride, checkpoint=Path("checkpoint.pt"),
+                                           input_resolution="448x448"),
                  "project_config": object(), "frames": SimpleNamespace(dtype="torch.bfloat16"),
                  "_build_prediction_marker_forward_contract": forward,
                  "method_config": method, "checkpoint_sha256": "verified-sha",
+                 "input_height": 448, "input_width": 448,
                  "model": object(), "marker_model_floating_dtype": mock.Mock(side_effect=ValueError("mixed after forward"))}
     setup = [assignments["global_stride"], assignments["global_anchor_phase"]]
     exec(compile(ast.Module(body=setup, type_ignores=[]), filename, "exec"), namespace)
@@ -95,7 +114,9 @@ def test_stride_reaches_forward_contract_and_saved_provenance(stride) -> None:
     assert forward.call_args.kwargs["batch"] == {}
     expected = {**method, "checkpoint": "checkpoint.pt", "checkpoint_sha256": "verified-sha",
                 "model_compute_dtype": "torch.bfloat16", "global_stride": stride,
-                "global_anchor_phase": stride // 2}
+                "global_anchor_phase": stride // 2, "input_resolution": "448x448",
+                "processed_resolution_hw": [448, 448],
+                "image_preprocessing": "training_marker_runtime_collator_label_independent_center_crop"}
     metadata = assignments["metadata"].value
     namespace["metadata"] = {key.value: eval(compile(ast.Expression(value), filename, "eval"), namespace)
                              for key, value in zip(metadata.keys, metadata.values)
@@ -116,26 +137,46 @@ def test_adapter_uses_dynamic_multirate_bf16_contract() -> None:
         "_build_prediction_marker_forward_contract",
         "_call_marker_model",
         'parser.add_argument("--global-stride", type=int, choices=range(1, 6), default=5)',
+        'parser.add_argument("--input-resolution", choices=tuple(INPUT_RESOLUTIONS_HW), required=True)',
         "global_stride=global_stride",
         "global_anchor_phase=global_anchor_phase",
         '"global_stride": global_stride',
         '"global_anchor_phase": global_anchor_phase',
         'outputs["in_view_probability"]',
         'outputs.get("root_translation_valid")',
+        "load_media_ref",
+        "MarkerRuntimeCollator",
+        '"hand_annos": []',
+        "crop_probability=1.0",
+        'hasattr(MarkerRuntimeCollator, "_should_apply_center_crop")',
+        '"preprocessing_uses_hand_annotations": False',
     ):
         assert required in source
+    assert "cv2.resize" not in source
     assert "inference_egocentric=" not in source
     assert 'outputs["presence_mask"]' not in source
     assert 'outputs["presence_logits"]' not in source
+
+
+def test_label_independent_training_crop_and_eval_contract() -> None:
+    adapter_source = (
+        Path(__file__).parents[1] / "scene/adapters/run_egofound3r_baseline.py"
+    ).read_text(encoding="utf-8")
+    for resolution in ('"384x512": (384, 512)', '"448x448": (448, 448)', '"512x512": (512, 512)'):
+        assert resolution in adapter_source
+    assert '"hand_annos": []' in adapter_source
+    assert "crop_probability=1.0" in adapter_source
 
 
 def test_smoke_forwards_and_validates_stride_identity() -> None:
     source = (Path(__file__).parents[1] / "run_egofound3r_smoke.py").read_text(encoding="utf-8")
     for required in (
         'parser.add_argument("--global-stride", type=int, choices=range(1, 6), default=5)',
+        '"--input-resolution", args.input_resolution',
         '"--global-stride", str(args.global_stride)',
         '"global_stride": args.global_stride',
         '"global_anchor_phase": args.global_stride // 2',
+        '"input_resolution": args.input_resolution',
         '"--query-compute-apps=gpu_uuid"',
         "uuid not in busy",
     ):
