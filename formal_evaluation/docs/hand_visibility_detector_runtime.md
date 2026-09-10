@@ -21,7 +21,9 @@ This supports **Joint visibility only**. The 21 probabilities cannot supply 195-
 
 ## Readiness boundary
 
-Setup checks asset hashes, dependency imports, official pipeline CPU initialization and visibility-head strict loading. Adapter tests check side selection and canonical schema. Six real dataset windows and GPU forward validation are deferred at the user's request; CPU readiness is not a formal evaluation result.
+Setup checks asset hashes, dependency imports, official pipeline CPU initialization and visibility-head strict loading. Adapter tests check side selection and canonical schema. The subsequent user-authorized 2026-09-10 validation executed one exact 60-frame window for each of H2O, HOT3D, ARCTIC, OakInk-v2, TACO and HOI4D on node 6001 GPU6. All six outputs passed frame-identity, 256-by-256 preprocessing and canonical-schema checks. Five windows had valid detections; HOI4D had none, so the strict nonempty-hand smoke gate remains failed for that window. Its visibility F1 remains NaN with one undefined window and zero valid joint samples. This is a single-window runtime check, not a full benchmark result.
+
+Inference provenance: `smoke-six-egoforce-hvd-single60-452d029fb23f`. The six-window metric report completed under `metrics-six-egoforce-hvd-single60-eabe22b3d3b7`, at `/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_metrics_20260910/hand_visibility_detector_report.json`. Every dataset has exactly one report window and there are no missing prediction windows. The same run validates EgoForce Joint, 195-marker and 778-vertex camera-space metrics; world-camera W/WA metrics remain unsupported without predicted camera extrinsics.
 
 ```bash
 /mnt/workspace/sjc/envs/hand_visibility_6321d62/bin/python \
