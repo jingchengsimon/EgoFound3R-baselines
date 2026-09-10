@@ -53,8 +53,75 @@
       "state": "present"
     }
   ],
-  "authorized_extensions": {"egoforce": "User-authorized setup and six-dataset one-window smoke, 2026-09-10; historical baseline14 method_order unchanged."},
+  "authorized_extensions": {"hand_visibility_detector": "User-authorized visibility baseline model and dependency setup, 2026-09-10; six-window validation deferred.", "egoforce": "User-authorized setup and six-dataset one-window smoke, 2026-09-10; historical baseline14 method_order unchanged."},
   "methods": {
+    "hand_visibility_detector": {
+      "category": "joint visibility",
+      "execution_mode": "official_rgb_inference",
+      "runner": "formal_evaluation/hand/adapters/run_hand_visibility_detector.py",
+      "python": "/mnt/workspace/sjc/envs/hand_visibility_6321d62/bin/python",
+      "source_root": "/mnt/workspace/sjc/DATA/runtime_worktrees/hand_visibility_6321d62",
+      "source_commit": "6321d62fb7617cf504d1de6e4d9ecda7aadfb989",
+      "model_repo": "ryhara/hand-visibility-detector",
+      "model_revision": "941b791bcba4a0bb381c325c225f56e0a80cf98f",
+      "execution_status": "cpu_runtime_ready_gpu_validation_deferred",
+      "input_contract": "Shared six-dataset RGB windows; 256x256 full-frame bilinear resize then official crops; Joint visibility only, no GT geometry.",
+      "required_paths": [
+        {
+          "role": "visibility head",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/best.pt",
+          "bytes": 9947002,
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini source",
+          "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/WiLoR-mini_ebec42f",
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini MANO_RIGHT.pkl",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/pretrained_models/MANO_RIGHT.pkl",
+          "bytes": 3821356,
+          "sha256": "45d60aa3b27ef9107a7afd4e00808f307fd91111e1cfa35afd5c4a62de264767",
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini detector.pt",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/pretrained_models/detector.pt",
+          "bytes": 53582271,
+          "sha256": "5ef3df44e42d2db52d4ffe91f83a22ce9925e2acc9abebf453f2c5d22e380033",
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini mano_mean_params.npz",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/pretrained_models/mano_mean_params.npz",
+          "bytes": 1178,
+          "sha256": "efc0ec58e4a5cef78f3abfb4e8f91623b8950be9eff8b8e0dbb0d036ebc63988",
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini wilor_final.ckpt",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/pretrained_models/wilor_final.ckpt",
+          "bytes": 2564989533,
+          "sha256": "3e97aafc7dd08d883a4cc5a027df61fdb6fda6136dbd1319405413862ada6bb2",
+          "state": "present"
+        }
+      ],
+      "wilor_mini_source_commit": "ebec42f94c389070cdd7dda6fd1bf0b4a659c960",
+      "wilor_mini_model_revision": "b00adea9a6843bbb4c9042109c5eb29ab2a59dea",
+      "checkpoint_sha256": "c26712319e82fd5701d4eb1dd597d69469b770140e5fbf59252c6f08863b44cb",
+      "capabilities": [
+        "hand_visibility",
+        "hand_valid"
+      ],
+      "runtime_validation": {
+        "run_id": "setup-six-hand-visibility-6321d62-256-ea6a1b380b25",
+        "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/hand_visibility_setup_v4_20260910/runtime_readiness.json",
+        "scope": "Five asset SHA-256 checks; official pipeline CPU initialization, strict visibility head load and strict registry path validation.",
+        "gpu_forward_validated": false,
+        "six_dataset_windows": "deferred_by_user"
+      }
+    },
     "egoforce": {
       "category": "hand reconstruction",
       "execution_mode": "official_rgb_inference",
