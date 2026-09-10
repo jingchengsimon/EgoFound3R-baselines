@@ -34,3 +34,7 @@ Inference provenance: `smoke-six-egoforce-hvd-single60-452d029fb23f`. The six-wi
 ```
 
 Any future execution requires taskctl registration and the usual resource gates.
+
+## RGB detector correction follow-up
+
+Commit `831f314` corrects RGB-to-BGR only at the YOLO boundary. The same HOI4D 60-frame window was rerun at 256-by-256 on node 5001 GPU4. HVD and EgoForce each recovered 34 valid right-hand predictions from zero; their metric reports completed. Run: `rerun-hoi4d-egoforce-hvd-rgbfix60-3d50ef87a758`, output `/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_rgbfix_20260910`. The earlier six-window results above remain historical evidence from the pre-fix adapter; the corrected rerun covers HOI4D only.

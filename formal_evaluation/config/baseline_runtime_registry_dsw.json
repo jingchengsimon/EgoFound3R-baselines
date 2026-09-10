@@ -64,7 +64,7 @@
       "source_commit": "6321d62fb7617cf504d1de6e4d9ecda7aadfb989",
       "model_repo": "ryhara/hand-visibility-detector",
       "model_revision": "941b791bcba4a0bb381c325c225f56e0a80cf98f",
-      "execution_status": "gpu_six_window_inference_validated_with_hoi4d_zero_detection",
+      "execution_status": "gpu_hoi4d_rgb_detector_fix_validated",
       "input_contract": "Shared six-dataset RGB windows; 256x256 full-frame bilinear resize then official crops; Joint visibility only, no GT geometry.",
       "required_paths": [
         {
@@ -143,6 +143,20 @@
           "windows_per_dataset": 1,
           "complete_verified": true,
           "undefined_zero_detection_dataset": "hoi4d"
+        },
+        "rgb_detector_fix_validation": {
+          "code_commit": "831f3142e02f00e7e601235e4ccc2c4d84686342",
+          "run_id": "rerun-hoi4d-egoforce-hvd-rgbfix60-3d50ef87a758",
+          "dataset": "hoi4d",
+          "frames": 60,
+          "processed_resolution_hw": [
+            256,
+            256
+          ],
+          "valid_hands": 34,
+          "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_rgbfix_20260910/hand_visibility_detector_report.json",
+          "complete_verified": true,
+          "other_five_windows_use_previous_adapter": true
         }
       }
     },
@@ -153,7 +167,7 @@
       "python": "/mnt/workspace/sjc/envs/egoforce_480ffb3/bin/python",
       "source_root": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoForce_480ffb3_nolfs",
       "input_contract": "Shared six-dataset RGB windows; 256x256 full-frame resize with calibrated intrinsics; official hand/forearm crops; no GT hand geometry or GT camera extrinsics.",
-      "execution_status": "gpu_six_window_inference_validated_with_hoi4d_zero_detection",
+      "execution_status": "gpu_hoi4d_rgb_detector_fix_validated",
       "runtime_validation": {
         "run_id": "setup-six-egoforce-480ffb3-256-60d2a65defed",
         "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_setup_datapipes_20260910/runtime_readiness.json",
@@ -183,6 +197,20 @@
           "windows_per_dataset": 1,
           "complete_verified": true,
           "undefined_zero_detection_dataset": "hoi4d"
+        },
+        "rgb_detector_fix_validation": {
+          "code_commit": "831f3142e02f00e7e601235e4ccc2c4d84686342",
+          "run_id": "rerun-hoi4d-egoforce-hvd-rgbfix60-3d50ef87a758",
+          "dataset": "hoi4d",
+          "frames": 60,
+          "processed_resolution_hw": [
+            256,
+            256
+          ],
+          "valid_hands": 34,
+          "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_rgbfix_20260910/egoforce_report.json",
+          "complete_verified": true,
+          "other_five_windows_use_previous_adapter": true
         }
       },
       "source_commit": "480ffb358516d0d7f971ec9da99b7bb07635731e",
