@@ -13,7 +13,7 @@ Both model repositories were public and ungated at setup. Training datasets are 
 
 ## Adapter contract
 
-`hand/adapters/run_hand_visibility_detector.py` consumes the existing six-dataset `window_input.json`. No dataset-specific adapters are needed. Only RGB paths and original frame identity are consumed; GT geometry and camera extrinsics are not used. Each full frame is resized with PIL bilinear to 256 by 256, followed by the official 256-square hand crop and its internal WiLoR 256-by-192 center crop.
+`hand/adapters/run_hand_visibility_detector.py` consumes the existing six-dataset `window_input.json`. No dataset-specific adapters are needed. Only RGB paths and original frame identity are consumed; GT geometry and camera extrinsics are not used. Each full frame is resized with PIL bilinear to 256 by 256, followed by the official 256-square hand crop and its internal WiLoR 256-by-192 center crop. RGB is converted to BGR only at the Ultralytics detector predict boundary (including tracking); pose and visibility crops continue to consume the original RGB image.
 
 The adapter emits only `hand_visibility[T,2,21]` probabilities and `hand_valid[T,2]`. Canonical slots are left then right; joints are wrist followed by thumb/index/middle/ring/pinky, four per finger. Highest detector confidence selects among multiple hands of the same side. Missing detections stay invalid with NaN probabilities. Existing output directories are rejected.
 

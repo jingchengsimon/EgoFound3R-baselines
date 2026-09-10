@@ -17,6 +17,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from formal_evaluation.common.io import write_comparison_output
+from formal_evaluation.hand.adapters.yolo_rgb import configure_rgb_yolo_input
 from formal_evaluation.common.schema import SCHEMA_VERSION
 from formal_evaluation.datasets.window_inputs import WINDOW_INPUT_VERSION
 
@@ -97,6 +98,7 @@ def main() -> None:
     checkpoint_sha256 = _verified_sha256(args.checkpoint, args.checkpoint_sha256)
     from hand_visibility_detector import HandVisibilityPipeline
     pipeline = HandVisibilityPipeline(device=args.device, vis_checkpoint=str(args.checkpoint), hand_conf=args.hand_conf, crop_size=256)
+    configure_rgb_yolo_input(pipeline._wilor_pipe.hand_detector)
     frame_ids = [str(value) for value in record["frame_ids"]]
     visibility = np.full((len(frame_ids), 2, 21), np.nan, dtype=np.float32)
     hand_valid = np.zeros((len(frame_ids), 2), dtype=bool)
@@ -113,6 +115,7 @@ def main() -> None:
         "processed_resolution_hw": list(INPUT_HW),
         "runner_detail": {"official_source_commit": OFFICIAL_SOURCE_COMMIT, "checkpoint_sha256": checkpoint_sha256,
                           "image_preprocessing": "PIL_bilinear_full_frame_256x256_then_official_256_hand_crop",
+                          "detector_color_input": "RGB_to_BGR_at_YOLO_predict_only",
                           "visibility": "official_probabilities_not_thresholded", "hand_slot_convention": "slot 0=left, slot 1=right",
                           "multi_detection_rule": "highest_bbox_confidence_per_side", "per_frame_detection_log": detection_log},
     }

@@ -26,6 +26,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from formal_evaluation.common.io import write_comparison_output
+from formal_evaluation.hand.adapters.yolo_rgb import configure_rgb_yolo_input
 from formal_evaluation.common.marker_vertices import MANO_MESHGRAPHORMER_LEVEL1_MARKER_VERTEX_IDS_195
 from formal_evaluation.common.schema import SCHEMA_VERSION
 from formal_evaluation.datasets.window_inputs import WINDOW_INPUT_VERSION
@@ -122,6 +123,7 @@ def _build_runner(source_root: Path, checkpoint: Path, device_name: str):
             )
             self.box_inferencer.model = official.optimize_mmdet_model_for_inference(self.box_inferencer.model.eval().half())
             self.hand_detector = official.YOLO(official.cfg.DETECTION.HAND_PATH, task="pose")
+            configure_rgb_yolo_input(self.hand_detector)
             self.classes = ["left_forearm", "right_forearm", "left_hand", "right_hand"]
             official.init_tracking_defaults(self)
             self.model = official.HALO(official.cfg)
@@ -215,6 +217,7 @@ def main() -> None:
         "dataset": str(record["dataset"]), "sequence": str(record["sequence_id"]),
         "window_id": str(record["window_id"]), "frame_ids": frame_ids,
         "capabilities": {name: True for name in arrays}, "scale_type": "metric_camera",
+        "detector_color_input": "RGB_to_BGR_at_YOLO_predict_only",
         "camera_convention": "OpenCV camera frame (x-right, y-down, z-forward)", "units": "meters",
         "processed_resolution_hw": list(INPUT_HW),
         "runner_detail": {"official_source_commit": source_commit, "checkpoint_sha256": checkpoint_sha256,
