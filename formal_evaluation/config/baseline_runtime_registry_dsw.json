@@ -53,7 +53,58 @@
       "state": "present"
     }
   ],
+  "authorized_extensions": {"egoforce": "User-authorized setup and six-dataset one-window smoke, 2026-09-10; historical baseline14 method_order unchanged."},
   "methods": {
+    "egoforce": {
+      "category": "hand reconstruction",
+      "execution_mode": "official_rgb_inference",
+      "runner": "formal_evaluation/hand/adapters/run_egoforce_baseline.py",
+      "python": "/mnt/workspace/sjc/envs/egoforce_480ffb3/bin/python",
+      "source_root": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoForce_480ffb3_nolfs",
+      "input_contract": "Shared six-dataset RGB windows; 256x256 full-frame resize with calibrated intrinsics; official hand/forearm crops; no GT hand geometry or GT camera extrinsics.",
+      "execution_status": "authorized_setup_pending",
+      "source_commit": "480ffb358516d0d7f971ec9da99b7bb07635731e",
+      "model_repo": "chris10/EgoForce",
+      "model_revision": "5a57b4026babc5b35cb53627c2e1c709e1276b65",
+      "checkpoint_sha256": "722fe84ba2b6ab3569c3a95000c61a9a77c7b3a41cc76585f891b8bc4fe82870",
+      "required_paths": [
+        {
+          "role": "model",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/model_weights.pth",
+          "bytes": 3021671106,
+          "state": "present"
+        },
+        {
+          "role": "hand-arm detector",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/epoch_460.pth",
+          "bytes": 175673166,
+          "state": "present"
+        },
+        {
+          "role": "hand detector",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/detector.torchscript",
+          "bytes": 106977758,
+          "state": "present"
+        },
+        {
+          "role": "left MANO",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/mano/MANO_LEFT.pkl",
+          "bytes": 9938594,
+          "state": "present"
+        },
+        {
+          "role": "right MANO",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/mano/MANO_RIGHT.pkl",
+          "bytes": 9904022,
+          "state": "present"
+        },
+        {
+          "role": "FARM parameters",
+          "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoForce_480ffb3_nolfs/models/arm_model_param_data.npy",
+          "state": "present"
+        }
+      ]
+    },
     "egofound3r": {
       "category": "scene/contact reconstruction",
       "execution_mode": "real_model_forward",
