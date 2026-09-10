@@ -14,20 +14,7 @@
   },
   "baseline_checkout_root": "/mnt/workspace/sjc/EgoFound3R-baselines",
   "method_order": [
-    "egofound3r",
-    "wilor",
-    "hawor",
-    "dyn_hamr",
-    "pad_hand",
-    "reviv4d",
-    "s2contact",
-    "contactopt",
-    "vggt",
-    "pi3",
-    "da3_large_1_1",
-    "lingbot_map_long",
-    "vggt_omega",
-    "interactvlm"
+    "egofound3r", "wilor", "hawor", "dyn_hamr", "pad_hand", "reviv4d", "s2contact", "contactopt", "vggt", "pi3", "da3_large_1_1", "lingbot_map_long", "vggt_omega", "interactvlm"
   ],
   "shared_required_paths": [
     {
@@ -66,9 +53,7 @@
       "state": "present"
     }
   ],
-  "authorized_extensions": {
-    "egoforce": "User-authorized setup and six-dataset one-window smoke, 2026-09-10; historical baseline14 method_order unchanged."
-  },
+  "authorized_extensions": {"egoforce": "User-authorized setup and six-dataset one-window smoke, 2026-09-10; historical baseline14 method_order unchanged."},
   "methods": {
     "egoforce": {
       "category": "hand reconstruction",
@@ -78,6 +63,13 @@
       "source_root": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoForce_480ffb3_nolfs",
       "input_contract": "Shared six-dataset RGB windows; 256x256 full-frame resize with calibrated intrinsics; official hand/forearm crops; no GT hand geometry or GT camera extrinsics.",
       "execution_status": "cpu_runtime_ready_gpu_validation_deferred",
+      "runtime_validation": {
+        "run_id": "setup-six-egoforce-480ffb3-256-60d2a65defed",
+        "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_setup_datapipes_20260910/runtime_readiness.json",
+        "scope": "Official model strict CPU load, MANO/FARM and both detector loads, adapter import, pinhole initialization, MMCV CPU NMS and strict registry validation.",
+        "gpu_forward_validated": false,
+        "six_dataset_windows": "deferred_by_user"
+      },
       "source_commit": "480ffb358516d0d7f971ec9da99b7bb07635731e",
       "model_repo": "chris10/EgoForce",
       "model_revision": "5a57b4026babc5b35cb53627c2e1c709e1276b65",
@@ -118,14 +110,7 @@
           "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoForce_480ffb3_nolfs/models/arm_model_param_data.npy",
           "state": "present"
         }
-      ],
-      "runtime_validation": {
-        "run_id": "setup-six-egoforce-480ffb3-256-60d2a65defed",
-        "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_setup_datapipes_20260910/runtime_readiness.json",
-        "scope": "Official model strict CPU load, MANO/FARM and both detector loads, adapter import, pinhole initialization, MMCV CPU NMS and strict registry validation.",
-        "gpu_forward_validated": false,
-        "six_dataset_windows": "deferred_by_user"
-      }
+      ]
     },
     "egofound3r": {
       "category": "scene/contact reconstruction",
@@ -136,48 +121,13 @@
       "input_contract": "RGB formal windows; checkpoint-training center crop at an explicit registered target shape; dynamic H:G stride 1..5 model evaluated with the registered formal config.",
       "execution_status": "runtime_paths_verified",
       "required_paths": [
-        {
-          "role": "runtime config",
-          "path": "/mnt/cpfs/sjc/EgoFound3R_archive/20260905/protected_checkpoints/final_dynamic_multirate_root_fusion_v2_e73dcd8_step001599/seven_dataset_dynamic_multirate_resume1400_memory_safe_1600_8gpu_zero2_20260904.toml",
-          "bytes": 6681,
-          "state": "present"
-        },
-        {
-          "role": "model checkpoint",
-          "path": "/mnt/cpfs/sjc/EgoFound3R_archive/20260905/protected_checkpoints/final_dynamic_multirate_root_fusion_v2_e73dcd8_step001599/checkpoints/step_001599.pt",
-          "bytes": 425716721,
-          "state": "present"
-        },
-        {
-          "role": "2b9c180 marker runtime",
-          "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_hand_depth_scale_2b9c180_20260908/egohandmetric_prompt/marker_runtime.py",
-          "bytes": 456073,
-          "state": "present"
-        },
-        {
-          "role": "2b9c180 forward contract",
-          "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_hand_depth_scale_2b9c180_20260908/train_marker_model.py",
-          "bytes": 352081,
-          "state": "present"
-        },
-        {
-          "role": "2b9c180 metric reconstruction",
-          "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_hand_depth_scale_2b9c180_20260908/egohandmetric_prompt/inference_contracts.py",
-          "bytes": 28197,
-          "state": "present"
-        },
-        {
-          "role": "2b9c180 Hand-Depth scale fusion",
-          "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_hand_depth_scale_2b9c180_20260908/egohandmetric_prompt/inference_hand_depth_scale.py",
-          "bytes": 17614,
-          "state": "present"
-        },
-        {
-          "role": "VGGT-Omega backbone",
-          "path": "/mnt/workspace/sjc/models/pretrained/VGGT-Omega/vggt_omega_1b_512.pt",
-          "bytes": 4576706117,
-          "state": "present"
-        }
+        {"role": "runtime config", "path": "/mnt/cpfs/sjc/EgoFound3R_archive/20260905/protected_checkpoints/final_dynamic_multirate_root_fusion_v2_e73dcd8_step001599/seven_dataset_dynamic_multirate_resume1400_memory_safe_1600_8gpu_zero2_20260904.toml", "bytes": 6681, "state": "present"},
+        {"role": "model checkpoint", "path": "/mnt/cpfs/sjc/EgoFound3R_archive/20260905/protected_checkpoints/final_dynamic_multirate_root_fusion_v2_e73dcd8_step001599/checkpoints/step_001599.pt", "bytes": 425716721, "state": "present"},
+        {"role": "2b9c180 marker runtime", "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_hand_depth_scale_2b9c180_20260908/egohandmetric_prompt/marker_runtime.py", "bytes": 456073, "state": "present"},
+        {"role": "2b9c180 forward contract", "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_hand_depth_scale_2b9c180_20260908/train_marker_model.py", "bytes": 352081, "state": "present"},
+        {"role": "2b9c180 metric reconstruction", "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_hand_depth_scale_2b9c180_20260908/egohandmetric_prompt/inference_contracts.py", "bytes": 28197, "state": "present"},
+        {"role": "2b9c180 Hand-Depth scale fusion", "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_hand_depth_scale_2b9c180_20260908/egohandmetric_prompt/inference_hand_depth_scale.py", "bytes": 17614, "state": "present"},
+        {"role": "VGGT-Omega backbone", "path": "/mnt/workspace/sjc/models/pretrained/VGGT-Omega/vggt_omega_1b_512.pt", "bytes": 4576706117, "state": "present"}
       ]
     },
     "wilor": {
@@ -189,30 +139,12 @@
       "input_contract": "Per-frame RGB hand detector plus WiLoR reconstruction.",
       "execution_status": "runtime_assets_and_source_import_verified",
       "required_paths": [
-        {
-          "role": "WiLoR checkpoint",
-          "path": "/mnt/workspace/sjc/models/pretrained/WiLoR/wilor_final.ckpt",
-          "bytes": 2564989533,
-          "state": "present"
-        },
-        {
-          "role": "detector checkpoint",
-          "path": "/mnt/workspace/sjc/models/pretrained/WiLoR/detector.pt",
-          "bytes": 53582271,
-          "state": "present"
-        },
-        {
-          "role": "source-required MANO path",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/WiLoR/mano_data/MANO_RIGHT.pkl",
-          "state": "present"
-        }
+        {"role": "WiLoR checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/WiLoR/wilor_final.ckpt", "bytes": 2564989533, "state": "present"},
+        {"role": "detector checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/WiLoR/detector.pt", "bytes": 53582271, "state": "present"},
+        {"role": "source-required MANO path", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/WiLoR/mano_data/MANO_RIGHT.pkl", "state": "present"}
       ],
       "path_mappings_required": [
-        {
-          "canonical_path": "/mnt/workspace/sjc/models/human/mano/MANO_RIGHT.pkl",
-          "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/WiLoR/mano_data/MANO_RIGHT.pkl",
-          "state": "present"
-        }
+        {"canonical_path": "/mnt/workspace/sjc/models/human/mano/MANO_RIGHT.pkl", "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/WiLoR/mano_data/MANO_RIGHT.pkl", "state": "present"}
       ]
     },
     "hawor": {
@@ -228,80 +160,21 @@
       "build_command": "/mnt/workspace/sjc/envs/egofound3r/bin/python setup.py build_ext --inplace",
       "build_verification": "2026-08-13 on node 5000: both sm_90 extensions built and imported through the formal adapter dependency order.",
       "required_paths": [
-        {
-          "role": "HaWoR checkpoint",
-          "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/hawor.ckpt",
-          "bytes": 3267481572,
-          "state": "present"
-        },
-        {
-          "role": "infiller checkpoint",
-          "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/infiller.pt",
-          "bytes": 418603497,
-          "state": "present"
-        },
-        {
-          "role": "detector checkpoint",
-          "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/detector.pt",
-          "bytes": 53582271,
-          "state": "present"
-        },
-        {
-          "role": "source-required DROID checkpoint",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth",
-          "state": "present"
-        },
-        {
-          "role": "source-required Metric3D checkpoint",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth",
-          "state": "present"
-        },
-        {
-          "role": "DROID compiled extension",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid_backends.cpython-310-x86_64-linux-gnu.so",
-          "bytes": 2303672,
-          "state": "present"
-        },
-        {
-          "role": "LieTorch compiled extension",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends.cpython-310-x86_64-linux-gnu.so",
-          "bytes": 14153624,
-          "state": "present"
-        },
-        {
-          "role": "right MANO consumer mapping",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data/mano/MANO_RIGHT.pkl",
-          "state": "present_symlink_to_canonical_asset"
-        },
-        {
-          "role": "left MANO consumer mapping",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data_left/mano_left/MANO_LEFT.pkl",
-          "state": "present_symlink_to_canonical_asset"
-        }
+        {"role": "HaWoR checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/hawor.ckpt", "bytes": 3267481572, "state": "present"},
+        {"role": "infiller checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/hawor/checkpoints/infiller.pt", "bytes": 418603497, "state": "present"},
+        {"role": "detector checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/detector.pt", "bytes": 53582271, "state": "present"},
+        {"role": "source-required DROID checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth", "state": "present"},
+        {"role": "source-required Metric3D checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth", "state": "present"},
+        {"role": "DROID compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid_backends.cpython-310-x86_64-linux-gnu.so", "bytes": 2303672, "state": "present"},
+        {"role": "LieTorch compiled extension", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends.cpython-310-x86_64-linux-gnu.so", "bytes": 14153624, "state": "present"},
+        {"role": "right MANO consumer mapping", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data/mano/MANO_RIGHT.pkl", "state": "present_symlink_to_canonical_asset"},
+        {"role": "left MANO consumer mapping", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data_left/mano_left/MANO_LEFT.pkl", "state": "present_symlink_to_canonical_asset"}
       ],
       "path_mappings_required": [
-        {
-          "canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/droid.pth",
-          "bytes": 16061701,
-          "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth",
-          "state": "present"
-        },
-        {
-          "canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/metric_depth_vit_large_800k.pth",
-          "bytes": 1647972663,
-          "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth",
-          "state": "present"
-        },
-        {
-          "canonical_path": "/mnt/workspace/sjc/models/human/mano/MANO_RIGHT.pkl",
-          "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data/mano/MANO_RIGHT.pkl",
-          "state": "present"
-        },
-        {
-          "canonical_path": "/mnt/workspace/sjc/models/human/mano/MANO_LEFT.pkl",
-          "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data_left/mano_left/MANO_LEFT.pkl",
-          "state": "present"
-        }
+        {"canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/droid.pth", "bytes": 16061701, "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/droid.pth", "state": "present"},
+        {"canonical_path": "/mnt/workspace/sjc/models/pretrained/HaWoR/external/metric_depth_vit_large_800k.pth", "bytes": 1647972663, "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/Metric3D/weights/metric_depth_vit_large_800k.pth", "state": "present"},
+        {"canonical_path": "/mnt/workspace/sjc/models/human/mano/MANO_RIGHT.pkl", "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data/mano/MANO_RIGHT.pkl", "state": "present"},
+        {"canonical_path": "/mnt/workspace/sjc/models/human/mano/MANO_LEFT.pkl", "consumer_path": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/_DATA/data_left/mano_left/MANO_LEFT.pkl", "state": "present"}
       ]
     },
     "dyn_hamr": {
@@ -320,42 +193,12 @@
         "lietorch_backends": "/mnt/workspace/sjc/EgoFound3R-baselines/HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends.cpython-310-x86_64-linux-gnu.so"
       },
       "required_paths": [
-        {
-          "role": "HaMeR checkpoint",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hamer_ckpts/checkpoints/hamer.ckpt",
-          "bytes": 2689536166,
-          "state": "present"
-        },
-        {
-          "role": "ViTPose checkpoint",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/vitpose_ckpts/vitpose+_huge/wholebody.pth",
-          "bytes": 3807742341,
-          "state": "present"
-        },
-        {
-          "role": "DROID checkpoint",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/droid.pth",
-          "bytes": 16061701,
-          "state": "present"
-        },
-        {
-          "role": "local encoder",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hmp_model/results/model/local_encoder.pth",
-          "bytes": 161190688,
-          "state": "present"
-        },
-        {
-          "role": "global encoder",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hmp_model/results/model/global_encoder.pth",
-          "bytes": 16944962,
-          "state": "present"
-        },
-        {
-          "role": "NeMF",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hmp_model/results/model/nemf.pth",
-          "bytes": 92620900,
-          "state": "present"
-        }
+        {"role": "HaMeR checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hamer_ckpts/checkpoints/hamer.ckpt", "bytes": 2689536166, "state": "present"},
+        {"role": "ViTPose checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/vitpose_ckpts/vitpose+_huge/wholebody.pth", "bytes": 3807742341, "state": "present"},
+        {"role": "DROID checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/droid.pth", "bytes": 16061701, "state": "present"},
+        {"role": "local encoder", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hmp_model/results/model/local_encoder.pth", "bytes": 161190688, "state": "present"},
+        {"role": "global encoder", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hmp_model/results/model/global_encoder.pth", "bytes": 16944962, "state": "present"},
+        {"role": "NeMF", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR/_DATA/hmp_model/results/model/nemf.pth", "bytes": 92620900, "state": "present"}
       ]
     },
     "pad_hand": {
@@ -370,39 +213,12 @@
       "input_contract": "At least 16 contiguous RGB frames; bundled WiLoR runs with the verified egofound3r interpreter, then PAD refinement runs with pad_hand_h20.",
       "execution_status": "loaded-once detector, bundled WiLoR and PAD refinement benchmark verified on 16 real H2O frames; default entry is ready for 500 frames with 2 warm-ups and 5 trials",
       "required_paths": [
-        {
-          "role": "PAD-Hand environment Python",
-          "path": "/mnt/workspace/sjc/miniconda3/envs/pad_hand_h20/bin/python",
-          "state": "present"
-        },
-        {
-          "role": "verified WiLoR front-end Python",
-          "path": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
-          "state": "present"
-        },
-        {
-          "role": "PAD bundled WiLoR MANO consumer mapping",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/WiLoR/mano_data/MANO_RIGHT.pkl",
-          "state": "present_symlink_to_canonical_asset"
-        },
-        {
-          "role": "PAD-Hand checkpoint",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/checkpoints/pad_hand.pt",
-          "bytes": 319254959,
-          "state": "present"
-        },
-        {
-          "role": "right processed MANO",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/assets/processed_MANO_RIGHT.pkl",
-          "bytes": 3075291,
-          "state": "present"
-        },
-        {
-          "role": "left processed MANO",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/assets/processed_MANO_LEFT.pkl",
-          "bytes": 3075324,
-          "state": "present"
-        }
+        {"role": "PAD-Hand environment Python", "path": "/mnt/workspace/sjc/miniconda3/envs/pad_hand_h20/bin/python", "state": "present"},
+        {"role": "verified WiLoR front-end Python", "path": "/mnt/workspace/sjc/envs/egofound3r/bin/python", "state": "present"},
+        {"role": "PAD bundled WiLoR MANO consumer mapping", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/WiLoR/mano_data/MANO_RIGHT.pkl", "state": "present_symlink_to_canonical_asset"},
+        {"role": "PAD-Hand checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/checkpoints/pad_hand.pt", "bytes": 319254959, "state": "present"},
+        {"role": "right processed MANO", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/assets/processed_MANO_RIGHT.pkl", "bytes": 3075291, "state": "present"},
+        {"role": "left processed MANO", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/PAD-Hand/assets/processed_MANO_LEFT.pkl", "bytes": 3075324, "state": "present"}
       ]
     },
     "reviv4d": {
@@ -418,69 +234,17 @@
       "blocker": null,
       "depth_output_note": "demo_infer.py emits whichever depth resolution the checkpoint provides; this checkpoint writes <stem>_tok_depth_512.npy, decoded by the official convention as of fa6cbca.",
       "required_paths": [
-        {
-          "role": "Cosmos tokenizer encoder",
-          "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/encoder.jit",
-          "bytes": 92292848,
-          "state": "present"
-        },
-        {
-          "role": "Cosmos tokenizer decoder",
-          "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/decoder.jit",
-          "bytes": 132042180,
-          "state": "present"
-        },
-        {
-          "role": "Cosmos hand encoder",
-          "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-0.1-Tokenizer-DV4x8x8/encoder.jit",
-          "bytes": 86641076,
-          "state": "present"
-        },
-        {
-          "role": "Cosmos hand decoder",
-          "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-0.1-Tokenizer-DV4x8x8/decoder.jit",
-          "bytes": 125210440,
-          "state": "present"
-        },
-        {
-          "role": "ReViV4D model checkpoint root",
-          "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth",
-          "state": "present"
-        },
-        {
-          "role": "ReViV4D normalization statistics",
-          "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/norm_stats",
-          "state": "present"
-        },
-        {
-          "role": "ReViV4D official environment specification",
-          "path": "/mnt/workspace/sjc/external/reviv4d/environment.yaml",
-          "state": "present"
-        },
-        {
-          "role": "ReViV4D main checkpoint",
-          "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_main.pth",
-          "bytes": 2574931428,
-          "state": "present"
-        },
-        {
-          "role": "ReViV4D camera tokenizer",
-          "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_tok_cam.pth",
-          "bytes": 718878062,
-          "state": "present"
-        },
-        {
-          "role": "ReViV4D left-hand tokenizer",
-          "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_tok_lhand.pth",
-          "bytes": 720085992,
-          "state": "present"
-        },
-        {
-          "role": "ReViV4D right-hand tokenizer",
-          "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_tok_rhand.pth",
-          "bytes": 720086056,
-          "state": "present"
-        }
+        {"role": "Cosmos tokenizer encoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/encoder.jit", "bytes": 92292848, "state": "present"},
+        {"role": "Cosmos tokenizer decoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-1.0-Tokenizer-DV8x16x16/decoder.jit", "bytes": 132042180, "state": "present"},
+        {"role": "Cosmos hand encoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-0.1-Tokenizer-DV4x8x8/encoder.jit", "bytes": 86641076, "state": "present"},
+        {"role": "Cosmos hand decoder", "path": "/mnt/workspace/sjc/external/reviv4d/Cosmos/checkpoints/Cosmos-0.1-Tokenizer-DV4x8x8/decoder.jit", "bytes": 125210440, "state": "present"},
+        {"role": "ReViV4D model checkpoint root", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth", "state": "present"},
+        {"role": "ReViV4D normalization statistics", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/norm_stats", "state": "present"},
+        {"role": "ReViV4D official environment specification", "path": "/mnt/workspace/sjc/external/reviv4d/environment.yaml", "state": "present"},
+        {"role": "ReViV4D main checkpoint", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_main.pth", "bytes": 2574931428, "state": "present"},
+        {"role": "ReViV4D camera tokenizer", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_tok_cam.pth", "bytes": 718878062, "state": "present"},
+        {"role": "ReViV4D left-hand tokenizer", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_tok_lhand.pth", "bytes": 720085992, "state": "present"},
+        {"role": "ReViV4D right-hand tokenizer", "path": "/mnt/workspace/sjc/external/reviv4d/reviv_checkpoints/metric_depth/reviv_tok_rhand.pth", "bytes": 720086056, "state": "present"}
       ]
     },
     "s2contact": {
@@ -493,85 +257,32 @@
       "input_contract": "Prepared H2O GT hand/object geometry; cache read is excluded from model-forward timing.",
       "execution_status": "checkpoint forward and formal H2O geometry pipeline verified; future datasets require a dataset-specific geometry-cache builder",
       "required_paths": [
-        {
-          "role": "S2Contact checkpoint",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact/checkpoints/20211027-212322.pt",
-          "bytes": 2392568,
-          "state": "present"
-        }
+        {"role": "S2Contact checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/S2Contact/checkpoints/20211027-212322.pt", "bytes": 2392568, "state": "present"}
       ],
       "dataset_required_paths": {
         "h2o": [
-          {
-            "role": "H2O 283-window right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_h2o_283.pkl",
-            "state": "present"
-          },
-          {
-            "role": "H2O 283-window geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_h2o_283_index.jsonl",
-            "state": "present"
-          }
+          {"role": "H2O 283-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_h2o_283.pkl", "state": "present"},
+          {"role": "H2O 283-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_h2o_283_index.jsonl", "state": "present"}
         ],
         "hot3d": [
-          {
-            "role": "Hot3D first-400 right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/s2_right_hot3d_400.pkl",
-            "state": "present"
-          },
-          {
-            "role": "Hot3D first-400 geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/s2_right_hot3d_400_index.jsonl",
-            "state": "present"
-          }
+          {"role": "Hot3D first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/s2_right_hot3d_400.pkl", "state": "present"},
+          {"role": "Hot3D first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/s2_right_hot3d_400_index.jsonl", "state": "present"}
         ],
         "arctic": [
-          {
-            "role": "ARCTIC first-400 right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/s2_right_arctic_400.pkl",
-            "state": "present"
-          },
-          {
-            "role": "ARCTIC first-400 geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/s2_right_arctic_400_index.jsonl",
-            "state": "present"
-          }
+          {"role": "ARCTIC first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/s2_right_arctic_400.pkl", "state": "present"},
+          {"role": "ARCTIC first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/s2_right_arctic_400_index.jsonl", "state": "present"}
         ],
         "oakink_v2": [
-          {
-            "role": "OakInk-v2 first-400 right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/s2_right_oakink_v2_400.pkl",
-            "state": "present"
-          },
-          {
-            "role": "OakInk-v2 first-400 geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/s2_right_oakink_v2_400_index.jsonl",
-            "state": "present"
-          }
+          {"role": "OakInk-v2 first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/s2_right_oakink_v2_400.pkl", "state": "present"},
+          {"role": "OakInk-v2 first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/s2_right_oakink_v2_400_index.jsonl", "state": "present"}
         ],
         "taco": [
-          {
-            "role": "TACO 400-window right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_taco_400.pkl",
-            "state": "present"
-          },
-          {
-            "role": "TACO 400-window geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_taco_400_index.jsonl",
-            "state": "present"
-          }
+          {"role": "TACO 400-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_taco_400.pkl", "state": "present"},
+          {"role": "TACO 400-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_taco_400_index.jsonl", "state": "present"}
         ],
         "hoi4d": [
-          {
-            "role": "HOI4D 461-window right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_hoi4d_461.pkl",
-            "state": "present"
-          },
-          {
-            "role": "HOI4D 461-window geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_hoi4d_461_index.jsonl",
-            "state": "present"
-          }
+          {"role": "HOI4D 461-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_hoi4d_461.pkl", "state": "present"},
+          {"role": "HOI4D 461-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/s2contact/s2_right_hoi4d_461_index.jsonl", "state": "present"}
         ]
       }
     },
@@ -585,85 +296,32 @@
       "input_contract": "Prepared H2O GT hand/object geometry; cache read is excluded from model-forward timing.",
       "execution_status": "checkpoint forward and formal H2O geometry pipeline verified; future datasets require a dataset-specific geometry-cache builder",
       "required_paths": [
-        {
-          "role": "ContactOpt checkpoint",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt/checkpoints/deepcontact_checkpoint.pt",
-          "bytes": 5751948,
-          "state": "present"
-        }
+        {"role": "ContactOpt checkpoint", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/contact_src/ContactOpt/checkpoints/deepcontact_checkpoint.pt", "bytes": 5751948, "state": "present"}
       ],
       "dataset_required_paths": {
         "h2o": [
-          {
-            "role": "H2O 283-window right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_h2o_283.pkl",
-            "state": "present"
-          },
-          {
-            "role": "H2O 283-window geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_h2o_283_index.jsonl",
-            "state": "present"
-          }
+          {"role": "H2O 283-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_h2o_283.pkl", "state": "present"},
+          {"role": "H2O 283-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/h2o_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_h2o_283_index.jsonl", "state": "present"}
         ],
         "hot3d": [
-          {
-            "role": "Hot3D first-400 right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/contactopt_right_hot3d_400.pkl",
-            "state": "present"
-          },
-          {
-            "role": "Hot3D first-400 geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/contactopt_right_hot3d_400_index.jsonl",
-            "state": "present"
-          }
+          {"role": "Hot3D first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/contactopt_right_hot3d_400.pkl", "state": "present"},
+          {"role": "Hot3D first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache/contactopt_right_hot3d_400_index.jsonl", "state": "present"}
         ],
         "arctic": [
-          {
-            "role": "ARCTIC first-400 right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/contactopt_right_arctic_400.pkl",
-            "state": "present"
-          },
-          {
-            "role": "ARCTIC first-400 geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/contactopt_right_arctic_400_index.jsonl",
-            "state": "present"
-          }
+          {"role": "ARCTIC first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/contactopt_right_arctic_400.pkl", "state": "present"},
+          {"role": "ARCTIC first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache/contactopt_right_arctic_400_index.jsonl", "state": "present"}
         ],
         "oakink_v2": [
-          {
-            "role": "OakInk-v2 first-400 right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/contactopt_right_oakink_v2_400.pkl",
-            "state": "present"
-          },
-          {
-            "role": "OakInk-v2 first-400 geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/contactopt_right_oakink_v2_400_index.jsonl",
-            "state": "present"
-          }
+          {"role": "OakInk-v2 first-400 right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/contactopt_right_oakink_v2_400.pkl", "state": "present"},
+          {"role": "OakInk-v2 first-400 geometry cache index", "path": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache/contactopt_right_oakink_v2_400_index.jsonl", "state": "present"}
         ],
         "taco": [
-          {
-            "role": "TACO 400-window right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_taco_400.pkl",
-            "state": "present"
-          },
-          {
-            "role": "TACO 400-window geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_taco_400_index.jsonl",
-            "state": "present"
-          }
+          {"role": "TACO 400-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_taco_400.pkl", "state": "present"},
+          {"role": "TACO 400-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/taco_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_taco_400_index.jsonl", "state": "present"}
         ],
         "hoi4d": [
-          {
-            "role": "HOI4D 461-window right-hand geometry cache",
-            "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_hoi4d_461.pkl",
-            "state": "present"
-          },
-          {
-            "role": "HOI4D 461-window geometry cache index",
-            "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_hoi4d_461_index.jsonl",
-            "state": "present"
-          }
+          {"role": "HOI4D 461-window right-hand geometry cache", "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_hoi4d_461.pkl", "state": "present"},
+          {"role": "HOI4D 461-window geometry cache index", "path": "/mnt/workspace/sjc/DATA/hoi4d_contact_baseline/cache_v2_20260827T180241Z/contactopt/contactopt_right_hoi4d_461_index.jsonl", "state": "present"}
         ]
       }
     },
@@ -676,12 +334,7 @@
       "input_contract": "RGB video chunks according to the runner's official context rule.",
       "execution_status": "runtime_paths_verified",
       "required_paths": [
-        {
-          "role": "VGGT-1B checkpoint",
-          "path": "/mnt/workspace/sjc/models/pretrained/VGGT-1B/model.pt",
-          "bytes": 5026874952,
-          "state": "present"
-        }
+        {"role": "VGGT-1B checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/VGGT-1B/model.pt", "bytes": 5026874952, "state": "present"}
       ]
     },
     "pi3": {
@@ -693,12 +346,7 @@
       "input_contract": "RGB video chunks according to the runner's official context rule.",
       "execution_status": "runtime_paths_verified",
       "required_paths": [
-        {
-          "role": "Pi3 checkpoint",
-          "path": "/mnt/workspace/sjc/models/pretrained/Pi3/model.safetensors",
-          "bytes": 3834909248,
-          "state": "present"
-        }
+        {"role": "Pi3 checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/Pi3/model.safetensors", "bytes": 3834909248, "state": "present"}
       ]
     },
     "da3_large_1_1": {
@@ -710,18 +358,8 @@
       "input_contract": "RGB video chunks according to the runner's official context rule.",
       "execution_status": "runtime_paths_verified",
       "required_paths": [
-        {
-          "role": "DA3-LARGE-1.1 weights",
-          "path": "/mnt/workspace/sjc/models/pretrained/Depth-Anything-3/DA3-LARGE-1.1/model.safetensors",
-          "bytes": 1643843860,
-          "state": "present"
-        },
-        {
-          "role": "DA3-LARGE-1.1 config",
-          "path": "/mnt/workspace/sjc/models/pretrained/Depth-Anything-3/DA3-LARGE-1.1/config.json",
-          "bytes": 1213,
-          "state": "present"
-        }
+        {"role": "DA3-LARGE-1.1 weights", "path": "/mnt/workspace/sjc/models/pretrained/Depth-Anything-3/DA3-LARGE-1.1/model.safetensors", "bytes": 1643843860, "state": "present"},
+        {"role": "DA3-LARGE-1.1 config", "path": "/mnt/workspace/sjc/models/pretrained/Depth-Anything-3/DA3-LARGE-1.1/config.json", "bytes": 1213, "state": "present"}
       ]
     },
     "lingbot_map_long": {
@@ -736,24 +374,9 @@
       "execution_status": "verified checkpoint load and real H2O single-frame streaming forward on H20 with Torch 2.5.1+cu121; 500-frame benchmark entry ready locally pending normal Git deployment",
       "environment_verification": "torch 2.5.1+cu121, CUDA 12.1 available, torchvision 0.20.1+cu121, flex_attention import OK, GCTStream import OK; SDPA path does not require FlashInfer",
       "required_paths": [
-        {
-          "role": "LingBot-Map long checkpoint",
-          "path": "/mnt/workspace/sjc/models/pretrained/LingBot-Map/lingbot-map-long.pt",
-          "bytes": 4632303465,
-          "state": "present"
-        },
-        {
-          "role": "offline Torch wheel",
-          "path": "/mnt/workspace/sjc/wheels/torch-2.5.1+cu121-cp310-cp310-linux_x86_64.whl",
-          "bytes": 780429430,
-          "state": "present"
-        },
-        {
-          "role": "offline torchvision wheel",
-          "path": "/mnt/workspace/sjc/wheels/torchvision-0.20.1+cu121-cp310-cp310-linux_x86_64.whl",
-          "bytes": 7282142,
-          "state": "present"
-        }
+        {"role": "LingBot-Map long checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/LingBot-Map/lingbot-map-long.pt", "bytes": 4632303465, "state": "present"},
+        {"role": "offline Torch wheel", "path": "/mnt/workspace/sjc/wheels/torch-2.5.1+cu121-cp310-cp310-linux_x86_64.whl", "bytes": 780429430, "state": "present"},
+        {"role": "offline torchvision wheel", "path": "/mnt/workspace/sjc/wheels/torchvision-0.20.1+cu121-cp310-cp310-linux_x86_64.whl", "bytes": 7282142, "state": "present"}
       ]
     },
     "vggt_omega": {
@@ -765,12 +388,7 @@
       "input_contract": "RGB video chunks according to the runner's official context rule.",
       "execution_status": "runtime_paths_verified",
       "required_paths": [
-        {
-          "role": "VGGT-Omega checkpoint",
-          "path": "/mnt/workspace/sjc/models/pretrained/VGGT-Omega/vggt_omega_1b_512.pt",
-          "bytes": 4576706117,
-          "state": "present"
-        }
+        {"role": "VGGT-Omega checkpoint", "path": "/mnt/workspace/sjc/models/pretrained/VGGT-Omega/vggt_omega_1b_512.pt", "bytes": 4576706117, "state": "present"}
       ]
     },
     "interactvlm": {
@@ -784,26 +402,10 @@
       "prepared_evaluation_runner": "formal_evaluation.contact.run_interactvlm_prepared",
       "local_evaluation_status": "formal_cached_prediction_evaluation_supported",
       "required_paths": [
-        {
-          "role": "CLIP ViT-L/14 local snapshot",
-          "path": "/mnt/workspace/sjc/models/pretrained/CLIP/clip-vit-large-patch14",
-          "state": "present"
-        },
-        {
-          "role": "SMPL-H hand segmentation",
-          "path": "/mnt/workspace/sjc/external/InteractVLM/data/smpl_segmentation_merged.pkl",
-          "state": "present"
-        },
-        {
-          "role": "SMPL-H topology",
-          "path": "/mnt/workspace/sjc/external/InteractVLM/data/body_models/smplh/SMPLH_NEUTRAL.npz",
-          "state": "present"
-        },
-        {
-          "role": "SMPL-X official visualization asset",
-          "path": "/mnt/workspace/sjc/external/InteractVLM/data/body_models/smplx/SMPLX_NEUTRAL.pkl",
-          "state": "present"
-        }
+        {"role": "CLIP ViT-L/14 local snapshot", "path": "/mnt/workspace/sjc/models/pretrained/CLIP/clip-vit-large-patch14", "state": "present"},
+        {"role": "SMPL-H hand segmentation", "path": "/mnt/workspace/sjc/external/InteractVLM/data/smpl_segmentation_merged.pkl", "state": "present"},
+        {"role": "SMPL-H topology", "path": "/mnt/workspace/sjc/external/InteractVLM/data/body_models/smplh/SMPLH_NEUTRAL.npz", "state": "present"},
+        {"role": "SMPL-X official visualization asset", "path": "/mnt/workspace/sjc/external/InteractVLM/data/body_models/smplx/SMPLX_NEUTRAL.pkl", "state": "present"}
       ],
       "runner_deployment": {
         "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/adapters/run_interactvlm.py",
@@ -813,28 +415,10 @@
       "inference_status": "official_entrypoint_and_checkpoint_config_verified_full_500_speed_pending",
       "inference_blocker": "The only remaining benchmark gate is a full model-load/forward run on a sufficiently empty GPU; cached predictions remain excluded from speed reporting.",
       "required_inference_assets": [
-        {
-          "role": "official source root",
-          "path": "/mnt/workspace/sjc/external/InteractVLM",
-          "source_commit": "46f836133c7db9fc106c0d34be793c48a64abca3",
-          "state": "verified_on_dsw"
-        },
-        {
-          "role": "DAMON checkpoint root",
-          "path": "/mnt/workspace/sjc/models/pretrained/InteractVLM/interactvlm-3d-hcontact-damon",
-          "archive_bytes": 21952861169,
-          "state": "verified_extracted_on_dsw"
-        },
-        {
-          "role": "CLIP ViT-L/14 local snapshot",
-          "path": "/mnt/workspace/sjc/models/pretrained/CLIP/clip-vit-large-patch14",
-          "state": "verified_on_dsw"
-        },
-        {
-          "role": "inference adapter",
-          "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/adapters/run_interactvlm.py",
-          "state": "implemented_locally_pending_authorized_git_promotion"
-        }
+        {"role": "official source root", "path": "/mnt/workspace/sjc/external/InteractVLM", "source_commit": "46f836133c7db9fc106c0d34be793c48a64abca3", "state": "verified_on_dsw"},
+        {"role": "DAMON checkpoint root", "path": "/mnt/workspace/sjc/models/pretrained/InteractVLM/interactvlm-3d-hcontact-damon", "archive_bytes": 21952861169, "state": "verified_extracted_on_dsw"},
+        {"role": "CLIP ViT-L/14 local snapshot", "path": "/mnt/workspace/sjc/models/pretrained/CLIP/clip-vit-large-patch14", "state": "verified_on_dsw"},
+        {"role": "inference adapter", "path": "/mnt/workspace/sjc/EgoFound3R-baselines/formal_evaluation/contact/adapters/run_interactvlm.py", "state": "implemented_locally_pending_authorized_git_promotion"}
       ]
     }
   }
