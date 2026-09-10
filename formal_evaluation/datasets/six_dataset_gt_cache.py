@@ -18,6 +18,8 @@ from .egofound3r_gt import camera_c2w_from_batch, validate_window_row
 
 
 CACHE_VERSION = "six_dataset_window_gt_v2"
+VISIBILITY_CACHE_VERSION = "six_dataset_window_gt_v3"
+SUPPORTED_CACHE_VERSIONS = {CACHE_VERSION, VISIBILITY_CACHE_VERSION}
 
 
 def window_cache_id(row: Mapping[str, object]) -> str:
@@ -58,7 +60,10 @@ def _geometry_arrays(frames: list[Mapping[str, Any]], *, frame_count: int) -> di
     }
 
 
-def cache_arrays_from_batch(batch: Mapping[str, Any], *, geometry_frames: list[Mapping[str, Any]] | None = None) -> dict[str, np.ndarray]:
+def cache_arrays_from_batch(
+    batch: Mapping[str, Any], *, geometry_frames: list[Mapping[str, Any]] | None = None,
+    include_visibility: bool = False,
+) -> dict[str, np.ndarray]:
     """Extract only metric targets; RGB and source data never enter the cache."""
     camera_c2w, camera_valid = camera_c2w_from_batch(batch)
     joints = _numpy(batch["joints_3d_targets"])[0]
@@ -79,6 +84,13 @@ def cache_arrays_from_batch(batch: Mapping[str, Any], *, geometry_frames: list[M
         "marker_contact_target": _numpy(batch["marker_contact_targets"])[0],
         "marker_contact_mask": _numpy(batch["marker_contact_supervision_mask"])[0].astype(bool),
     }
+    if include_visibility:
+        arrays.update({
+            "joint_visibility_target": _numpy(batch["joint_visibility_targets"])[0],
+            "joint_visibility_mask": _numpy(batch["joint_visibility_supervision_mask"])[0].astype(bool),
+            "marker_visibility_target": _numpy(batch["vertex_visibility_targets"])[0],
+            "marker_visibility_mask": _numpy(batch["vertex_visibility_supervision_mask"])[0].astype(bool),
+        })
     if geometry_frames is None:
         raise ValueError("full hand geometry is required for GT cache v2")
     arrays.update(_geometry_arrays(geometry_frames, frame_count=joints.shape[0]))
@@ -90,10 +102,12 @@ def cache_arrays_from_batch(batch: Mapping[str, Any], *, geometry_frames: list[M
     return arrays
 
 
-def cache_metadata(row: Mapping[str, object], *, cache_id: str) -> dict[str, object]:
+def cache_metadata(
+    row: Mapping[str, object], *, cache_id: str, cache_version: str = CACHE_VERSION
+) -> dict[str, object]:
     dataset, sequence_id, frame_ids = validate_window_row(row)
     return {
-        "cache_version": CACHE_VERSION,
+        "cache_version": cache_version,
         "cache_id": cache_id,
         "dataset": dataset,
         "sequence_id": sequence_id,
@@ -134,11 +148,14 @@ def write_window_cache(
     batch: Mapping[str, Any],
     *,
     geometry_frames: list[Mapping[str, Any]] | None = None,
+    cache_version: str = CACHE_VERSION,
 ) -> dict[str, object]:
     """Atomically write one cache entry, refusing mismatched existing targets."""
     data_path, metadata_path = cache_paths(output_root, row)
     cache_id = window_cache_id(row)
-    metadata = cache_metadata(row, cache_id=cache_id)
+    if cache_version not in SUPPORTED_CACHE_VERSIONS:
+        raise ValueError(f"unsupported GT cache version: {cache_version}")
+    metadata = cache_metadata(row, cache_id=cache_id, cache_version=cache_version)
     if data_path.exists() or metadata_path.exists():
         if not (data_path.is_file() and metadata_path.is_file()):
             raise FileExistsError(f"incomplete cache entry: {data_path}")
@@ -147,7 +164,10 @@ def write_window_cache(
             raise ValueError(f"existing cache metadata differs: {metadata_path}")
         return {**metadata, "array_path": str(data_path), "status": "reused"}
 
-    arrays = cache_arrays_from_batch(batch, geometry_frames=geometry_frames)
+    arrays = cache_arrays_from_batch(
+        batch, geometry_frames=geometry_frames,
+        include_visibility=cache_version == VISIBILITY_CACHE_VERSION,
+    )
     data_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=data_path.parent, suffix=".npz", delete=False) as handle:
         temporary = Path(handle.name)
@@ -165,7 +185,7 @@ def load_window_cache(index_entry: Mapping[str, object]) -> tuple[dict[str, obje
     metadata_path = Path(str(index_entry["metadata_path"]))
     array_path = Path(str(index_entry["array_path"]))
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    if metadata.get("cache_version") != CACHE_VERSION:
+    if metadata.get("cache_version") not in SUPPORTED_CACHE_VERSIONS:
         raise ValueError(f"unsupported GT cache version: {metadata.get('cache_version')}")
     with np.load(array_path, allow_pickle=False) as archive:
         arrays = {name: archive[name] for name in archive.files}

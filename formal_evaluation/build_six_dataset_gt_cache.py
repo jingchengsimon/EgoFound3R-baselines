@@ -10,7 +10,12 @@ from collections import Counter
 from pathlib import Path
 
 from formal_evaluation.datasets.egofound3r_gt import DATASET_LOADERS, SixDatasetGroundTruth, validate_window_row
-from formal_evaluation.datasets.six_dataset_gt_cache import cache_paths, write_window_cache
+from formal_evaluation.datasets.six_dataset_gt_cache import (
+    CACHE_VERSION,
+    SUPPORTED_CACHE_VERSIONS,
+    cache_paths,
+    write_window_cache,
+)
 
 
 def _roots(values: list[str]) -> dict[str, str]:
@@ -41,6 +46,9 @@ def main() -> None:
     parser.add_argument("--root", action="append", required=True, metavar="DATASET=PATH")
     parser.add_argument("--mano-dir", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument(
+        "--cache-version", choices=sorted(SUPPORTED_CACHE_VERSIONS), default=CACHE_VERSION
+    )
     parser.add_argument("--datasets", nargs="*", choices=sorted(DATASET_LOADERS), default=sorted(DATASET_LOADERS))
     parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--shard-index", type=int, default=0)
@@ -69,13 +77,16 @@ def main() -> None:
     for index, row in enumerate(selected, start=1):
         data_path, metadata_path = cache_paths(args.output_root, row)
         if data_path.exists() and metadata_path.exists():
-            entry = write_window_cache(args.output_root, row, {})
+            entry = write_window_cache(
+                args.output_root, row, {}, cache_version=args.cache_version
+            )
         else:
             entry = write_window_cache(
                 args.output_root,
                 row,
                 bridge.batch_for_window(row),
                 geometry_frames=bridge.geometry_for_window(row),
+                cache_version=args.cache_version,
             )
         entries.append({
             "dataset": entry["dataset"], "sequence_id": entry["sequence_id"], "window_id": entry["window_id"],

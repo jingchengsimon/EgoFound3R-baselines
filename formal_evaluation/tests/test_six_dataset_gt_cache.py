@@ -6,7 +6,13 @@ from pathlib import Path
 
 import numpy as np
 
-from formal_evaluation.datasets.six_dataset_gt_cache import cache_paths, window_cache_id, write_window_cache
+from formal_evaluation.datasets.six_dataset_gt_cache import (
+    VISIBILITY_CACHE_VERSION,
+    cache_paths,
+    load_window_cache,
+    window_cache_id,
+    write_window_cache,
+)
 
 
 class SixDatasetGTCacheTests(unittest.TestCase):
@@ -28,6 +34,10 @@ class SixDatasetGTCacheTests(unittest.TestCase):
             "contact_supervision_mask": np.ones((1, 2, 2, 21), dtype=bool),
             "marker_contact_targets": np.zeros((1, 2, 2, 195), dtype=np.float32),
             "marker_contact_supervision_mask": np.ones((1, 2, 2, 195), dtype=bool),
+            "joint_visibility_targets": np.zeros((1, 2, 2, 21), dtype=bool),
+            "joint_visibility_supervision_mask": np.ones((1, 2, 2, 21), dtype=bool),
+            "vertex_visibility_targets": np.zeros((1, 2, 2, 195), dtype=bool),
+            "vertex_visibility_supervision_mask": np.ones((1, 2, 2, 195), dtype=bool),
             "depth": np.ones((1, 2, 3, 4), dtype=np.float32),
             "depth_valid_mask": np.ones((1, 2, 3, 4), dtype=bool),
         }
@@ -37,11 +47,24 @@ class SixDatasetGTCacheTests(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            result = write_window_cache(root, row, batch, geometry_frames=geometry_frames)
+            result = write_window_cache(
+                root, row, batch, geometry_frames=geometry_frames,
+                cache_version=VISIBILITY_CACHE_VERSION,
+            )
             self.assertEqual(result["status"], "written")
             data_path, metadata_path = cache_paths(root, row)
             self.assertTrue(data_path.is_file() and metadata_path.is_file())
-            self.assertEqual(write_window_cache(root, row, batch)["status"], "reused")
+            self.assertEqual(
+                write_window_cache(
+                    root, row, batch, cache_version=VISIBILITY_CACHE_VERSION
+                )["status"],
+                "reused",
+            )
+            _, arrays = load_window_cache({
+                "array_path": str(data_path), "metadata_path": str(metadata_path)
+            })
+            self.assertIn("joint_visibility_target", arrays)
+            self.assertIn("marker_visibility_mask", arrays)
 
 
 if __name__ == "__main__":

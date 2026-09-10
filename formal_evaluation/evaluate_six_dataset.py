@@ -286,6 +286,19 @@ def evaluate_window(
                 mask &= np.broadcast_to(hand_valid[..., None], mask.shape)
             for name, value in compute_contact_metrics(predictions[prediction_key], targets[target_key], mask).items():
                 result[f"{prefix}_contact_{name}"] = value
+        for prefix, prediction_key, target_key, mask_key in (
+            ("joint", "hand_visibility", "joint_visibility_target", "joint_visibility_mask"),
+            ("marker", "marker_visibility", "marker_visibility_target", "marker_visibility_mask"),
+        ):
+            if prediction_key not in predictions or target_key not in targets or mask_key not in targets:
+                continue
+            mask = targets[mask_key].copy()
+            if hand_valid is not None:
+                mask &= np.broadcast_to(hand_valid[..., None], mask.shape)
+            for name, value in compute_contact_metrics(
+                predictions[prediction_key], targets[target_key], mask
+            ).items():
+                result[f"{prefix}_visibility_{name}"] = value
     return result
 
 
