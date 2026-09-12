@@ -15,6 +15,19 @@ def rows(path):
     return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
 
 
+def require_metric_fields(result, hand_valid, metric_stems):
+    if not hand_valid:
+        return
+    for stem in metric_stems:
+        keys = ['hand_'+side+'_'+stem for side in ('left', 'right')]
+        if stem.startswith(('w_', 'wa_', 'marker_w_', 'marker_wa_', 'vertex_w_', 'vertex_wa_')):
+            # Camera alignment can be undefined even when hand geometry is valid.
+            for key in keys:
+                result.setdefault(key, float('nan'))
+        elif not any(key in result for key in keys):
+            raise ValueError('required metric not emitted: '+stem)
+
+
 def evaluate_one(spec, prediction_dir, output):
     import numpy as np
     from formal_evaluation.evaluate_six_dataset import _prediction_arrays, evaluate_window
@@ -31,10 +44,7 @@ def evaluate_one(spec, prediction_dir, output):
         raise ValueError('GT/prediction frame mismatch')
     config = json.loads(Path(spec['metric_methods_config']).read_text())['methods']['dyn_hamr']
     result = evaluate_window(method='dyn_hamr', config=config, metadata=metadata, predictions=prediction, gt_metadata=gm, targets=target)
-    if prediction['hand_valid'].any():
-        for stem in spec['metric_stems']:
-            if not any('hand_'+side+'_'+stem in result for side in ['left','right']):
-                raise ValueError('required metric not emitted: '+stem)
+    require_metric_fields(result, prediction['hand_valid'].any(), spec['metric_stems'])
     def native(value):
         if isinstance(value, np.ndarray): return native(value.item() if value.ndim == 0 else value.tolist())
         if isinstance(value, np.generic): return value.item()
@@ -60,6 +70,8 @@ def aggregate(spec, root):
         if not count: raise ValueError('no defined windows for required metric: '+stem)
         complete24[stem]=weighted/count/(1000 if stem.endswith('ae') else 1)
     report={'status':'complete','method':'dyn_hamr','windows':len(metrics),'datasets':{spec['dataset']:summary},'complete24':complete24,'filtering':'none','comparison':'original100 identities; new predicted-camera rerun; excluded from same-sample bolding', 'camera_source':'optimized_Dyn-HaMR_world_cam_R_cam_t'}
+    if 'reuse' in spec:
+        report['reuse'] = spec['reuse']
     (root/'report.json').write_text(json.dumps(report,indent=2))
     (root/'summary.json').write_text(json.dumps({'status':'complete','windows':len(metrics),'metric_count':len(complete24),'report_sha256':hashlib.sha256((root/'report.json').read_bytes()).hexdigest(),'prediction_index_sha256':hashlib.sha256((root/'predictions.jsonl').read_bytes()).hexdigest()}))
     (root/'COMPLETE').write_text('complete\n')
@@ -85,13 +97,35 @@ def infer(spec, root, spec_path):
         record=json.loads(Path(row['window_input']).read_text());key=(record['dataset'],record['window_id'])
         assert key not in seen and record['frame_ids']==expected[key];seen.add(key)
     assert seen==set(expected)
+    reuse = spec.get('reuse')
+    previous = []
+    if reuse:
+        source = Path(reuse['output_root'])
+        raw = (source/'predictions.jsonl').read_bytes()
+        if hashlib.sha256(raw).hexdigest() != reuse['prediction_index_sha256']:
+            raise ValueError('reuse prediction index SHA256 mismatch')
+        previous = [json.loads(line) for line in raw.splitlines() if line.strip()]
+        if len(previous) + 1 != reuse['count']:
+            raise ValueError('reuse prediction count mismatch')
+        for i, old in enumerate(previous):
+            record = json.loads(Path(inputs[i]['window_input']).read_text())
+            target = source/'dyn_hamr/formal'/record['cache_id']
+            if (old['prediction_dir'] != str(target) or old['window_id'] != record['window_id']
+                    or old['dataset'] != spec['dataset']):
+                raise ValueError('reuse prediction identity mismatch')
+        record = json.loads(Path(inputs[len(previous)]['window_input']).read_text())
+        if record['cache_id'] != reuse['last_cache_id']:
+            raise ValueError('reuse trailing prediction mismatch')
     root.mkdir(parents=True,exist_ok=False)
     cpu_env={**os.environ,'CUDA_VISIBLE_DEVICES':'','PYTHONPATH':spec['metric_worktree']}
     with (root/'predictions.jsonl').open('x') as index, (root/'metrics.jsonl').open('x') as metrics:
         for i,row in enumerate(inputs,1):
             start=time.monotonic();record=json.loads(Path(row['window_input']).read_text());source=Path(spec['source_root'])
-            adapter.main(['--phase','formal','--window-input',row['window_input'],'--methods-config',spec['inference_methods_config'],'--source-root',str(source),'--hamer-checkpoint-root',str(source),'--detector-weight',str(source/'third-party/hamer/pretrained_models/detector.pt'),'--droid-weight',str(source/'_DATA/droid.pth'),'--scratch-dir','/dev/shm','--output-root',str(root),'--context-frames','80','--root-iters','50','--smooth-iters','300','--export-cameras'])
-            target=root/'dyn_hamr/formal'/record['cache_id']
+            if reuse and i <= reuse['count']:
+                target=Path(reuse['output_root'])/'dyn_hamr/formal'/record['cache_id']
+            else:
+                adapter.main(['--phase','formal','--window-input',row['window_input'],'--methods-config',spec['inference_methods_config'],'--source-root',str(source),'--hamer-checkpoint-root',str(source),'--detector-weight',str(source/'third-party/hamer/pretrained_models/detector.pt'),'--droid-weight',str(source/'_DATA/droid.pth'),'--scratch-dir','/dev/shm','--output-root',str(root),'--context-frames','80','--root-iters','50','--smooth-iters','300','--export-cameras'])
+                target=root/'dyn_hamr/formal'/record['cache_id']
             meta=json.loads((target/'metadata.json').read_text());status=json.loads((target/'run.json').read_text())['status']
             assert meta['frame_ids']==record['frame_ids'] and meta['window_id']==record['window_id']
             if status not in ['success','blocked_no_track_over_min_track_len']:raise ValueError(status)
