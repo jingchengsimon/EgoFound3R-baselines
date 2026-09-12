@@ -1,0 +1,42 @@
+{
+  "dataset": "oakink_v2",
+  "expected_windows": 17,
+  "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache/index_shard_000_of_001.jsonl",
+  "gt_index_sha256": "99f48ea8d47d40096280b1c97e47499c9047b68213dac20684823e844adc86e8",
+  "reference_indices": [
+    "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_hamr_remaining88_v5_20260907/predictions/oakink_v2/predictions.jsonl"
+  ],
+  "prepared_index": "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_hamr_remaining88_v5_20260907/prepare/oakink_v2/windows.jsonl",
+  "source_root": "/mnt/workspace/sjc/EgoFound3R-baselines/Dyn-HaMR",
+  "adapter": "/mnt/workspace/sjc/eval_artifacts/dyn_hamr_full_hand100_20260912_v1/oakink_v2_runtime/formal_evaluation/hand/adapters/run_dyn_hamr_window.py",
+  "metric_worktree": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R-baselines_f8332ee_20260910_clean_v2",
+  "metric_python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+  "inference_methods_config": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R-baselines_dyn_resident_e1fb8ae_20260906/formal_evaluation/config/methods_v1.json",
+  "metric_methods_config": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R-baselines_traincrop512_1078f15_20260908/formal_evaluation/config/methods_v1.json",
+  "metric_stems": [
+    "mpjpe",
+    "rr_mpjpe",
+    "pa_mpjpe",
+    "global_sim3_mpjpe",
+    "w_mpjpe",
+    "wa_mpjpe",
+    "mpjve",
+    "mpjae",
+    "marker_mpmpe",
+    "marker_rr_mpmpe",
+    "marker_pa_mpmpe",
+    "marker_global_sim3_mpmpe",
+    "marker_w_mpmpe",
+    "marker_wa_mpmpe",
+    "marker_mpmve",
+    "marker_mpmae",
+    "vertex_mpvpe",
+    "vertex_rr_mpvpe",
+    "vertex_pa_mpvpe",
+    "vertex_global_sim3_mpvpe",
+    "vertex_w_mpvpe",
+    "vertex_wa_mpvpe",
+    "vertex_mpvve",
+    "vertex_mpvae"
+  ]
+}

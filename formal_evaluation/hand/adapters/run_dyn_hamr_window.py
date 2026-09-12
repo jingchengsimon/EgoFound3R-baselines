@@ -42,6 +42,32 @@ def _module(path: Path, name: str):
     return module
 
 
+def _canonical_cameras(rotation, translation, frame_count, start_idx, scoring_indices):
+    """Invert optimized world-to-camera extrinsics, retaining the official kept span."""
+    rotation = np.asarray(rotation)
+    translation = np.asarray(translation)
+    if rotation.ndim == 4:
+        if not np.allclose(rotation, rotation[:1]) or not np.allclose(translation, translation[:1]):
+            raise ValueError("Dyn-HaMR camera tracks disagree")
+        rotation, translation = rotation[0], translation[0]
+    length = len(rotation)
+    if rotation.shape != (length, 3, 3) or translation.shape != (length, 3):
+        raise ValueError("invalid optimized camera shape")
+    if start_idx < 0 or start_idx + length > frame_count:
+        raise ValueError("camera kept span outside context")
+    if not np.isfinite(rotation).all() or not np.isfinite(translation).all():
+        raise ValueError("nonfinite optimized camera")
+    pose = np.full((frame_count, 4, 4), np.nan, dtype=np.float32)
+    valid = np.zeros(frame_count, dtype=bool)
+    camera = np.broadcast_to(np.eye(4), (length, 4, 4)).copy()
+    camera[:, :3, :3] = rotation.transpose(0, 2, 1)
+    camera[:, :3, 3] = -np.einsum("tij,tj->ti", camera[:, :3, :3], translation)
+    pose[start_idx:start_idx + length] = camera
+    valid[start_idx:start_idx + length] = True
+    selection = np.asarray(scoring_indices, dtype=np.int64)
+    return pose[selection], valid[selection]
+
+
 def _canonical_geometry(
     mano_output: dict[str, object], frame_count: int, start_idx: int = 0
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -138,6 +164,7 @@ def main(argv=None) -> None:
     parser.add_argument("--droid-weight", type=Path, required=True)
     parser.add_argument("--scratch-dir", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument("--export-cameras", action="store_true", help="Preserve optimized predicted cameras for full hand metrics")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--root-iters", type=int, default=1, help="smoke default; use formal policy values for pilot")
     parser.add_argument("--smooth-iters", type=int, default=1, help="smoke default; use formal policy values for pilot")
@@ -210,6 +237,7 @@ def _run_window(args):
     sequence_name = f"dyn_hamr_{cache_id}"
     work = Path(tempfile.mkdtemp(prefix="dyn_hamr_window_", dir=args.scratch_dir))
     start = time.perf_counter()
+    camera_arrays = {}
     try:
         image_dir = work / "images" / sequence_name
         image_dir.mkdir(parents=True)
@@ -249,6 +277,8 @@ def _run_window(args):
             vertices = np.zeros((scoring_count, 2, 778, 3), dtype=np.float32)
             valid = np.zeros((scoring_count, 2), dtype=bool)
             kept_start, kept_len = 0, 0
+            if args.export_cameras:
+                camera_arrays = {"camera_c2w": np.full((scoring_count, 4, 4), np.nan, dtype=np.float32), "camera_valid": np.zeros(scoring_count, dtype=bool)}
         else:
             blocked = None
         if blocked is None:
@@ -268,6 +298,9 @@ def _run_window(args):
             set_seed(cfg.get("seed", 42))
             _, prediction = run_opt(cfg, dataset, str(work / "unused"), device, hand_model=mano_model, save_io=False)
             world = prediction["world"]
+            if args.export_cameras:
+                camera, camera_valid = _canonical_cameras(world["cam_R"].detach().cpu().numpy(), world["cam_t"].detach().cpu().numpy(), frame_count, kept_start, scoring_indices)
+                camera_arrays = {"camera_c2w": camera, "camera_valid": camera_valid}
             mano = run_mano(mano_model, world["trans"], world["root_orient"], world["pose_body"], world["is_right"], betas=world.get("betas"))
             joints, vertices, valid = _canonical_geometry(mano, frame_count, kept_start)
             # Score only the manifest frames; the surrounding context is input-only.
@@ -284,6 +317,7 @@ def _run_window(args):
         "capabilities": {
             "hand_joints_world": True, "hand_vertices_world": True,
             "hand_markers_world": True, "hand_valid": True,
+            **{key: True for key in camera_arrays},
         },
         "scale_type": config["scale_type"], "coordinate_space": "world",
         "runner_detail": "official RGB->YOLO/HaMeR/DROID-SLAM/Dyn-HaMR; smoke optimization iterations configured explicitly",
@@ -294,11 +328,13 @@ def _run_window(args):
             "with track_len <= 60, so a 60-frame scoring window cannot be run on its own"
         ),
         "official_kept_span": [kept_start, kept_start + kept_len],
+        **({"camera_source": "optimized_Dyn-HaMR_world_cam_R_cam_t", "temporal_fps": 30.0} if camera_arrays else {}),
     }, arrays={
         "hand_joints_world": joints,
         "hand_vertices_world": vertices,
         "hand_markers_world": downsample_mano_vertices(vertices),
         "hand_valid": valid,
+        **camera_arrays,
     }, run=blocked or {
         "status": "success", "elapsed_seconds": time.perf_counter() - start, "device": str(device),
         "root_iterations": args.root_iters, "smooth_iterations": args.smooth_iters,
