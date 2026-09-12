@@ -1,0 +1,27 @@
+--- skills/.system/openai-docs/SKILL.md
++++ skills/.system/openai-docs/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: "openai-docs"
+-description: "Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and self-knowledge—including 'you,' 'your,' 'this app,' or 'this coding agent' when they refer to Codex—and for OpenAI APIs/products and ChatGPT Work. Also use for model choice/migration, prompting, SDKs, Responses, Realtime, agents, evals, and Chat/Work/Codex comparisons. Do not use for generic app/software tasks that merely mention Codex."
++description: "Look up official OpenAI product/API guidance, or inspect Codex configuration when the user asks about it. Do not trigger merely because a software task mentions Codex."
+ metadata:
+   short-description: "Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, and self-knowledge; OpenAI APIs and ChatGPT Work. 'You'/'this app' means Codex only."
+ ---
+@@ -9,9 +9,13 @@
+ 
+ Provide current, cited OpenAI product, API, model, and Codex guidance. Read zero or one primary reference.
+ 
+-**First substantive action:** Search the user's exact requested official OpenAI documentation topic and any explicitly named model using a concise, topic-specific query of 2-6 essential terms. When an already-available direct official documentation search and page-retrieval capability is present, use it first: search, then fetch or open the matching official page before general web search. Otherwise, immediately use official-domain web search, then actually open or fetch the relevant official page. Complete this source order before reading a reference, inspecting local or repository files, running a Codex manual or model resolver, drafting a plan, or answering from memory. Use the actual fetched page, not a search snippet or an unopened link. If one official search or page does not establish the answer, search another appropriate official domain and actually open or fetch the result. Preserve the exact requested model; never substitute a newer model.
+-
+-**Only exception:** An explicitly requested, genuinely broad, cross-topic Codex setup, orientation, or system-map synthesis may use the manual first when shell execution and an allowed temporary cache are available. A specific Codex feature, setting, command, error, model, or requested citation remains docs-first. Mixed Chat/Work/Codex comparisons are official documentation questions, not manual-first Codex requests.
++**Source selection:** If the user provides an official URL, open it directly; search only if
++it is unavailable or insufficient. For questions about local configuration or installed files,
++inspect the relevant local evidence first. For current product behavior, versions, pricing,
++availability, or other facts requiring external verification, use an available official docs
++capability or official-domain web search and read the relevant page. Do not require a separate
++search when an already-read official source answers the question. Preserve an explicitly named
++model. Read additional references only to resolve a remaining task-specific question.
+ 
+ For generic software tasks, answer the software task directly. OpenAI implementation, debugging, SDK, API, prompting, agent, and eval requests are not generic.
+ 

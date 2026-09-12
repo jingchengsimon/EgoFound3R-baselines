@@ -1,0 +1,17 @@
+--- plugins/cache/openai-primary-runtime/pdf/26.905.11957/skills/pdf/SKILL.md
++++ plugins/cache/openai-primary-runtime/pdf/26.905.11957/skills/pdf/SKILL.md
+@@ -136,8 +136,12 @@
+ 
+ ## Final Checks
+ 
+-- Do not deliver until the latest PNG inspection shows zero visual or formatting defects.
+-- Confirm headers, footers, page numbering, and section transitions look polished.
++- For new documents or broad layout changes, inspect all rendered pages. For narrow edits,
++  inspect changed pages and pagination dependencies; do not recheck unchanged pages repeatedly.
++- Fix clipping, overlap, unreadable glyphs, incorrect content, and violated format requirements.
++  Re-render affected output after fixing a concrete defect. Stop once content, readability, and
++  the requested format pass; do not continue subjective polishing.
++- Check headers, footers, page numbering, and transitions where the change affects them.
+ - Keep intermediate files organized or remove them after final approval.
+ 
+ ## Final response citations

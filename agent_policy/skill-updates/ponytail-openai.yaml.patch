@@ -1,0 +1,9 @@
+--- plugins/cache/ponytail/ponytail/4.9.0/skills/ponytail/agents/openai.yaml
++++ plugins/cache/ponytail/ponytail/4.9.0/skills/ponytail/agents/openai.yaml
+@@ -0,0 +1,6 @@
++interface:
++  display_name: "Ponytail"
++  short_description: "Simplify explicitly requested implementations"
++  default_prompt: "Use $ponytail to simplify this implementation within the requested scope."
++policy:
++  allow_implicit_invocation: false

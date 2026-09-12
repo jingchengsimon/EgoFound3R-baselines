@@ -1,0 +1,100 @@
+--- plugins/cache/openai-primary-runtime/documents/26.905.11957/skills/documents/SKILL.md
++++ plugins/cache/openai-primary-runtime/documents/26.905.11957/skills/documents/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: documents
+-description: Create, edit, redline, and comment on `.docx`, Word, and Google Docs-targeted document artifacts inside the container, with a strict render-and-verify workflow. Use `render_docx.py` to generate page PNGs (and optional PDF) for visual QA, then iterate until layout is flawless before delivering the final document.
++description: Create, edit, redline, and comment on `.docx`, Word, and Google Docs-targeted document artifacts inside the container, with a strict render-and-verify workflow. Use `render_docx.py` to generate page PNGs (and optional PDF) for visual QA, verify correct content, readable layout, and the requested format before delivery.
+ ---
+ 
+ # DOCX Skill (Read • Create • Edit • Redline • Comment)
+@@ -17,7 +17,7 @@
+ - Write directly in the author's voice, using “I” or “we” when appropriate. Present the update, recommendation, or request to the recipient. Match the author's tone and relationship to that audience; do not invent experience, authority, commitments, or facts from style examples.
+ - Lead with the conclusion, decision, or request. Use concrete subjects, strong verbs, and natural sentences. State what changed, why it matters, and what evidence or constraint supports the claim. Keep necessary qualifications and distinguish facts, interpretation, recommendations, and uncertainty.
+ - Remove stock formulas, slogans, inflated significance, vague abstractions, unsupported authorities, canned empathy, and ornamental transitions. Avoid conspicuous rhetorical triads, forced contrasts, repetitive cadence, and punctuation used only for emphasis. Judge these patterns in context; an isolated phrase, accurate technical term, or useful contrast is not automatically a defect.
+-- Review both the writing and the rendered document. Check that claims are supported, the author's voice is consistent, and every page is readable and free of layout defects. Do not mention this editorial framework in the delivered document unless asked.
++- Review both the writing and the rendered document. Check that claims are supported, the author's voice is consistent, and affected pages are readable and free of concrete layout defects. Do not mention this editorial framework in the delivered document unless asked.
+ 
+ Before formatting, read the title and section headings as an outline. Write connected paragraphs that explain relationships, and replace compressed labels or unnecessary compounds with natural wording. Preserve the source's meaning, including uncertainty, conditions, time periods, and comparisons. Use punctuation and passive voice in body text when they improve precision.
+ 
+@@ -71,17 +71,17 @@
+ still apply. For a Google Docs-targeted result, record any change made by the
+ required title sanitizer as an intentional fidelity deviation.
+ 
+-## Non-negotiable: render → inspect PNGs → iterate
+-
+-**You do not “know” a DOCX is satisfactory until you’ve rendered it and visually inspected page images.**
+-DOCX text extraction (or reading XML) will miss layout defects: clipping, overlap, missing glyphs, broken tables, spacing drift, and header/footer issues.
+-
+-**Shipping gate:** before delivering any DOCX, you must:
+-- Run `render_docx.py` to produce `page-<N>.png` images (optionally also a PDF with `--emit_pdf`)
+-- Open the PNGs (100% zoom) and confirm every page is clean
+-- If anything looks off, fix the DOCX and **re-render** (repeat until flawless)
+-
+-If rendering fails, diagnose the packaged renderer using its logs before retrying.
++## Render and verify the affected layout
++
++Before delivering a new DOCX or a broad layout change, render with `render_docx.py` and inspect
++all page images. For a narrow edit, inspect changed pages and any pagination dependencies;
++do not repeatedly inspect unchanged pages. Text/XML extraction alone cannot verify layout.
++
++Fix concrete defects such as clipping, overlap, missing glyphs, broken tables, or violated user
++format requirements, then render the affected result again. Stop when content is correct,
++layout is readable, and the requested format is satisfied. Do not iterate for subjective polish
++beyond those criteria. If rendering fails, inspect its logs before a justified retry; report
++an unresolved renderer blocker rather than repeating the same failed operation.
+ 
+ **Deliverable discipline:** Rendered artifacts (PNGs and optional PDFs) are for internal QA only. Unless the user explicitly asks for intermediates, **return only the requested final deliverable** (e.g., when the task asks for a DOCX, deliver the DOCX — not page images or PDFs).
+ 
+@@ -94,18 +94,9 @@
+ 
+ When creating the document design, do not compromise on the content and make factual/technical errors. Do not produce something that looks polished but not actually what the user requested.
+ 
+-It is very important that the document is professional and aesthetically pleasing. As such, you should follow this general workflow to make your final delivered document:
+-
+-1. Before you make the DOCX, please first think about the high-level design of the DOCX:
+-   - Before creating the document, decide what kind of document it is (for example, a memo, report, SOP, workflow, form, proposal, or manual) and design accordingly. In general, you shall create documents which are professional, visually polished, and aesthetically pleasing. However, you should also calibrate the level of styling to the document's purpose: for formal, serious, or highly utilitarian documents, visual appeal should come mainly from strong typography, spacing, hierarchy, and overall polish rather than expressive styling. The goal is for the document's visual character to feel appropriate to its real-world use case, with readability and usability always taking priority.
+-   - You should make documents that feel visually natural. If a human looks at your document, they should find the design natural and smooth. This is very important; please think carefully about how to achieve this.
+-   - Think about how you would like the first page to be organized. How about subsequent pages? What about the placement of the title? What does the heading ladder look like? Should there be a clear hierarchy? etc
+-   - Would you like to include visual components, such as tables, checklists, images, etc? If yes, then plan out the design for each component.
+-   - Think about the general spacing and layout. What will be the default body spacing? What page budget is allocated between packaging and substance? How will page breaks behave around tables and figures, since we must make sure to avoid large blank gaps, keep captions and their visuals together when possible, and keep content from becoming too wide by maintaining generous side margins so the page feels balanced and natural.
+-   - Think about font, type scale, consistent accent treatment, etc. Try to avoid forcing large chunks of small text into narrow areas. When space is tight, adjust font size, line breaks, alignment, or layout instead of cramming in more text.
+-2. Once you have a working DOCX, continue iterating until the entire document is polished and correct. After every change or edit, render the DOCX and review it carefully to evaluate the result. The plan from (1) should guide you, but it is only a flexible draft; you should update your decisions as needed throughout the revision process. Important: each time you render and reflect, you should check for both:
+-   1. Design aesthetics: the document should be aesthetically pleasing and easy to skim. Ask yourself: if a human were to look at my document, would they find it aesthetically nice? It should feel natural, smooth, and visually cohesive.
+-   2. Formatting issues that need to be fixed: e.g. text overlap, overflow, cramped spacing between adjacent elements, awkward spacing in tables/charts, awkward page breaks, etc. This is super important. Do not stop revising until all formatting issues are fixed.
++Choose typography, spacing, and hierarchy appropriate to the user's document and preserve a
++working template. Plan only the design decisions needed for this task. Batch related edits,
++then apply the render check above; do not render after every individual editing command.
+ 
+ While making and revising the DOCX, please adhere to and check against these quality reminders, to ensure the deliverable is visually high quality:
+ 
+@@ -438,16 +429,10 @@
+ 
+ ## Default workflow (80/20)
+ 
+-**Rule of thumb:** every meaningful edit batch must end with a render + PNG review. No exceptions.
+-"80/20" here means: follow the simplest workflow that covers *most* DOCX tasks reliably.
+-
+-**Golden path (don’t mix-and-match unless debugging):**
+-1. **Author/edit with `python-docx`** (paragraphs, runs, styles, tables, headers/footers).
+-2. **Render → inspect PNGs immediately** (DOCX → PNGs). Treat this as your feedback loop.
+-3. **Fix and repeat** until the PNGs are visually perfect.
+-4. **Only if needed**: use OOXML patching for tracked changes, comments, hyperlinks, or fields.
+-5. **Re-render and inspect again** after *any* OOXML patch or layout-sensitive change.
+-6. **Deliver only after the latest PNG review passes** (all pages, 100% zoom).
++Author/edit with `python-docx`; use OOXML only for features that require it. Batch related
++changes, then use the affected-layout render check above. After a layout-sensitive or OOXML
++change, verify its output and affected dependencies. Stop once the stated acceptance criteria
++pass; do not repeat unchanged checks or seek visual perfection.
+ 
+ ## Visual review (recommended)
+ 
+@@ -466,7 +451,7 @@
+ **Success criteria (render + visual QA):**
+ - PNGs exist for each page
+ - Page count matches expectations
+-- **Inspect every page at 100% zoom** (no “spot check” for final delivery)
++- Inspect every page for new/broad layouts; for narrow edits inspect changed pages and pagination dependencies at a readable zoom
+ - No clipping/overlap, no broken tables, no missing glyphs, no header/footer misplacement
+ 
+ **Note:** LibreOffice sometimes prints scary-looking stderr (e.g., `error : Unknown IO error`) even when output is correct. Treat the render as successful if the PNGs exist and look right (and if you used `--emit_pdf`, the PDF exists and is non-empty).

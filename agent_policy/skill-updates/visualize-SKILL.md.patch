@@ -1,0 +1,25 @@
+--- plugins/cache/openai-bundled/visualize/1.0.37/skills/visualize/SKILL.md
++++ plugins/cache/openai-bundled/visualize/1.0.37/skills/visualize/SKILL.md
+@@ -1,6 +1,6 @@
+ ---
+ name: visualize
+-description: "Create visualizations and interactive tools directly in conversation. Proactively use to show how something works; explore 'what happens when', 'what changes', or 'help me understand'; compare or inspect; create simulations, maps, charts, graphs, and mockups. Use standard tools for static scientific figures."
++description: "Create an in-conversation visual when interaction or spatial relationships materially improve understanding. Use Markdown tables for simple comparisons and standard plotting tools for scientific figures."
+ ---
+ 
+ # Visualize
+@@ -10,12 +10,12 @@
+ - Create a visual only when the user needs to see or explore it in the conversation and it materially improves the explanation. Do not create an inline visual merely because the request involves data, charts, or an interactive page.
+ - Use a normal Markdown table when the user asks for a table; return it directly and do not create a visualization file.
+ - Use Mermaid when labeled nodes and edges fully explain a static structure; return a normal fenced Mermaid block and no visualization file. Use HTML for dynamics, spatial motion, adjustable inputs, and other visuals.
+-- Work silently unless blocked or the user explicitly asks for progress. Never send commentary or progress updates while reading this skill or writing or updating the file; the final response must be your first user-facing message.
++- Keep short visualization tasks concise. For long tasks, report meaningful findings or blockers according to the conversation rules; do not add fixed progress rituals.
+ - In user-facing prose, describe only what the visual helps the user see or decide. Keep it concise and do not repeat information already clear from the visual. Never announce this skill, a visualization surface, widgets, HTML, SVG, scripts, local files, inline data, or implementation details.
+ 
+ ## Context compaction
+ 
+-Copy into every compaction summary: `Reload the full visualize skill before creating or updating a visualization.`
++After compaction, recover the relevant output contract if it is missing; do not reload unchanged guidance that is already available.
+ 
+ ## Inline HTML output contract
+ 
