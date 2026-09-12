@@ -1,0 +1,75 @@
+{
+  "method": "egofound3r_stride5",
+  "mode": "visibility",
+  "camera": "predicted",
+  "expected_windows": 2378,
+  "fixed_selection_sha256": "eddcfb7f33f4300874fe3631c8b5e00a9810c8796a4dd20fd95aa4c5987e6e54",
+  "datasets": {
+    "h2o": {
+      "expected_windows": 283,
+      "mask": {
+        "path": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/h2o/all8_p95_mask.json",
+        "sha256": "b0d72e835fbd973d5baf3666bd765f204325012422c31a62cb3f294c4c8a3a17"
+      },
+      "gt_index": "/mnt/cpfs/sjc/eval_artifacts/visibility_gt_v3_v7exact_20260910_v2/h2o/gt_cache/index_shard_000_of_001.jsonl",
+      "prediction_format": "canonical",
+      "prediction_index": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/h2o/h2o/predictions.jsonl",
+      "prediction_method": "egofound3r"
+    },
+    "hot3d": {
+      "expected_windows": 400,
+      "mask": {
+        "path": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/hot3d/all8_p95_mask.json",
+        "sha256": "e3d3097aac668577860e945ce33f0408ebdc579c892121f9a4c5dc4080dfa858"
+      },
+      "gt_index": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/hot3d_visibility/gt_cache/index_shard_000_of_001.jsonl",
+      "prediction_format": "canonical",
+      "prediction_index": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/hot3d/hot3d/predictions.jsonl",
+      "prediction_method": "egofound3r"
+    },
+    "arctic": {
+      "expected_windows": 434,
+      "mask": {
+        "path": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/arctic/all8_p95_mask.json",
+        "sha256": "e216213f61559fda2aa8252a0c70dd02b1696ac2d0542e8bd6d2306f07f70572"
+      },
+      "gt_index": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/arctic_visibility_4092_v3/combined/index_shard_000_of_001.jsonl",
+      "prediction_format": "canonical",
+      "prediction_index": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/arctic/arctic/predictions.jsonl",
+      "prediction_method": "egofound3r"
+    },
+    "oakink_v2": {
+      "expected_windows": 400,
+      "mask": {
+        "path": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/oakink_v2/all8_p95_mask.json",
+        "sha256": "b223f1d641f8ed4677ca5f13649bf95f47cf13467bc7aca164516513b98fe6cb"
+      },
+      "gt_index": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/oakink_v2_visibility/gt_cache/index_shard_000_of_001.jsonl",
+      "prediction_format": "canonical",
+      "prediction_index": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/oakink_v2/oakink_v2/predictions.jsonl",
+      "prediction_method": "egofound3r"
+    },
+    "taco": {
+      "expected_windows": 400,
+      "mask": {
+        "path": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/taco/all8_p95_mask.json",
+        "sha256": "736c8d76ba4a3268574c48979909f1d3ccd08232344262996be45d9fdb75bc13"
+      },
+      "gt_index": "/mnt/cpfs/sjc/eval_artifacts/visibility_gt_v3_v7exact_20260910_v2/taco/gt_cache/index_shard_000_of_001.jsonl",
+      "prediction_format": "canonical",
+      "prediction_index": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/taco/taco/predictions.jsonl",
+      "prediction_method": "egofound3r"
+    },
+    "hoi4d": {
+      "expected_windows": 461,
+      "mask": {
+        "path": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/hoi4d/all8_p95_mask.json",
+        "sha256": "66d0b6d47d0bf934f23d7eec459394c7d9a92452a53833e2661b00b59afe24c6"
+      },
+      "gt_index": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/hoi4d_visibility_4092_v3/combined/index_shard_000_of_001.jsonl",
+      "prediction_format": "canonical",
+      "prediction_index": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/hoi4d/hoi4d/predictions.jsonl",
+      "prediction_method": "egofound3r"
+    }
+  }
+}
