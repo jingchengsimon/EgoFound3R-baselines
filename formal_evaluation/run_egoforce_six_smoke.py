@@ -15,6 +15,7 @@ import numpy as np
 from PIL import Image
 
 from formal_evaluation.common.schema import validate_comparison_output
+from formal_evaluation.hand.adapters.rgb_cache import atomic_publish
 from formal_evaluation.datasets.egofound3r_gt import DATASET_LOADERS, VENDORED_DATALOADER_ROOT, canonical_sequence_id, source_indices_for_window, validate_window_row
 from formal_evaluation.datasets.six_dataset_gt_cache import window_cache_id
 from formal_evaluation.datasets.window_inputs import WINDOW_INPUT_VERSION
@@ -70,14 +71,16 @@ def _materialize_rgb_input(dataset: object, row: dict[str, object], root: Path) 
             raise ValueError(f"{name}/{expected_id}: missing usable rectified pinhole intrinsics")
         path = directory / "rgb" / f"{index:03d}_{expected_id}.png"
         path.parent.mkdir(parents=True, exist_ok=True)
-        Image.fromarray(_as_rgb(sample["rgb"]), mode="RGB").save(path)
+        image = Image.fromarray(_as_rgb(sample["rgb"]), mode="RGB")
+        atomic_publish(path, lambda stream: image.save(stream, format="PNG"))
         rgb_paths.append(str(path)); intrinsics.append(np.asarray(K, dtype=np.float64).tolist())
     record = {"window_input_version": WINDOW_INPUT_VERSION, "dataset": name, "sequence_id": sequence,
               "window_id": row["window_id"], "cache_id": window_cache_id(row), "frame_ids": frame_ids,
               "rgb_paths": rgb_paths, "intrinsics": intrinsics, "intrinsics_valid": [True] * len(frame_ids),
               "input_kind": "rgb_intrinsics_only_no_geometry"}
     target = directory / "window_input.json"
-    target.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    payload = (json.dumps(record, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    atomic_publish(target, lambda stream: stream.write(payload))
     return target
 
 

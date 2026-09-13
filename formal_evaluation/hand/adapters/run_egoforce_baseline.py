@@ -20,13 +20,14 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from formal_evaluation.common.io import write_comparison_output
 from formal_evaluation.hand.adapters.yolo_rgb import configure_rgb_yolo_input
+from formal_evaluation.hand.adapters.rgb_cache import read_rgb
 from formal_evaluation.common.marker_vertices import MANO_MESHGRAPHORMER_LEVEL1_MARKER_VERTEX_IDS_195
 from formal_evaluation.common.schema import SCHEMA_VERSION
 from formal_evaluation.datasets.window_inputs import WINDOW_INPUT_VERSION
@@ -205,8 +206,7 @@ def main() -> None:
     arrays = _empty_arrays(len(frame_ids))
     start = time.perf_counter()
     for index, (path, K) in enumerate(zip(record["rgb_paths"], intrinsics, strict=True)):
-        with Image.open(path) as handle:
-            rgb = np.asarray(ImageOps.exif_transpose(handle).convert("RGB"))
+        rgb = read_rgb(path)
         resized, K_resized = _resize_rgb_and_intrinsics(rgb, K)
         runner.set_camera_model(_camera_model(args.source_root, K_resized), undistort_inp=True)
         _canonical_arrays(runner.run_outputs(resized, args.device), len(frame_ids), index, arrays)
