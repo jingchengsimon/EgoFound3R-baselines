@@ -47,6 +47,11 @@ def readonly_loaders(root, roots):
             local.parent.mkdir(exist_ok=True)
             return _original(local, paths, build, **kwargs)
         setattr(datasets, name, cached)
+    def light_cache_path(source_root, name):
+        cache = root / "loader_cache" / (hashlib.sha256(f"{source_root}:{name}".encode()).hexdigest() + ".pkl")
+        cache.parent.mkdir(exist_ok=True)
+        return cache
+    datasets._light_index_cache_path = light_cache_path
     datasets._hot3d_rectified_rgb_cache_path = lambda *a, **k: None
     datasets.OakInkV2FrameDataset._write_oakink_runtime_preview = lambda self, path, preview: self._oakink_runtime_preview_projection(preview)
     protected = [os.path.realpath(p) for p in roots.values()]
