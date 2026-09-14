@@ -228,7 +228,9 @@ def _run_hawor_inner(
     else:
         for i, fp in enumerate(frame_paths):
             shutil.copy2(fp, os.path.join(img_folder, f"{i:04d}.jpg"))
-        imgfiles = np.array(natsorted(glob(os.path.join(img_folder, "*.jpg"))))
+        # HaWoR's DROID wrapper recognizes an in-memory/path sequence only as
+        # a Python list; a NumPy path array is treated as a directory.
+        imgfiles = natsorted(glob(os.path.join(img_folder, "*.jpg")))
     assert len(imgfiles) == T
 
     # Determine focal and image center
