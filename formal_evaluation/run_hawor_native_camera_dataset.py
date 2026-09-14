@@ -125,6 +125,7 @@ def main() -> None:
     predictions = []
     for index, (row, cache_id, window_input) in enumerate(prepared, 1):
         output = root / "hawor" / "formal" / cache_id
+        window_log = root / "logs" / f"{cache_id}.log"
         command = [
             spec["python"], spec["adapter"],
             "--phase", "formal",
@@ -140,7 +141,7 @@ def main() -> None:
         ]
         started = time.monotonic()
         try:
-            with (root / "logs" / f"{cache_id}.log").open("x") as log:
+            with window_log.open("x") as log:
                 subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True,
                                timeout=spec.get("window_timeout_seconds", 3600))
             validate_native_output(output, row)
@@ -150,9 +151,13 @@ def main() -> None:
             })
             summary["completed_windows"] += 1
         except Exception:
+            try:
+                log_tail = "\n".join(window_log.read_text(errors="replace").splitlines()[-80:])[-12000:]
+            except OSError:
+                log_tail = ""
             summary["failed_windows"].append({
                 "window_id": row["window_id"], "cache_id": cache_id,
-                "traceback": traceback.format_exc(),
+                "traceback": traceback.format_exc(), "log": str(window_log), "log_tail": log_tail,
             })
         summary["last_window_seconds"] = time.monotonic() - started
         (root / "predictions.jsonl").write_text("".join(json.dumps(item) + "\n" for item in predictions))
