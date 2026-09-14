@@ -16,6 +16,7 @@ import shutil
 import sys
 import tempfile
 import time
+import traceback
 import types
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -53,6 +54,14 @@ for _m in _MOCK_PACKAGES:
         sys.modules[_m] = _mock
 
 MARKER_IDS_195 = np.array(MANO_MESHGRAPHORMER_LEVEL1_MARKER_VERTEX_IDS_195, dtype=np.int64)
+
+
+def require_native_camera_output(arrays: dict[str, np.ndarray], detail: dict[str, object]) -> None:
+    camera = arrays["camera_c2w"]
+    if detail.get("slam_failed_identity_fallback") is not False:
+        raise RuntimeError("HaWoR emitted the identity camera fallback")
+    if not arrays["camera_valid"].all() or not np.isfinite(camera).all():
+        raise RuntimeError("HaWoR native camera output is invalid")
 
 
 # ---------------------------------------------------------------------------
@@ -107,12 +116,25 @@ class HaworRuntime:
         # resets tracks while retaining the already loaded detector weights.
         self.detector.predictor = None
 
-    def run(self, frames: list[Path] | list[np.ndarray], img_focal: float | None = None):
+    def run(
+        self,
+        frames: list[Path] | list[np.ndarray],
+        img_focal: float | None = None,
+        *,
+        require_native_camera: bool = False,
+    ):
         self.reset_sequence_state()
         previous = Path.cwd()
         os.chdir(self.source_root)
         try:
-            return _run_hawor_inner(frames, self.source_root, self.device, img_focal, self)
+            return _run_hawor_inner(
+                frames,
+                self.source_root,
+                self.device,
+                img_focal,
+                self,
+                require_native_camera=require_native_camera,
+            )
         finally:
             os.chdir(previous)
 
@@ -146,6 +168,8 @@ def _run_hawor_inner(
     device: object,
     img_focal: float | None,
     runtime: HaworRuntime,
+    *,
+    require_native_camera: bool = False,
 ):
     import torch
     import cv2
@@ -314,6 +338,8 @@ def _run_hawor_inner(
     masks_tensor = torch.from_numpy(model_masks)
 
     slam_failed = False
+    camera_failure = None
+    camera_stage = "droid_slam"
     try:
         stage_started = stage_start()
         droid, traj = run_slam(imgfiles, masks=masks_tensor, calib=calib, droid_net=runtime.droid_net)
@@ -327,6 +353,7 @@ def _run_hawor_inner(
         stage_end("droid_slam", stage_started)
 
         # --- Stage 4: Metric3D scale estimation ---
+        camera_stage = "metric3d_scale"
         stage_started = stage_start()
         metric = runtime.metric3d
         pred_depths = []
@@ -349,13 +376,19 @@ def _run_hawor_inner(
             msk = model_masks[t].astype(np.uint8)
             scale = est_scale_hybrid(slam_depth, pred_depth, sigma=0.5, msk=msk,
                                      near_thresh=min_threshold, far_thresh=max_threshold)
-            while math.isnan(scale):
+            attempts = 0
+            while math.isnan(scale) and attempts < 12:
                 min_threshold -= 0.1
                 max_threshold += 0.1
                 scale = est_scale_hybrid(slam_depth, pred_depth, sigma=0.5, msk=msk,
                                          near_thresh=min_threshold, far_thresh=max_threshold)
+                attempts += 1
+            if not math.isfinite(scale) or scale <= 0:
+                raise RuntimeError(f"Metric3D scale is invalid at keyframe {int(t)}: {scale}")
             scales_.append(scale)
         median_s = float(np.median(scales_))
+        if not math.isfinite(median_s) or median_s <= 0:
+            raise RuntimeError(f"Metric3D median scale is invalid: {median_s}")
 
         # Save SLAM results
         slam_dir = os.path.join(seq_folder, "SLAM")
@@ -366,13 +399,27 @@ def _run_hawor_inner(
                  scale=np.float32(median_s))
 
         # Load SLAM cameras
+        camera_stage = "load_slam_camera"
         R_w2c_sla_all, t_w2c_sla_all, R_c2w_sla_all, t_c2w_sla_all = load_slam_cam(slam_path)
         stage_end("metric3d_scale", stage_started)
     except Exception as slam_err:
-        print(f"[HaWoR] SLAM failed ({slam_err}), using identity camera fallback")
+        camera_failure = {
+            "stage": camera_stage,
+            "type": type(slam_err).__name__,
+            "message": str(slam_err),
+        }
+        print(f"[HaWoR] native camera failed at {camera_stage}: {type(slam_err).__name__}: {slam_err}")
+        traceback.print_exc()
         slam_failed = True
         median_s = 1.0
         torch.cuda.empty_cache()
+        if require_native_camera:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            raise RuntimeError(
+                f"HaWoR native camera required but {camera_stage} failed: "
+                f"{type(slam_err).__name__}: {slam_err}"
+            ) from slam_err
+        print("[HaWoR] using identity camera fallback")
         # Identity camera poses for all T frames
         R_c2w_sla_all = torch.eye(3).unsqueeze(0).expand(T, -1, -1).clone()
         t_c2w_sla_all = torch.zeros(T, 3)
@@ -422,8 +469,18 @@ def _run_hawor_inner(
                 except RuntimeError as e:
                     if "CUDA" in str(e) or "cuda" in str(e):
                         print(f"[HaWoR] cam2world CUDA failed ({e}), camera-space fallback")
+                        if require_native_camera:
+                            shutil.rmtree(tmp_dir, ignore_errors=True)
+                            raise RuntimeError(
+                                f"HaWoR native camera required but cam2world_convert failed: {e}"
+                            ) from e
                         cam2world_failed = True
                         slam_failed = True
+                        camera_failure = {
+                            "stage": "cam2world_convert",
+                            "type": type(e).__name__,
+                            "message": str(e),
+                        }
                         median_s = 1.0
                         R_c2w_sla_all = torch.eye(3).unsqueeze(0).expand(T, -1, -1).clone()
                         t_c2w_sla_all = torch.zeros(T, 3)
@@ -589,7 +646,7 @@ def _run_hawor_inner(
 
     arrays = {
         "camera_c2w": camera_c2w,
-        "camera_valid": np.ones(T, dtype=bool),
+        "camera_valid": np.full(T, not slam_failed, dtype=bool),
         "hand_joints_world": joints_out,
         "hand_vertices_world": vertices_out,
         "hand_markers_world": markers_out,
@@ -603,6 +660,7 @@ def _run_hawor_inner(
         "detector": "official YOLO hand detector, thresh=0.2, with tracking",
         "slam": "DROID-SLAM with sm90 support, hand masking disabled (headless, no renderer)",
         "slam_failed_identity_fallback": slam_failed,
+        "camera_failure": camera_failure,
         "scale_estimation": "Metric3D ViT-Large + est_scale_hybrid" if not slam_failed else "N/A (SLAM failed, identity fallback)",
         "infiller": "official TransformerModel infiller for missing frames",
         "coordinate": "OpenCV world frame via R_x=diag(1,-1,-1) from DROID/OpenGL convention",
@@ -636,6 +694,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--window-id")
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--img-focal", type=float, default=None)
+    parser.add_argument(
+        "--require-native-camera",
+        action="store_true",
+        help="fail the window instead of emitting identity camera poses when the native camera path fails",
+    )
     parser.add_argument("--rgb-dir-template", default="{sequence}/cam4/rgb",
                         help="dataset-relative RGB directory; {sequence} is replaced from the manifest")
     return parser.parse_args()
@@ -699,7 +762,11 @@ def main():
         candidates = [v for v in candidates if np.isfinite(v) and v > 0]
         if candidates:
             img_focal = float(np.median(candidates))
-    arrays, native_arrays, run_hw, detail = runtime.run(frame_paths, img_focal)
+    arrays, native_arrays, run_hw, detail = runtime.run(
+        frame_paths, img_focal, require_native_camera=args.require_native_camera
+    )
+    if args.require_native_camera:
+        require_native_camera_output(arrays, detail)
     detail["img_focal"] = img_focal
     detail["img_focal_source"] = (
         "cli" if args.img_focal is not None
