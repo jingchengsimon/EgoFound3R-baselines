@@ -61,8 +61,11 @@ def main() -> None:
     spec = json.loads(args.spec.read_text())
     root = Path(spec["output_root"])
     if root.exists():
-        raise FileExistsError(f"refusing to reuse output root: {root}")
-    root.mkdir(parents=True)
+        unexpected = [path.name for path in root.iterdir() if path.name not in {"control", "run.log"}]
+        if unexpected:
+            raise FileExistsError(f"refusing to reuse populated output root {root}: {unexpected}")
+    else:
+        root.mkdir(parents=True)
 
     manifest = Path(spec["manifest"])
     raw_manifest = manifest.read_bytes()
