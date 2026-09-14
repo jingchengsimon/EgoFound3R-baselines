@@ -5,7 +5,8 @@ import os
 os.environ["PYOPENGL_PLATFORM"] = "egl"
 
 import sys
-_WILOR_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'WiLoR')
+_DEMO_DIR = os.environ.get('PAD_WILOR_ASSET_ROOT', os.path.dirname(os.path.abspath(__file__)))
+_WILOR_DIR = os.path.join(_DEMO_DIR, 'WiLoR')
 sys.path.insert(0, _WILOR_DIR)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -22,7 +23,6 @@ from wilor.utils.renderer import cam_crop_to_full
 from ultralytics import YOLO
 from prediction_slots import pack_frames, select_hands
 
-_DEMO_DIR   = os.path.dirname(os.path.abspath(__file__))
 WILOR_CKPT  = os.path.join(_DEMO_DIR, 'WiLoR/pretrained_models/wilor_final.ckpt')
 WILOR_CFG   = os.path.join(_DEMO_DIR, 'WiLoR/pretrained_models/model_config.yaml')
 DETECTOR_PT = os.path.join(_DEMO_DIR, 'WiLoR/pretrained_models/detector.pt')

@@ -53,6 +53,7 @@ def main() -> None:
 
     models.load_wilor = load_wilor_without_renderer
     inference_script = args.inference_script or args.source_root / "wilor_inference.py"
+    os.environ["PAD_WILOR_ASSET_ROOT"] = str(args.source_root.resolve())
     sys.path.insert(0, str(inference_script.parent))
     sys.argv = [str(inference_script), "--video", args.video, "--output", args.output]
     if args.both_hands:
