@@ -5,6 +5,7 @@ import importlib.util
 import json
 import sys
 import time
+import zipfile
 from pathlib import Path
 
 
@@ -13,6 +14,36 @@ def load(name, path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def reusable_rows(root, dataset, gt):
+    """Reuse only complete records with their matching frozen scene artifact."""
+    folder = Path(root)/dataset
+    index = folder/'window_metrics.jsonl'
+    if not index.exists():
+        return {}
+    rows = {}
+    lines = index.read_text().splitlines()
+    for i, line in enumerate(lines):
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            if i == len(lines)-1 and not index.read_bytes().endswith(b'\n'):
+                break  # Paused during a write: retain the original and recompute this window.
+            raise
+        wid = row['window_id']
+        if wid not in gt or row['frame_ids'] != gt[wid]['frame_ids'] or wid in rows:
+            raise ValueError('resume window/frame identity mismatch: '+wid)
+        frozen = folder/(gt[wid]['cache_id']+'_scene.npz')
+        if frozen.is_file() and frozen.stat().st_size > 0:
+            try:
+                with zipfile.ZipFile(frozen) as archive:
+                    if len(archive.namelist()) != 6:
+                        continue
+            except zipfile.BadZipFile:
+                continue  # Paused before the scene archive was closed.
+            rows[wid] = row
+    return rows
 
 
 def run(spec, pilot=False):
@@ -62,7 +93,7 @@ def run(spec, pilot=False):
     report = {'status':'running','method':spec['method'],'windows':0,'datasets':{},'selection_sha256':spec['selection_sha256'],
               'world_pose_source':'predicted_camera_c2w','fit_on_full_unfiltered_window':True,'no_refit_after_filter':True,
               'vertex_contact':'derived 14mm geometry rule, matching formal stride5; not a native contact head',
-              'vertex_visibility':'dominant fixed marker parent, matching formal stride5','hand_source':str(upstream/'report.json')}
+              'vertex_visibility':'dominant fixed marker parent, matching formal stride5','hand_source':str(upstream/'report.json'), 'shard_id':spec.get('shard_id'), 'shard_count':spec.get('shard_count',1)}
     faces = None
     import pickle
     with open(spec['mano_asset'],'rb') as f: faces=np.asarray(pickle.load(f,encoding='latin1')['f'])
@@ -81,8 +112,11 @@ def run(spec, pilot=False):
         vg={r['window_id']:r for r in common.read_jsonl(Path(job['visibility_gt_index']))}
         assert set(found)==set(gt)==set(inputs)==set(cg)==set(vg) and len(gt)==job['expected_windows'], ds
         folder=root/ds;folder.mkdir(); values=[]
+        reused = reusable_rows(spec['resume_root'],ds,gt) if spec.get('resume_root') else {}
         with (folder/'window_metrics.jsonl').open('x') as out:
             for i,wid in enumerate(sorted(gt),1):
+                if wid in reused or ('shard_id' in spec and (i-1) % spec['shard_count'] != spec['shard_id']):
+                    continue
                 pm,pred=_prediction_arrays(found[wid]);gm,target=load_window_cache(gt[wid]);record=inputs[wid];sel=selection[(ds,wid)]
                 assert pm['frame_ids']==gm['frame_ids']==record['frame_ids']==sel['frame_ids']==cg[wid]['frame_ids']==vg[wid]['frame_ids']
                 keep=np.asarray(sel['keep'],bool)
@@ -101,17 +135,18 @@ def run(spec, pilot=False):
                 row={'window_id':wid,'frame_ids':gm['frame_ids'],**metrics};values.append(row)
                 out.write(json.dumps(common.json_safe(row),allow_nan=False)+'\n');out.flush()
                 np.savez_compressed(folder/(gt[wid]['cache_id']+'_scene.npz'),**frozen)
-                progress(stage='scene_contact',dataset=ds,completed=i,total=len(gt))
+                progress(stage='scene_contact',dataset=ds,completed=len(values),total=len(gt),reused=len(reused),shard_id=spec.get('shard_id'))
                 if pilot:
                     (root/'pilot.json').write_text(json.dumps(common.json_safe(row),allow_nan=False));return
         merged=dict(previous['datasets'][ds]); merged.update(aggregate_windows(values,method=spec['method']))
         report['datasets'][ds]=merged;report['windows']+=len(values)
         (folder/'COMPLETE').write_text('complete\n')
         (root/'report.json').write_text(json.dumps(common.json_safe(report),allow_nan=False))
-    assert report['windows']==2378
+    if 'shard_id' not in spec:
+        assert report['windows']==2378
     report['status']='complete'
     (root/'report.json').write_text(json.dumps(common.json_safe(report),allow_nan=False))
-    (root/'summary.json').write_text(json.dumps({'status':'complete','windows':2378,'tables':7,'method':spec['method']}))
+    (root/'summary.json').write_text(json.dumps({'status':'complete','windows':report['windows'],'tables':7,'method':spec['method'],'shard_id':spec.get('shard_id')}))
     (root/'COMPLETE').write_text('complete\n')
 
 

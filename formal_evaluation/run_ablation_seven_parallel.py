@@ -1,0 +1,66 @@
+"""Eight-process CPU continuation; preserve paused outputs and merge exact windows."""
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def run(spec):
+    if spec.get('workers') != 8:
+        raise ValueError('this continuation requires exactly eight CPU workers')
+    root=Path(spec['output_root']);root.mkdir(parents=True,exist_ok=False)
+    old=Path(spec['resume_root'])
+    if old.exists() and (old/'report.json').exists():
+        previous=json.loads((old/'report.json').read_text())
+        assert previous['method']==spec['method'] and previous['selection_sha256']==spec['selection_sha256']
+    children=[]
+    for i in range(8):
+        output=root/'shards'/str(i);child_spec=dict(spec,shard_id=i,shard_count=8,output_root=str(output))
+        path=root/('shard_'+str(i)+'.json');path.write_text(json.dumps(child_spec))
+        log=(root/('shard_'+str(i)+'.log')).open('x')
+        child=subprocess.Popen([sys.executable,'-u',str(Path(__file__).with_name('run_ablation_seven_tables.py')),'--spec',str(path)],stdout=log,stderr=subprocess.STDOUT,env=dict(os.environ,CUDA_VISIBLE_DEVICES='',OMP_NUM_THREADS='1',MKL_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1'))
+        log.close();children.append(child)
+    (root/'workers.json').write_text(json.dumps([{'shard':i,'pid':c.pid} for i,c in enumerate(children)]))
+    print(json.dumps({'stage':'launched','workers':8,'pids':[c.pid for c in children]}),flush=True)
+    codes=[child.wait() for child in children]
+    (root/'worker_exits.json').write_text(json.dumps(codes))
+    if any(codes):raise RuntimeError('CPU shard failure; outputs preserved: '+str(codes))
+    sys.path.insert(0,str(Path(__file__).parent))
+    from run_ablation_seven_tables import load,reusable_rows
+    sys.path.insert(0,spec['baseline_root'])
+    from formal_evaluation.common.aggregation import aggregate_windows
+    common=load('parallel_common',spec['same_mask_script'])
+    raw=Path(spec['selection']).read_bytes();assert hashlib.sha256(raw).hexdigest()==spec['selection_sha256']
+    selection={(r['dataset'],r['window_id']):r for r in map(json.loads,raw.splitlines())}
+    upstream=Path(spec['upstream_root']);assert (upstream/'COMPLETE').exists()
+    report=json.loads((upstream/'report.json').read_text());assert report['windows']==2378 and report['selection_sha256']==spec['selection_sha256']
+    report.update(status='running',tables=7,workers=8,resume_root=str(old),windows=0)
+    provenance=[]
+    for job in spec['jobs']:
+        ds=job['dataset'];gt={r['window_id']:r for r in common.read_jsonl(Path(job['gt_index']))}
+        assert len(gt)==job['expected_windows']
+        merged={};folder=root/ds;folder.mkdir()
+        for origin in [old]+[root/'shards'/str(i) for i in range(8)]:
+            rows=reusable_rows(origin,ds,gt)
+            for wid,row in rows.items():
+                assert wid not in merged and row['frame_ids']==selection[(ds,wid)]['frame_ids']
+                merged[wid]=row
+                provenance.append({'dataset':ds,'window_id':wid,'source_root':str(origin)})
+        assert set(merged)==set(gt), (ds,len(merged),len(gt))
+        with (folder/'window_metrics.jsonl').open('x') as out:
+            for wid in sorted(merged):out.write(json.dumps(merged[wid],allow_nan=False)+'\n')
+        report['datasets'][ds].update(aggregate_windows(list(merged.values()),method=spec['method']))
+        report['windows']+=len(merged);(folder/'COMPLETE').write_text('complete\n')
+    assert report['windows']==2378
+    report['status']='complete'
+    (root/'report.json').write_text(json.dumps(common.json_safe(report),allow_nan=False))
+    (root/'source_windows.jsonl').write_text(''.join(json.dumps(r)+'\n' for r in provenance))
+    (root/'summary.json').write_text(json.dumps({'status':'complete','windows':2378,'tables':7,'workers':8,'method':spec['method']}))
+    (root/'COMPLETE').write_text('complete\n')
+
+
+if __name__=='__main__':
+    p=argparse.ArgumentParser();p.add_argument('--spec',type=Path,required=True);a=p.parse_args();run(json.loads(a.spec.read_text()))
