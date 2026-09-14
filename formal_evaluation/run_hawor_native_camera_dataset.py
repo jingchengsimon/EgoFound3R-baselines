@@ -20,7 +20,20 @@ if __package__ in (None, ""):
 
 from formal_evaluation.common.schema import validate_comparison_output
 from formal_evaluation.datasets.six_dataset_gt_cache import window_cache_id
-from formal_evaluation.datasets.window_inputs import load_window_input
+
+
+def load_rgb_window_input(path: Path) -> dict[str, object]:
+    record = json.loads(path.read_text())
+    frame_ids, rgb_paths, intrinsics = (
+        record.get("frame_ids"), record.get("rgb_paths"), record.get("intrinsics")
+    )
+    if record.get("input_kind") != "rgb_intrinsics_only_no_geometry":
+        raise ValueError(f"unexpected HaWoR window input kind: {path}")
+    if not isinstance(frame_ids, list) or not isinstance(rgb_paths, list) or not isinstance(intrinsics, list):
+        raise ValueError(f"invalid HaWoR RGB window input: {path}")
+    if len(frame_ids) != len(rgb_paths) or len(frame_ids) != len(intrinsics):
+        raise ValueError(f"HaWoR RGB window frame count mismatch: {path}")
+    return record
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -91,7 +104,7 @@ def main() -> None:
         path = input_root / "inputs" / spec["dataset"] / cache_id / "window_input.json"
         if not path.is_file():
             raise FileNotFoundError(f"missing frozen RGB window input: {path}")
-        record = load_window_input(path)
+        record = load_rgb_window_input(path)
         if record["window_id"] != row["window_id"] or record["frame_ids"] != row["frame_ids"]:
             raise ValueError(f"window input identity mismatch: {path}")
         if not all(Path(item).is_file() for item in record["rgb_paths"]):

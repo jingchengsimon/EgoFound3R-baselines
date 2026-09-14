@@ -56,6 +56,24 @@ for _m in _MOCK_PACKAGES:
 MARKER_IDS_195 = np.array(MANO_MESHGRAPHORMER_LEVEL1_MARKER_VERTEX_IDS_195, dtype=np.int64)
 
 
+def load_hawor_window_input(path: Path) -> dict[str, object]:
+    record = json.loads(path.read_text(encoding="utf-8"))
+    if record.get("input_kind") != "rgb_intrinsics_only_no_geometry":
+        return load_window_input(path)
+    frame_ids, rgb_paths = record.get("frame_ids"), record.get("rgb_paths")
+    intrinsics = record.get("intrinsics")
+    if not all(isinstance(record.get(key), str) for key in ("dataset", "sequence_id", "window_id", "cache_id")):
+        raise ValueError(f"invalid HaWoR RGB window identity: {path}")
+    if not isinstance(frame_ids, list) or not isinstance(rgb_paths, list) or not isinstance(intrinsics, list):
+        raise ValueError(f"invalid HaWoR RGB window input: {path}")
+    if len(frame_ids) != len(rgb_paths) or len(frame_ids) != len(intrinsics):
+        raise ValueError(f"HaWoR RGB window frame count mismatch: {path}")
+    missing = [value for value in rgb_paths if not Path(str(value)).is_file()]
+    if missing:
+        raise FileNotFoundError(missing[0])
+    return record
+
+
 def require_native_camera_output(arrays: dict[str, np.ndarray], detail: dict[str, object]) -> None:
     camera = arrays["camera_c2w"]
     if detail.get("slam_failed_identity_fallback") is not False:
@@ -710,7 +728,7 @@ def main():
     if args.window_input is not None:
         if args.manifest is not None or args.data_root is not None:
             raise ValueError("--window-input cannot be combined with --manifest/--data-root")
-        window_input = load_window_input(args.window_input)
+        window_input = load_hawor_window_input(args.window_input)
         sequence = str(window_input["sequence_id"])
         window_id = str(window_input["window_id"])
         frame_ids = [str(item) for item in window_input["frame_ids"]]
