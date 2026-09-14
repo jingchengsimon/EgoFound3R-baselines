@@ -7,6 +7,7 @@ os.environ["PYOPENGL_PLATFORM"] = "egl"
 import sys
 _WILOR_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'WiLoR')
 sys.path.insert(0, _WILOR_DIR)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import torch
 import cv2
@@ -19,6 +20,7 @@ from wilor.utils import recursive_to
 from wilor.datasets.vitdet_dataset import ViTDetDataset
 from wilor.utils.renderer import cam_crop_to_full
 from ultralytics import YOLO
+from prediction_slots import pack_frames, select_hands
 
 _DEMO_DIR   = os.path.dirname(os.path.abspath(__file__))
 WILOR_CKPT  = os.path.join(_DEMO_DIR, 'WiLoR/pretrained_models/wilor_final.ckpt')
@@ -30,6 +32,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--video',  required=True)
     parser.add_argument('--output', required=True, help='Path to save .npz results')
+    parser.add_argument('--both-hands', action='store_true',
+                        help='preserve one left and one right detection per frame for formal evaluation')
     args = parser.parse_args()
     # Resolve to absolute paths before chdir so relative paths keep working
     args.video  = os.path.abspath(args.video)
@@ -47,15 +51,7 @@ def main():
     cap = cv2.VideoCapture(args.video)
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
 
-    # Per-frame arrays; NaN-filled rows mean no detection
-    all_vertices      = []  # (778, 3) or None
-    all_cam_t         = []  # (3,)     or None
-    all_global_orient = []  # (1,3,3)  or None
-    all_hand_pose     = []  # (15,3,3) or None
-    all_betas         = []  # (10,)    or None
-    all_is_right      = []  # float    or None
-    all_img_size      = []  # (2,)     or None
-    all_scaled_focal  = []  # float    or None
+    frames = []
 
     pbar = tqdm(desc='WiLoR inference')
     while True:
@@ -74,9 +70,7 @@ def main():
             bboxes.append(bbox_data[:4].tolist())
 
         if not bboxes:
-            for lst in (all_vertices, all_cam_t, all_global_orient, all_hand_pose,
-                        all_betas, all_is_right, all_img_size, all_scaled_focal):
-                lst.append(None)
+            frames.append(select_hands([], args.both_hands))
             continue
 
         dataset    = ViTDetDataset(wilor_cfg, frame, np.stack(bboxes), np.stack(rights))
@@ -115,48 +109,14 @@ def main():
                     'scaled_focal':  float(scaled_focal.cpu()),
                 })
 
-        chosen = next((h for h in frame_hands if h['is_right'] > 0.5), None)
-        if chosen is None and frame_hands:
-            chosen = frame_hands[0]
-
-        if chosen is None:
-            for lst in (all_vertices, all_cam_t, all_global_orient, all_hand_pose,
-                        all_betas, all_is_right, all_img_size, all_scaled_focal):
-                lst.append(None)
-        else:
-            all_vertices.append(chosen['vertices'])
-            all_cam_t.append(chosen['cam_t'])
-            all_global_orient.append(chosen['global_orient'])
-            all_hand_pose.append(chosen['hand_pose'])
-            all_betas.append(chosen['betas'])
-            all_is_right.append(chosen['is_right'])
-            all_img_size.append(chosen['img_size'])
-            all_scaled_focal.append(chosen['scaled_focal'])
+        frames.append(select_hands(frame_hands, args.both_hands))
 
     cap.release()
     pbar.close()
 
-    n = len(all_vertices)
-    # Use NaN sentinels for missing frames so we can store as dense arrays
-    def stack_or_nan(lst, shape):
-        out = np.full((n, *shape), np.nan, dtype=np.float32)
-        for i, v in enumerate(lst):
-            if v is not None:
-                out[i] = v
-        return out
-
-    np.savez(args.output,
-        vertices      = stack_or_nan(all_vertices,      (778, 3)),
-        cam_t         = stack_or_nan(all_cam_t,         (3,)),
-        global_orient = stack_or_nan(all_global_orient, (1, 3, 3)),
-        hand_pose     = stack_or_nan(all_hand_pose,     (15, 3, 3)),
-        betas         = stack_or_nan(all_betas,         (10,)),
-        is_right      = np.array([v if v is not None else np.nan for v in all_is_right], dtype=np.float32),
-        img_size      = stack_or_nan(all_img_size,      (2,)),
-        scaled_focal  = np.array([v if v is not None else np.nan for v in all_scaled_focal], dtype=np.float32),
-        fps           = np.array([fps], dtype=np.float32),
-    )
-    print(f'Saved WiLoR predictions for {n} frames → {args.output}')
+    arrays = pack_frames(frames, args.both_hands)
+    np.savez(args.output, **arrays, fps=np.array([fps], dtype=np.float32))
+    print(f'Saved WiLoR predictions for {len(frames)} frames → {args.output}')
 
 
 if __name__ == '__main__':

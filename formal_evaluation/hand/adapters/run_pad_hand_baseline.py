@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run released PAD-Hand on a prepared H2O clip and export canonical joints."""
+"""Run released PAD-Hand per hand and export canonical two-hand geometry."""
 
 from __future__ import annotations
 
@@ -44,9 +44,31 @@ def _run_wilor(args: argparse.Namespace, video: Path, native: Path) -> Path:
     result = native / "wilor.npz"
     command = [str(args.wilor_python), str(Path(__file__).with_name("pad_wilor_inference.py")),
         "--source-root", str(args.source_root), "--video", str(video), "--output", str(result),
+        "--both-hands",
     ]
     subprocess.run(command, check=True)
     return result
+
+
+def _split_wilor_by_side(source_path: Path, native_dir: Path) -> tuple[Path, Path]:
+    """Give the released single-hand PAD loader one complete temporal track per side."""
+    result = []
+    with np.load(source_path, allow_pickle=False) as source:
+        count = source["vertices"].shape[0]
+        if source["vertices"].shape != (count, 2, 778, 3) or source["is_right"].shape != (count, 2):
+            raise ValueError("PAD WiLoR frontend did not preserve both hand slots")
+        for side, label in enumerate(("left", "right")):
+            flags = source["is_right"][:, side]
+            present = np.isfinite(source["vertices"]).all(axis=(2, 3))[:, side]
+            if np.any(present & (~np.isfinite(flags) | ((flags > 0.5) != bool(side)))):
+                raise ValueError(f"PAD WiLoR {label} slot has inconsistent handedness")
+            target = native_dir / f"wilor_{label}.npz"
+            np.savez_compressed(target, **{
+                key: source[key][:, side] for key in (
+                    "vertices", "cam_t", "global_orient", "hand_pose", "betas",
+                    "is_right", "img_size", "scaled_focal")}, fps=source["fps"])
+            result.append(target)
+    return result[0], result[1]
 
 
 def _geometry_from_refined(
@@ -152,11 +174,29 @@ def main() -> None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         checkpoint = args.checkpoint or source_root / "checkpoints" / "pad_hand.pt"
         model = load_pad_hand_model(checkpoint, device)
-        predictions, _ = load_wilor_results(wilor_npz)
-        refined = refine_with_pad_hand(predictions, model, MANO("RIGHT", device), device)
-        scaled_focal = np.load(wilor_npz)["scaled_focal"]
-        all_vertices, all_joints, all_valid, rescaled_count = _geometry_from_refined(
-            refined, MANO("RIGHT", device), fx_per_frame, scaled_focal)
+        mano = MANO("RIGHT", device)
+        side_paths = _split_wilor_by_side(wilor_npz, native_dir)
+        with np.load(wilor_npz, allow_pickle=False) as source:
+            native_count = source["vertices"].shape[0]
+        all_vertices = np.full((native_count, 2, 778, 3), np.nan, dtype=np.float32)
+        all_joints = np.full((native_count, 2, 21, 3), np.nan, dtype=np.float32)
+        all_valid = np.zeros((native_count, 2), dtype=bool)
+        rescaled_count = 0
+        for side, side_path in enumerate(side_paths):
+            predictions, _ = load_wilor_results(side_path)
+            if len(predictions) != native_count:
+                raise ValueError("PAD hand track length does not match the source video")
+            refined = refine_with_pad_hand(predictions, model, mano, device)
+            with np.load(side_path, allow_pickle=False) as source:
+                focal = source["scaled_focal"]
+            vertices, joints, valid, rescaled = _geometry_from_refined(
+                refined, mano, fx_per_frame, focal)
+            if valid[:, 1 - side].any():
+                raise ValueError("PAD refinement wrote a hand into the wrong slot")
+            all_vertices[:, side] = vertices[:, side]
+            all_joints[:, side] = joints[:, side]
+            all_valid[:, side] = valid[:, side]
+            rescaled_count += rescaled
     finally:
         os.chdir(previous_cwd)
 
@@ -185,12 +225,16 @@ def main() -> None:
             "scale_type": methods["pad_hand"]["scale_type"],
             "coordinate_space": "camera",
             "native_frame_indices": indices.tolist(),
+            "hand_tracks": "independent_left_right_refinement",
+            "valid_side_frame_count": all_valid[indices].sum(axis=0).astype(int).tolist(),
+            "both_hands_valid_frame_count": int(all_valid[indices].all(axis=1).sum()),
             "metric_depth_rescale": (
                 "cam_t[2] *= fx / scaled_focal, following WiLoR's official demo"
                 if fx_per_frame is not None else
                 "unavailable: no intrinsics supplied, absolute depth left on WiLoR's rendering focal length"
             ),
             "frames_with_intrinsic_rescale": int(rescaled_count),
+            "intrinsic_rescale_count_unit": "hand-side frames",
         },
         arrays=arrays,
         run={"status": "success", "elapsed_seconds": time.perf_counter() - start},

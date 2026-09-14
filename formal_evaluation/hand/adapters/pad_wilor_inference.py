@@ -15,6 +15,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--video", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--both-hands", action="store_true")
     return parser.parse_args()
 
 
@@ -50,6 +51,8 @@ def main() -> None:
 
     models.load_wilor = load_wilor_without_renderer
     sys.argv = [str(args.source_root / "wilor_inference.py"), "--video", args.video, "--output", args.output]
+    if args.both_hands:
+        sys.argv.append("--both-hands")
     runpy.run_path(str(args.source_root / "wilor_inference.py"), run_name="__main__")
 
 
