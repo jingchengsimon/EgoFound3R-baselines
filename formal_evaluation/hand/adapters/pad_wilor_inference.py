@@ -16,6 +16,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--video", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--both-hands", action="store_true")
+    parser.add_argument("--inference-script", type=Path,
+                        help="WiLoR inference entrypoint from the pinned execution checkout")
     return parser.parse_args()
 
 
@@ -50,10 +52,12 @@ def main() -> None:
         ), config
 
     models.load_wilor = load_wilor_without_renderer
-    sys.argv = [str(args.source_root / "wilor_inference.py"), "--video", args.video, "--output", args.output]
+    inference_script = args.inference_script or args.source_root / "wilor_inference.py"
+    sys.path.insert(0, str(inference_script.parent))
+    sys.argv = [str(inference_script), "--video", args.video, "--output", args.output]
     if args.both_hands:
         sys.argv.append("--both-hands")
-    runpy.run_path(str(args.source_root / "wilor_inference.py"), run_name="__main__")
+    runpy.run_path(str(inference_script), run_name="__main__")
 
 
 if __name__ == "__main__":

@@ -44,7 +44,8 @@ def _run_wilor(args: argparse.Namespace, video: Path, native: Path) -> Path:
     result = native / "wilor.npz"
     command = [str(args.wilor_python), str(Path(__file__).with_name("pad_wilor_inference.py")),
         "--source-root", str(args.source_root), "--video", str(video), "--output", str(result),
-        "--both-hands",
+        "--both-hands", "--inference-script",
+        str(Path(__file__).resolve().parents[3] / "PAD-Hand" / "wilor_inference.py"),
     ]
     subprocess.run(command, check=True)
     return result
