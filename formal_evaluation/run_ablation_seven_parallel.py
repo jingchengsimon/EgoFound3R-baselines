@@ -70,7 +70,9 @@ def run(spec):
     selection={(r['dataset'],r['window_id']):r for r in map(json.loads,raw.splitlines())}
     upstream=Path(spec['upstream_root']);assert (upstream/'COMPLETE').exists()
     report=json.loads((upstream/'report.json').read_text());assert report['windows']==2378 and report['selection_sha256']==spec['selection_sha256']
-    report.update(status='running',tables=7,workers=workers,resume_root=str(old),windows=0)
+    report.update(status='running',tables=7,workers=workers,resume_root=str(old),windows=0,
+                  geometry_backend_for_new_windows=spec.get('geometry_backend','legacy'),
+                  completed_metrics_preserved=True)
     provenance=[]
     for job in spec['jobs']:
         ds=job['dataset'];gt={r['window_id']:r for r in common.read_jsonl(Path(job['gt_index']))}

@@ -1,5 +1,6 @@
 """Complete scene/contact tables from canonical predictions and frozen hand reports."""
 import argparse
+from contextlib import nullcontext
 import hashlib
 import importlib.util
 import json
@@ -57,6 +58,10 @@ def run(spec, pilot=False):
     common = load('seven_common', spec['same_mask_script'])
     scene = load('seven_scene', spec['scene_script'])
     geometry = load('seven_geometry', spec['geometry_script'])
+    backend = spec.get('geometry_backend', 'legacy')
+    if backend not in ('legacy', 'bvh_legacy_compatible'):
+        raise ValueError('unknown geometry backend: '+backend)
+    bvh = load('seven_bvh', Path(__file__).parent/'contact/bvh_compat.py') if backend != 'legacy' else None
     raw = Path(spec['selection']).read_bytes()
     assert hashlib.sha256(raw).hexdigest() == spec['selection_sha256']
     selection = {(r['dataset'], r['window_id']): r for r in map(json.loads, raw.splitlines())}
@@ -90,7 +95,7 @@ def run(spec, pilot=False):
             valid &= keep[:,None,None] & pred['hand_valid'][...,None]
             result.update({field+'_'+k: np.asarray(v['ap'] if k=='average_precision' and isinstance(v,dict) else v).item() for k,v in compute_contact_metrics(prob,labels,valid).items()})
         return result
-    report = {'status':'running','method':spec['method'],'windows':0,'datasets':{},'selection_sha256':spec['selection_sha256'],
+    report = {'status':'running','geometry_backend_for_new_windows':backend,'method':spec['method'],'windows':0,'datasets':{},'selection_sha256':spec['selection_sha256'],
               'world_pose_source':'predicted_camera_c2w','fit_on_full_unfiltered_window':True,'no_refit_after_filter':True,
               'vertex_contact':'derived 14mm geometry rule, matching formal stride5; not a native contact head',
               'vertex_visibility':'dominant fixed marker parent, matching formal stride5','hand_source':str(upstream/'report.json'), 'shard_id':spec.get('shard_id'), 'shard_count':spec.get('shard_count',1)}
@@ -124,9 +129,11 @@ def run(spec, pilot=False):
                 metrics=scene.aggregate_scene_window(frozen,keep)
                 query=geometry.query_geometry(pred); collected={}
                 assert len(record['geometry_paths'])==len(keep)
-                for f,path in enumerate(record['geometry_paths']):
-                    with np.load(path,allow_pickle=False) as a: surfaces=dict(a)
-                    for key,v in geometry.frame_geometry_metrics({k:v[f] for k,v in query.items()},pred['hand_valid'][f],surfaces,faces,'cpu').items(): collected.setdefault(key,[]).append(v)
+                with (bvh.install(geometry.surface_kernel()) if bvh else nullcontext()) as accelerator:
+                    for f,path in enumerate(record['geometry_paths']):
+                        with np.load(path,allow_pickle=False) as a: surfaces=dict(a)
+                        if accelerator is not None: accelerator.clear()
+                        for key,v in geometry.frame_geometry_metrics({k:v[f] for k,v in query.items()},pred['hand_valid'][f],surfaces,faces,'cpu').items(): collected.setdefault(key,[]).append(v)
                 overlay={k:np.stack(v) for k,v in collected.items()}
                 pred['vertex_contact_probability']=overlay['vertex_contact_target']
                 metrics.update(classify(pred,arrays(cg[wid]),keep,'contact'))
