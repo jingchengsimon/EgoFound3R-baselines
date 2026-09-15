@@ -82,6 +82,40 @@ def require_native_camera_output(arrays: dict[str, np.ndarray], detail: dict[str
         raise RuntimeError("HaWoR native camera output is invalid")
 
 
+def run_slam_with_keyframe_retry(
+    run_slam_fn,
+    insufficient_keyframes_error,
+    imgfiles,
+    masks_tensor,
+    calib,
+    droid_net,
+):
+    """Keep HaWoR's default threshold, retrying only low-motion failures."""
+    attempts = []
+    for filter_thresh in (2.4, 0.0):
+        try:
+            droid, traj = run_slam_fn(
+                imgfiles,
+                masks=masks_tensor,
+                calib=calib,
+                droid_net=droid_net,
+                filter_thresh=filter_thresh,
+            )
+            return droid, traj, {
+                "filter_threshold": filter_thresh,
+                "attempts": attempts + [{"filter_threshold": filter_thresh, "status": "success"}],
+            }
+        except insufficient_keyframes_error as error:
+            attempts.append({
+                "filter_threshold": filter_thresh,
+                "status": "insufficient_keyframes",
+                "message": str(error),
+            })
+            if filter_thresh == 0.0:
+                raise
+    raise AssertionError("unreachable")
+
+
 # ---------------------------------------------------------------------------
 # HaWoR pipeline
 # ---------------------------------------------------------------------------
@@ -351,7 +385,7 @@ def _run_hawor_inner(
     stage_end("hawor_motion", stage_started)
 
     # --- Stage 3+4: DROID-SLAM + Metric3D scale (with identity fallback) ---
-    from lib.pipeline.masked_droid_slam import run_slam
+    from lib.pipeline.masked_droid_slam import InsufficientKeyframesError, run_slam
     from lib.pipeline.est_scale import est_scale_hybrid
 
     calib = np.array([focal, focal, img_center[0], img_center[1]])
@@ -360,9 +394,17 @@ def _run_hawor_inner(
     slam_failed = False
     camera_failure = None
     camera_stage = "droid_slam"
+    slam_attempts = None
     try:
         stage_started = stage_start()
-        droid, traj = run_slam(imgfiles, masks=masks_tensor, calib=calib, droid_net=runtime.droid_net)
+        droid, traj, slam_attempts = run_slam_with_keyframe_retry(
+            run_slam,
+            InsufficientKeyframesError,
+            imgfiles,
+            masks_tensor,
+            calib,
+            runtime.droid_net,
+        )
         n = droid.video.counter.value
         if n < 2:
             raise RuntimeError(f"DROID-SLAM produced only {n} keyframes (need >=2)")
@@ -679,6 +721,7 @@ def _run_hawor_inner(
         "pipeline": "official HaWoR: detect_track → motion_estimation → DROID-SLAM → Metric3D scale → infiller → MANO",
         "detector": "official YOLO hand detector, thresh=0.2, with tracking",
         "slam": "DROID-SLAM with sm90 support, hand masking disabled (headless, no renderer)",
+        "slam_keyframe_filter": slam_attempts,
         "slam_failed_identity_fallback": slam_failed,
         "camera_failure": camera_failure,
         "scale_estimation": "Metric3D ViT-Large + est_scale_hybrid" if not slam_failed else "N/A (SLAM failed, identity fallback)",

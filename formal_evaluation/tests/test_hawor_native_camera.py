@@ -22,6 +22,26 @@ loader_function = next(
     if isinstance(node, ast.FunctionDef) and node.name == "load_hawor_window_input"
 )
 
+retry_function = next(
+    node for node in tree.body
+    if isinstance(node, ast.FunctionDef) and node.name == "run_slam_with_keyframe_retry"
+)
+retry_namespace = {}
+exec(compile(ast.Module(body=[retry_function], type_ignores=[]), str(path), "exec"), retry_namespace)
+run_slam_with_keyframe_retry = retry_namespace["run_slam_with_keyframe_retry"]
+
+droid_path = Path(__file__).resolve().parents[2] / "HaWoR/lib/pipeline/masked_droid_slam.py"
+droid_tree = ast.parse(droid_path.read_text())
+droid_nodes = [
+    node for node in droid_tree.body
+    if (isinstance(node, ast.ClassDef) and node.name == "InsufficientKeyframesError")
+    or (isinstance(node, ast.FunctionDef) and node.name == "require_minimum_keyframes")
+]
+droid_namespace = {}
+exec(compile(ast.Module(body=droid_nodes, type_ignores=[]), str(droid_path), "exec"), droid_namespace)
+InsufficientKeyframesError = droid_namespace["InsufficientKeyframesError"]
+require_minimum_keyframes = droid_namespace["require_minimum_keyframes"]
+
 runner_path = Path(__file__).resolve().parents[1] / "run_hawor_native_camera_dataset.py"
 runner_tree = ast.parse(runner_path.read_text())
 resolver_function = next(
@@ -89,9 +109,49 @@ def test_materialize_resolved_gt_index_uses_portable_cache_root(tmp_path):
     assert row["metadata_path"] == str(metadata)
 
 
+def test_droid_keyframe_guard_rejects_single_keyframe():
+    class Counter:
+        value = 1
+
+    class Video:
+        counter = Counter()
+
+    class Droid:
+        video = Video()
+
+    try:
+        require_minimum_keyframes(Droid())
+    except InsufficientKeyframesError as error:
+        assert "only 1 keyframes" in str(error)
+    else:
+        raise AssertionError("single-keyframe DROID run was accepted")
+
+
+def test_slam_retries_only_insufficient_keyframes_at_zero_threshold():
+    calls = []
+
+    def fake_run(*_args, **kwargs):
+        calls.append(kwargs["filter_thresh"])
+        if len(calls) == 1:
+            raise InsufficientKeyframesError("only one")
+        return "droid", "trajectory"
+
+    droid, traj, detail = run_slam_with_keyframe_retry(
+        fake_run, InsufficientKeyframesError, [], None, None, None
+    )
+    assert (droid, traj) == ("droid", "trajectory")
+    assert calls == [2.4, 0.0]
+    assert detail["filter_threshold"] == 0.0
+    assert [row["status"] for row in detail["attempts"]] == [
+        "insufficient_keyframes", "success"
+    ]
+
+
 if __name__ == "__main__":
     test_require_native_camera_output_rejects_fallback_and_invalid_values()
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         test_load_hawor_rgb_only_window(root)
         test_materialize_resolved_gt_index_uses_portable_cache_root(root)
+    test_droid_keyframe_guard_rejects_single_keyframe()
+    test_slam_retries_only_insufficient_keyframes_at_zero_threshold()

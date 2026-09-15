@@ -61,6 +61,19 @@ except RuntimeError:
     pass
 
 
+class InsufficientKeyframesError(RuntimeError):
+    """Raised before DROID's backend when motion filtering kept too few frames."""
+
+
+def require_minimum_keyframes(droid, minimum=2):
+    count = 0 if droid is None else int(droid.video.counter.value)
+    if count < minimum:
+        raise InsufficientKeyframesError(
+            f"DROID-SLAM produced only {count} keyframes (need >={minimum})"
+        )
+    return count
+
+
 def est_calib(imagedir):
     """ Roughly estimate intrinsics by image dimensions """
     if isinstance(imagedir, list):
@@ -158,6 +171,7 @@ def run_slam(imagedir, masks, calib=None, depth=None, stride=1,
 
         droid.track(t, image, intrinsics=intrinsics, depth=depth, mask=conf_msk)  
 
+    require_minimum_keyframes(droid)
     traj = droid.terminate(image_stream(imagedir, calib, stride))
 
     return droid, traj
@@ -286,6 +300,5 @@ def preprocess_masks(img_folder, masks):
     conf_msks = torch.cat(conf_msks)
 
     return img_msks, conf_msks
-
 
 
