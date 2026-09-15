@@ -45,6 +45,23 @@ def atomic_json(path: Path, value: object) -> None:
     temporary.replace(path)
 
 
+def materialize_resolved_gt_index(source: Path, destination: Path) -> Path:
+    """Rewrite registered GT references to the index's portable cache root."""
+    rows = [json.loads(line) for line in source.read_text().splitlines() if line]
+    resolved = []
+    for row in rows:
+        row = dict(row)
+        for key in ("array_path", "metadata_path"):
+            original = str(row[key])
+            path = source.parent / original.split("/gt_cache/", 1)[1] if "/gt_cache/" in original else Path(original)
+            if not path.is_file():
+                raise FileNotFoundError(f"missing GT artifact: {path}")
+            row[key] = str(path)
+        resolved.append(row)
+    destination.write_text("".join(json.dumps(row) + "\n" for row in resolved))
+    return destination
+
+
 def validate_native_output(path: Path, row: dict[str, object]) -> None:
     metadata = json.loads((path / "metadata.json").read_text())
     run = json.loads((path / "run.json").read_text())
@@ -96,6 +113,7 @@ def main() -> None:
     gt_index = Path(spec["gt_index"])
     if hashlib.sha256(gt_index.read_bytes()).hexdigest() != spec["gt_sha256"]:
         raise ValueError("GT index SHA256 mismatch")
+    resolved_gt_index = materialize_resolved_gt_index(gt_index, root / "gt_index_resolved.jsonl")
 
     input_root = Path(spec["input_root"])
     prepared = []
@@ -187,7 +205,7 @@ def main() -> None:
     atomic_json(methods, {"methods": {"hawor": {"group": ["hand"], "scale_type": "metric_hand_camera"}}})
     subprocess.run([
         spec["python"], spec["evaluator"],
-        "--gt-index", str(gt_index),
+        "--gt-index", str(resolved_gt_index),
         "--prediction-index", str(root / "predictions.jsonl"),
         "--methods-config", str(methods),
         "--report-path", str(root / "report.json"),
