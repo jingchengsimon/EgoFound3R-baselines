@@ -26,9 +26,17 @@ retry_function = next(
     node for node in tree.body
     if isinstance(node, ast.FunctionDef) and node.name == "run_slam_with_keyframe_retry"
 )
+retry_classifier = next(
+    node for node in tree.body
+    if isinstance(node, ast.FunctionDef) and node.name == "is_keyframe_retryable_slam_error"
+)
 retry_namespace = {}
-exec(compile(ast.Module(body=[retry_function], type_ignores=[]), str(path), "exec"), retry_namespace)
+exec(
+    compile(ast.Module(body=[retry_function, retry_classifier], type_ignores=[]), str(path), "exec"),
+    retry_namespace,
+)
 run_slam_with_keyframe_retry = retry_namespace["run_slam_with_keyframe_retry"]
+is_keyframe_retryable_slam_error = retry_namespace["is_keyframe_retryable_slam_error"]
 
 droid_path = Path(__file__).resolve().parents[2] / "HaWoR/lib/pipeline/masked_droid_slam.py"
 droid_tree = ast.parse(droid_path.read_text())
@@ -137,7 +145,9 @@ def test_slam_retries_only_insufficient_keyframes_at_zero_threshold():
         return "droid", "trajectory"
 
     droid, traj, detail = run_slam_with_keyframe_retry(
-        fake_run, InsufficientKeyframesError, [], None, None, None
+        fake_run,
+        lambda error: is_keyframe_retryable_slam_error(error, InsufficientKeyframesError),
+        [], None, None, None,
     )
     assert (droid, traj) == ("droid", "trajectory")
     assert calls == [2.4, 0.0]
@@ -145,6 +155,12 @@ def test_slam_retries_only_insufficient_keyframes_at_zero_threshold():
     assert [row["status"] for row in detail["attempts"]] == [
         "insufficient_keyframes", "success"
     ]
+
+
+def test_slam_retry_classifier_supports_legacy_empty_graph_error():
+    error = ValueError("not enough values to unpack (expected 2, got 0)")
+    assert is_keyframe_retryable_slam_error(error)
+    assert not is_keyframe_retryable_slam_error(ValueError("different failure"))
 
 
 if __name__ == "__main__":
@@ -155,3 +171,4 @@ if __name__ == "__main__":
         test_materialize_resolved_gt_index_uses_portable_cache_root(root)
     test_droid_keyframe_guard_rejects_single_keyframe()
     test_slam_retries_only_insufficient_keyframes_at_zero_threshold()
+    test_slam_retry_classifier_supports_legacy_empty_graph_error()

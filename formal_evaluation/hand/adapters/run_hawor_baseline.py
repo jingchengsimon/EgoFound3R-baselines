@@ -84,7 +84,7 @@ def require_native_camera_output(arrays: dict[str, np.ndarray], detail: dict[str
 
 def run_slam_with_keyframe_retry(
     run_slam_fn,
-    insufficient_keyframes_error,
+    retryable_error,
     imgfiles,
     masks_tensor,
     calib,
@@ -105,7 +105,9 @@ def run_slam_with_keyframe_retry(
                 "filter_threshold": filter_thresh,
                 "attempts": attempts + [{"filter_threshold": filter_thresh, "status": "success"}],
             }
-        except insufficient_keyframes_error as error:
+        except Exception as error:
+            if not retryable_error(error):
+                raise
             attempts.append({
                 "filter_threshold": filter_thresh,
                 "status": "insufficient_keyframes",
@@ -114,6 +116,15 @@ def run_slam_with_keyframe_retry(
             if filter_thresh == 0.0:
                 raise
     raise AssertionError("unreachable")
+
+
+def is_keyframe_retryable_slam_error(error, insufficient_keyframes_error=None):
+    if insufficient_keyframes_error is not None and isinstance(error, insufficient_keyframes_error):
+        return True
+    return (
+        isinstance(error, ValueError)
+        and "not enough values to unpack (expected 2, got 0)" in str(error)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +396,7 @@ def _run_hawor_inner(
     stage_end("hawor_motion", stage_started)
 
     # --- Stage 3+4: DROID-SLAM + Metric3D scale (with identity fallback) ---
-    from lib.pipeline.masked_droid_slam import InsufficientKeyframesError, run_slam
+    from lib.pipeline import masked_droid_slam
     from lib.pipeline.est_scale import est_scale_hybrid
 
     calib = np.array([focal, focal, img_center[0], img_center[1]])
@@ -398,8 +409,11 @@ def _run_hawor_inner(
     try:
         stage_started = stage_start()
         droid, traj, slam_attempts = run_slam_with_keyframe_retry(
-            run_slam,
-            InsufficientKeyframesError,
+            masked_droid_slam.run_slam,
+            lambda error: is_keyframe_retryable_slam_error(
+                error,
+                getattr(masked_droid_slam, "InsufficientKeyframesError", None),
+            ),
             imgfiles,
             masks_tensor,
             calib,
