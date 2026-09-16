@@ -75,7 +75,7 @@ def run(spec):
             current.clear();current['record']=record;start=time.time()
             adapter.main(['--phase','formal','--window-input',str(path),'--methods-config',spec['methods_config'],'--config',spec['config'],'--checkpoint',spec['checkpoint'],'--backbone-checkpoint',spec['backbone'],'--global-stride','5','--input-resolution','512x512','--output-root',str(root)])
             if adapter._runtime.cache_info().misses!=1:raise ValueError('model not resident')
-            index.write(json.dumps({'method':'egofound3r_gt_k','dataset':spec['dataset'],'window_id':record['window_id'],'prediction_dir':str(root/'egofound3r/formal'/record['cache_id'])})+'\n');index.flush()
+            index.write(json.dumps({'method':'egofound3r','variant':'stride5_gt_k','dataset':spec['dataset'],'window_id':record['window_id'],'prediction_dir':str(root/'egofound3r/formal'/record['cache_id'])})+'\n');index.flush()
             row={'completed':i,'total':len(records),'window_id':record['window_id'],'seconds':time.time()-start,'model_loads':1,'root_intrinsics_source':'gt','rgb_parity':current.get('rgb_bitwise_equal')}
             progress.write(json.dumps(row)+'\n');progress.flush();print(json.dumps(row),flush=True)
     summary={'status':'complete','phase':'inference_only','windows':len(records),'dataset':spec['dataset'],'root_intrinsics_source':'gt','world_pose_source':'predicted_camera_c2w','model_commit':spec['model_commit'],'adapter_commit':spec['adapter_commit'],'checkpoint_sha256':spec['checkpoint_sha256'],'model_resident':True,'batch_size':1,'stride':5,'input_resolution':'512x512','pilot':spec.get('pilot',False)}
