@@ -80,7 +80,8 @@ def statuses(paths: list[str]) -> dict[str, object]:
             registered, current = checked_handle(path)
             result[value] = {
                 "status": "exited" if current is None else "paused" if current["state"] == "T" else "running",
-                **({"pid": registered["pid"], "pgid": registered["pgid"]} if current is not None else {}),
+                **({"pid": registered["pid"], "pgid": registered["pgid"],
+                    "command_sha256": registered.get("command_sha256")} if current is not None else {}),
             }
         except FileNotFoundError:
             result[value] = {"status": "missing_handle"}

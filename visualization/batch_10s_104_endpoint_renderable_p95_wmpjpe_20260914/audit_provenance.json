@@ -1,0 +1,22 @@
+{
+  "audited_at_epoch": 1789413342,
+  "reader_node": 5000,
+  "remote_write": false,
+  "candidate_source": "frozen 602 candidate identities recovered from prior registered-GT audit",
+  "current_177_source": "visualization/.gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_gallery_pre_repair.nosync",
+  "current_177_manifest_sha256": "1f1ce0ffb875f002b15a8af5208fa42b91d65efce61ef9de189f219abf6c38b3",
+  "ego_runs": {
+    "h2o": "evaluation-base3e533881-traincrop512-1078f15-stride5-h2o-n5000g0-20260908",
+    "hot3d": "evaluation-base3e533881-traincrop512-1078f15-stride5-hot3d-n5000g1-20260908",
+    "arctic": "evaluation-base3e533881-traincrop512-1078f15-stride5-arctic-n5000g3-20260908",
+    "oakink_v2": "evaluation-base3e533881-traincrop512-1078f15-stride5-oakink-v2-n5000g4-20260908",
+    "hoi4d": "evaluation-base3e533881-traincrop512-1078f15-stride5-hoi4d-n5001g1-20260908"
+  },
+  "ego_path_registration_status": "historical_unverified; superseded by exact 978/978 per-window identity and field audit for this bounded selection",
+  "checks": [
+    "prediction metadata window_id and frame_ids match registered GT index",
+    "Ego and GT shapes are hand_valid [60,2] and markers [60,2,195,3]",
+    "first and last endpoint booleans read from complete unmasked arrays"
+  ],
+  "errors": []
+}

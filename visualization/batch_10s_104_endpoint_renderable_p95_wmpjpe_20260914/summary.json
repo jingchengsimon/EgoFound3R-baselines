@@ -1,0 +1,30 @@
+{
+  "status": "complete",
+  "gate": "at first and last frame, both hands require Ego hand_valid, GT hand_valid, finite Ego 195 markers, and finite GT 195 markers; middle frames may be missing; P95 mask is not applied",
+  "source_candidates": 602,
+  "eligible_candidates": 319,
+  "eligible_candidates_by_dataset": {
+    "arctic": 166,
+    "h2o": 6,
+    "hot3d": 137,
+    "oakink_v2": 10
+  },
+  "current_177_eligible": 81,
+  "current_177_eligible_by_dataset": {
+    "arctic": 41,
+    "h2o": 5,
+    "hot3d": 28,
+    "oakink_v2": 7
+  },
+  "maximum_nonoverlapping_segments": 104,
+  "selected_by_dataset": {
+    "arctic": 48,
+    "h2o": 5,
+    "hot3d": 44,
+    "oakink_v2": 7
+  },
+  "selected_already_in_current_177": 62,
+  "selected_replacements_from_overlapping_candidates": 42,
+  "verified_unique_windows": 978,
+  "source_errors": 0
+}

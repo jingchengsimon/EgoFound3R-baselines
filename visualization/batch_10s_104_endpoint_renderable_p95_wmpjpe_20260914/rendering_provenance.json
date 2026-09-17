@@ -1,0 +1,84 @@
+{
+  "schema": "endpoint_renderable_104_gallery_v5",
+  "status": "complete",
+  "recorded_at_utc": "2026-09-17T02:25:59.711965+00:00",
+  "project_root": "/Users/jingchengshi/Desktop/MIMO-Rutgers/1-Codes/EgoFound3R-baselines",
+  "run_id": "visualization-four-10s-gallery-endpoint104-5001-auxmethods-hawor-native-handzoom-panels-full104_auxmethods_handzoom_panels_v5_5001_r1-20260916",
+  "task_id": "visualization:four:10s-gallery:endpoint104:5001:auxmethods-hawor-native-handzoom-panels:full104_auxmethods_handzoom_panels_v5_5001_r1:20260916",
+  "remote_output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_endpoint104_hawor_native_unmasked_20260915_full104_auxmethods_handzoom_panels_v5_5001_r1",
+  "local_media_root": "/Users/jingchengshi/Desktop/MIMO-Rutgers/1-Codes/EgoFound3R-baselines/visualization/gallery_10s_endpoint104_hawor_native_unmasked_20260915_full104_auxmethods_handzoom_panels_v5_5001_r1",
+  "selection": {
+    "source_candidates": 602,
+    "eligible_candidates": 319,
+    "segments": 104,
+    "subwindows": 520,
+    "datasets": {
+      "arctic": 48,
+      "h2o": 5,
+      "hot3d": 44,
+      "oakink_v2": 7,
+      "taco": 0,
+      "hoi4d": 0
+    },
+    "manifest_sha256": "e88ac84845a5a61e6e472b12d160816ef0d8a48eaeb0e2085985335ff33c92a5",
+    "mask": "none; complete predictions; Joint8 P95 frame mask is not applied"
+  },
+  "rendering": {
+    "frames": 300,
+    "fps": 30,
+    "views": 6,
+    "rgb_sample_indices": [
+      0,
+      149,
+      299
+    ],
+    "methods": [
+      "egofound3r",
+      "egofound3r_gt",
+      "wilor",
+      "hawor",
+      "reviv4d",
+      "pad_hand",
+      "egoforce",
+      "dyn_hamr",
+      "gt"
+    ],
+    "dyn_hamr": {
+      "conditional": true,
+      "segments": 24,
+      "windows": 27
+    },
+    "panel_png": 5136,
+    "panel_size": [
+      2048,
+      2048
+    ]
+  },
+  "ego_interpolation": {
+    "source_commit": "8fc061a615895bd3b5a556f7387bae306e32d9db",
+    "source_branch": "codex/hand-depth-scale-fusion-20260908",
+    "space": "camera",
+    "anchors": "nearest valid on both sides",
+    "alpha": "smoothstep",
+    "extrapolation": false,
+    "preserve_observed": true
+  },
+  "verification": {
+    "complete": true,
+    "summary_png": 104,
+    "mp4": 104,
+    "failures": 0,
+    "local_sha256_verified": true,
+    "remote_recheck_this_update": false
+  },
+  "sha256": {
+    "selected_manifest_hydrated.jsonl": "e88ac84845a5a61e6e472b12d160816ef0d8a48eaeb0e2085985335ff33c92a5",
+    "selected_manifest_hydrated.jsonl.gz": "180fa8aa9deea072a7adb81a12eff3acca3ca9d84f1a9b735b944d1937860019",
+    "source_alignment_auxmethods_full104_5001.json": "e0966c8f1d21d8243f0ac0717d1a2859e837f5ed8b6261ddb05319dece882855",
+    "render_aux_pilot.py": "53e560b4916716f3f0bd767a094541ba84fed32f9369856c95385a0698783aab",
+    "ego_bracketed_fill.py": "427864c292c09bda3532fe2e25ae50eaa593c62b25bbb95ea9b737ccab995a44",
+    "video_io.py": "cc7a0125577bf9561f93642fa5973b8a67c19679e4fbd710381a0a2ad33378ef",
+    "formal_evaluation/render_10s_endpoint_gallery_worker.py": "bb9aad0061b0d24585e740d487429f593fc9f8764c163b5d8c8c12e574d4140c",
+    "formal_evaluation/export_10s_gallery.py": "cd078116cf9be8bf5c760c27b16ed51ffc40c39954cab492665cc10f79e07963"
+  }
+}

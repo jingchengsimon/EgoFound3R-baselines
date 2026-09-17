@@ -1,0 +1,256 @@
+{
+  "arctic": {
+    "catalog_run_id": "artifacts-arctic-baseline14-60f-784cc99c785e",
+    "dyn_hamr_formal_root": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/dyn_hamr_full_hand100_20260912_v1/arctic/dyn_hamr/formal",
+    "dyn_hamr_prediction_index": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/dyn_hamr_full_hand100_20260912_v1/arctic/predictions.jsonl",
+    "dyn_hamr_registered_audit_run_id": "audit-p95-table-freeze-main-dyn-hand-five-datasets-20260915-v1",
+    "ego_output_root": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/arctic",
+    "ego_run_id": "evaluation-base3e533881-traincrop512-1078f15-stride5-arctic-n5000g3-20260908",
+    "egoforce_registered_audit_run_id": "audit-p95-table-freeze-main-egoforce-hvd-reports-20260915-v1",
+    "gt_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/arctic/gt_cache",
+    "hawor_complete": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v7_5000/datasets/arctic/COMPLETE",
+    "hawor_output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v7_5000/datasets/arctic",
+    "hawor_prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v7_5000/datasets/arctic/predictions.jsonl",
+    "hawor_run_id": "evaluation-arctic-hawor-native-camera-full-20260915-v7-5000",
+    "method_roots": {
+      "egoforce": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/hand_ready_20260914T010000Z/egoforce/arctic/egoforce/formal"
+      ],
+      "pad_hand": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g6_hot3d_arctic_v2/arctic/pad_hand/formal"
+      ],
+      "reviv4d": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_arctic_60f_20260820T0400Z_e6c4a5e/reviv4d/reviv4d/formal"
+      ],
+      "wilor": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_arctic_60f_20260820T0400Z_e6c4a5e/wilor/wilor/formal"
+      ]
+    },
+    "pad_lane_complete": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g6_hot3d_arctic_v2/COMPLETE",
+    "pad_path_rewrites": [
+      {
+        "source": "/mnt/workspace/sjc/DATA/eval_artifacts/pad_hand_bimanual_6e443a67_20260914",
+        "target": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914"
+      }
+    ],
+    "pad_progress": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g6_hot3d_arctic_v2/arctic/progress.jsonl",
+    "rgb_indices": [
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/window_inputs_arctic_shard_000_of_009.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/window_inputs_arctic_shard_001_of_009.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/window_inputs_arctic_shard_002_of_009.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/window_inputs_arctic_shard_003_of_009.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/window_inputs_arctic_shard_004_of_009.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/window_inputs_arctic_shard_005_of_009.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/window_inputs_arctic_shard_006_of_009.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/window_inputs_arctic_shard_007_of_009.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/window_inputs_arctic_shard_008_of_009.jsonl"
+    ],
+    "segments": 48,
+    "windows": 240
+  },
+  "audit": {
+    "manifest_identity_hydrated": true,
+    "pad_bimanual_v2_required": true,
+    "rgb_sample_frames": 312,
+    "segments": 104,
+    "windows": 520
+  },
+  "cpfs_alias": "/mnt/cpfs/sjc/eval_artifacts",
+  "cpfs_alias_target": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/recompute_dependency",
+  "cpfs_alias_target_audit": {
+    "manifest_sha256": "ad8b5b16debbc7ce56450fd40f1ba770e8c9c142549670b0434b303ea9b2a0df",
+    "migration_id": "ablation-base-prediction-dependency",
+    "observed_pairs_for_selected_manifest": 520,
+    "source_released": true,
+    "status": "verified_and_released"
+  },
+  "ego_interpolation": {
+    "alpha": "smoothstep",
+    "anchors": "nearest valid on both sides",
+    "extrapolation": false,
+    "preserve_observed": true,
+    "scope": "Ego middle missing frames only",
+    "source_branch": "codex/hand-depth-scale-fusion-20260908",
+    "source_commit": "8fc061a615895bd3b5a556f7387bae306e32d9db",
+    "space": "camera"
+  },
+  "external_pose_labels": {
+    "gt_anchor_window": [
+      "ego",
+      "hawor",
+      "dyn_hamr"
+    ],
+    "gt_ext_frame": [
+      "ego_gt",
+      "wilor",
+      "reviv4d",
+      "pad_hand",
+      "egoforce",
+      "gt"
+    ]
+  },
+  "h2o": {
+    "catalog_run_id": "artifacts-h2o-baseline14-60f-c9a0a02fbbfe",
+    "ego_output_root": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/h2o",
+    "ego_run_id": "evaluation-base3e533881-traincrop512-1078f15-stride5-h2o-n5000g0-20260908",
+    "gt_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/h2o/gt_cache",
+    "hawor_complete": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/h2o/COMPLETE",
+    "hawor_output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/h2o",
+    "hawor_prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/h2o/predictions.jsonl",
+    "hawor_run_id": "evaluation-h2o-hawor-native-camera-full-20260915-v9-5000",
+    "method_roots": {
+      "pad_hand": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g5_h2o_hoi4d_v2/h2o/pad_hand/formal"
+      ],
+      "reviv4d": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_60f_20260822T112000Z_continuation/reviv4d/reviv4d/formal",
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_hot3d_backfill_20260824T074500Z/reviv4d/reviv4d/formal"
+      ],
+      "wilor": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_60f_20260822T112000Z_continuation/wilor/wilor/formal"
+      ]
+    },
+    "pad_lane_complete": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g5_h2o_hoi4d_v2/COMPLETE",
+    "pad_path_rewrites": [
+      {
+        "source": "/mnt/workspace/sjc/DATA/eval_artifacts/pad_hand_bimanual_6e443a67_20260914",
+        "target": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914"
+      }
+    ],
+    "pad_progress": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g5_h2o_hoi4d_v2/h2o/progress.jsonl",
+    "rgb_indices": [
+      "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/window_inputs_h2o_shard_000_of_006.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/window_inputs_h2o_shard_001_of_006.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/window_inputs_h2o_shard_002_of_006.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/window_inputs_h2o_shard_003_of_006.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/window_inputs_h2o_shard_004_of_006.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/window_inputs_h2o_shard_005_of_006.jsonl"
+    ],
+    "segments": 5,
+    "windows": 25
+  },
+  "hawor_camera_protocol": "direct hand_*_world and camera_c2w; rigidly place each 60-frame native SLAM world in common 10s GT world by matching first camera pose; no per-frame GT camera substitution; no identity fallback",
+  "hawor_registered_six_datasets": {
+    "arctic": {
+      "output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v7_5000/datasets/arctic",
+      "prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v7_5000/datasets/arctic/predictions.jsonl",
+      "run_id": "evaluation-arctic-hawor-native-camera-full-20260915-v7-5000"
+    },
+    "h2o": {
+      "output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/h2o",
+      "prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/h2o/predictions.jsonl",
+      "run_id": "evaluation-h2o-hawor-native-camera-full-20260915-v9-5000"
+    },
+    "hoi4d": {
+      "output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v10_5000/datasets/hoi4d",
+      "prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v10_5000/datasets/hoi4d/predictions.jsonl",
+      "run_id": "evaluation-hoi4d-hawor-native-camera-full-20260915-v10-5000"
+    },
+    "hot3d": {
+      "output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/hot3d",
+      "prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/hot3d/predictions.jsonl",
+      "run_id": "evaluation-hot3d-hawor-native-camera-full-20260915-v9-5000"
+    },
+    "oakink_v2": {
+      "output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/oakink_v2",
+      "prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/oakink_v2/predictions.jsonl",
+      "run_id": "evaluation-oakink-v2-hawor-native-camera-full-20260915-v9-5000"
+    },
+    "taco": {
+      "output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v10_5000/datasets/taco",
+      "prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v10_5000/datasets/taco/predictions.jsonl",
+      "run_id": "evaluation-taco-hawor-native-camera-full-20260915-v10-5000"
+    }
+  },
+  "hawor_visualization_label": "HaWoR native camera (unmasked SLAM)",
+  "hot3d": {
+    "catalog_run_id": "artifacts-hot3d-baseline14-60f-ca26e9d0263d",
+    "ego_output_root": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/hot3d",
+    "ego_run_id": "evaluation-base3e533881-traincrop512-1078f15-stride5-hot3d-n5000g1-20260908",
+    "gt_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/hot3d/gt_cache",
+    "hawor_complete": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/hot3d/COMPLETE",
+    "hawor_output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/hot3d",
+    "hawor_prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/hot3d/predictions.jsonl",
+    "hawor_run_id": "evaluation-hot3d-hawor-native-camera-full-20260915-v9-5000",
+    "method_roots": {
+      "pad_hand": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g6_hot3d_arctic_v2/hot3d/pad_hand/formal"
+      ],
+      "reviv4d": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_hot3d_60f_20260819T202019Z_e6c4a5e/reviv4d/reviv4d/formal"
+      ],
+      "wilor": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_hot3d_60f_20260819T202019Z_e6c4a5e/wilor/wilor/formal"
+      ]
+    },
+    "pad_lane_complete": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g6_hot3d_arctic_v2/COMPLETE",
+    "pad_path_rewrites": [
+      {
+        "source": "/mnt/workspace/sjc/DATA/eval_artifacts/pad_hand_bimanual_6e443a67_20260914",
+        "target": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914"
+      }
+    ],
+    "pad_progress": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g6_hot3d_arctic_v2/hot3d/progress.jsonl",
+    "rgb_indices": [
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_20260818T0410Z_8b1a806/window_inputs/window_inputs_hot3d_shard_000_of_021.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_20260818T0410Z_8b1a806/window_inputs/window_inputs_hot3d_shard_001_of_021.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_20260818T0410Z_8b1a806/window_inputs/window_inputs_hot3d_shard_002_of_021.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_20260818T0410Z_8b1a806/window_inputs/window_inputs_hot3d_shard_003_of_021.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_20260818T0410Z_8b1a806/window_inputs/window_inputs_hot3d_shard_004_of_021.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_20260818T0410Z_8b1a806/window_inputs/window_inputs_hot3d_shard_005_of_021.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_20260818T0410Z_8b1a806/window_inputs/window_inputs_hot3d_shard_006_of_021.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_20260818T0410Z_8b1a806/window_inputs/window_inputs_hot3d_shard_007_of_021.jsonl"
+    ],
+    "segments": 44,
+    "windows": 220
+  },
+  "manifest_sha256": "e88ac84845a5a61e6e472b12d160816ef0d8a48eaeb0e2085985335ff33c92a5",
+  "oakink_v2": {
+    "catalog_run_id": "artifacts-oakink-v2-baseline14-60f-b401e4b84348",
+    "ego_output_root": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop_512_stride5_1078f15_20260908/oakink_v2",
+    "ego_run_id": "evaluation-base3e533881-traincrop512-1078f15-stride5-oakink-v2-n5000g4-20260908",
+    "gt_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache",
+    "hawor_complete": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/oakink_v2/COMPLETE",
+    "hawor_output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/oakink_v2",
+    "hawor_prediction_index": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/oakink_v2/predictions.jsonl",
+    "hawor_run_id": "evaluation-oakink-v2-hawor-native-camera-full-20260915-v9-5000",
+    "method_roots": {
+      "pad_hand": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g7_oakink_taco_v2/oakink_v2/pad_hand/formal"
+      ],
+      "reviv4d": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_oakink_v2_60f_20260820T0022Z_e6c4a5e/reviv4d/reviv4d/formal"
+      ],
+      "wilor": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_oakink_v2_60f_20260820T0022Z_e6c4a5e/wilor/wilor/formal"
+      ]
+    },
+    "pad_lane_complete": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g7_oakink_taco_v2/COMPLETE",
+    "pad_path_rewrites": [
+      {
+        "source": "/mnt/workspace/sjc/DATA/eval_artifacts/pad_hand_bimanual_6e443a67_20260914",
+        "target": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914"
+      }
+    ],
+    "pad_progress": "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g7_oakink_taco_v2/oakink_v2/progress.jsonl",
+    "rgb_indices": [
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_oakink_v2_20260819T144050Z/window_inputs/window_inputs_oakink_v2_shard_000_of_008.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_oakink_v2_20260819T144050Z/window_inputs/window_inputs_oakink_v2_shard_001_of_008.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_oakink_v2_20260819T144050Z/window_inputs/window_inputs_oakink_v2_shard_002_of_008.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_oakink_v2_20260819T144050Z/window_inputs/window_inputs_oakink_v2_shard_003_of_008.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_oakink_v2_20260819T144050Z/window_inputs/window_inputs_oakink_v2_shard_004_of_008.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_oakink_v2_20260819T144050Z/window_inputs/window_inputs_oakink_v2_shard_005_of_008.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_oakink_v2_20260819T144050Z/window_inputs/window_inputs_oakink_v2_shard_006_of_008.jsonl",
+      "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_oakink_v2_20260819T144050Z/window_inputs/window_inputs_oakink_v2_shard_007_of_008.jsonl"
+    ],
+    "segments": 7,
+    "windows": 35
+  },
+  "reader_instance_id": "hand-eval-endpoint-5001-20260913",
+  "reader_node": 5001,
+  "renderer": "render_aux_pilot.py",
+  "selection": "104 maximum non-overlapping endpoint-renderable segments from 319/602 eligible",
+  "status": "new HaWoR native-camera complete 2378/2378; 5001 pilot reader; full 104 rerender remains pending confirmation",
+  "visualization_layout": "auxiliary methods; fixed near-hand crop; individual 2048x2048 method-view panels",
+  "visualization_mask": "none; use complete predictions, do not apply Joint8 P95 frame mask"
+}

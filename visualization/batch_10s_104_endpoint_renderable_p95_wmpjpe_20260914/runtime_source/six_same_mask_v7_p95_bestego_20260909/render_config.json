@@ -1,0 +1,10 @@
+{
+  "scheme_version": "hand_multiview_shared_mask_v1_four_rows",
+  "scheme": "all8_p95",
+  "views": ["front", "left", "top", "right", "side", "bottom"],
+  "num_frames": 5,
+  "rows": ["Ego stride5", "WiLoR", "HaWoR", "GT"],
+  "camera_display": "common GT camera_c2w; preserves camera-space MPJPE; no fitted alignment",
+  "mask": "result3 Joint8 P95; shared across all rows; native missing predictions remain missing",
+  "run_id": "visualization-six-same-mask-v7-p95-best-ego-mpjpe-wilor-hawor-5frames-6views-20260909-421824d21815"
+}
