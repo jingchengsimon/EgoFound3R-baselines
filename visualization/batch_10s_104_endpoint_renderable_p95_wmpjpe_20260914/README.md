@@ -2,8 +2,7 @@
 
 This directory freezes the selection, source alignment, renderer, and runtime inputs for the canonical 104-segment 3D gallery.
 
-- Result summary: [`../3D_VISUALIZATION_RESULT_SUMMARY_20260916.md`](../3D_VISUALIZATION_RESULT_SUMMARY_20260916.md)
-- Handoff: [`../3D_VISUALIZATION_HANDOFF_20260916.md`](../3D_VISUALIZATION_HANDOFF_20260916.md)
+- Complete documentation: [`../3D_VISUALIZATION_20260916.md`](../3D_VISUALIZATION_20260916.md)
 
 The 104 segments are a maximum non-overlapping set selected from 602 10-second candidates. A candidate passes only when both hands have renderable Ego and GT predictions at the first and last frame: `hand_valid` is true and all 195 markers are finite. Interior gaps are allowed because they have valid anchors on both sides. The endpoint gate reads complete prediction caches and never applies the Joint8 P95 per-frame evaluation mask.
 

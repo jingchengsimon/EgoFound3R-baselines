@@ -1,4 +1,15 @@
-# 3D 10s 可视化交接文档
+# 3D 10s 可视化说明
+
+## 当前结果
+
+- 本地项目：`/Users/jingchengshi/Desktop/MIMO-Rutgers/1-Codes/EgoFound3R-baselines`
+- 冻结代码与清单：`visualization/batch_10s_104_endpoint_renderable_p95_wmpjpe_20260914`
+- 筛选后完整 ID：`visualization/batch_10s_104_endpoint_renderable_p95_wmpjpe_20260914/selected_manifest_hydrated.jsonl`
+- 正式 run ID：`visualization-four-10s-gallery-endpoint104-5001-auxmethods-hawor-native-handzoom-panels-full104_auxmethods_handzoom_panels_v5_5001_r1-20260916`
+- 远端正式结果：`/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_endpoint104_hawor_native_unmasked_20260915_full104_auxmethods_handzoom_panels_v5_5001_r1`
+- 本地轻量副本：`visualization/gallery_10s_endpoint104_hawor_native_unmasked_20260915_full104_auxmethods_handzoom_panels_v5_5001_r1`
+
+5001 当前已断开，本次文档整理没有重新访问节点。以下状态来自断联前已经冻结并校验的结果：`COMPLETE` 存在，`summary.json` 为 `status=complete`，104/104 段成功、失败数为 0。总览包含 104 张 PNG 和 104 个 H.264 MP4；每个视频为 300 帧、30 FPS、10 秒。远端另有 5,136 张逐方法逐视角 2048×2048 panel PNG。本地轻量副本包含 104 张总览 PNG、104 个 MP4、完成元数据及 SHA-256 传输清单，不包含 panel gallery、runtime、logs 和 control。
 
 ## 一、筛选前六个原始数据集的路径
 
@@ -66,6 +77,18 @@ visualization/batch_10s_104_endpoint_renderable_p95_wmpjpe_20260914/audit_proven
 中间帧不作为淘汰条件，因为中间缺失可以在前后有效锚点之间插值。首帧或末帧缺手时直接淘汰，禁止单边外推。筛选读取完整 Ego/GT 数组，不使用 Joint8 P95 的逐帧 mask；P95 只保留为指标及候选来源的 provenance。
 
 602 段涉及 978 个唯一窗口，metadata 身份、`frame_ids`、60 帧形状、`hand_valid [60,2]` 和 markers `[60,2,195,3]` 都通过审计。319 段通过端点门槛。之后对每个数据集、每条 sequence 独立执行结束时间优先的贪心区间调度：按结束帧升序遍历，只接受 `start > last_end` 的候选。该算法给出最大数量的互不重叠区间集合，最终得到 104 段。
+
+| 数据集 | 端点门槛后候选 | 最终互不重叠段 |
+| --- | ---: | ---: |
+| ARCTIC | 166 | 48 |
+| H2O | 6 | 5 |
+| HOT3D | 137 | 44 |
+| OakInk-v2 | 10 | 7 |
+| TACO | 0 | 0 |
+| HOI4D | 0 | 0 |
+| 合计 | 319 | 104 |
+
+104 段中 62 段来自旧 177 清单，42 段来自原先因重叠未被选中的候选。
 
 筛选后的 ID 路径为：
 

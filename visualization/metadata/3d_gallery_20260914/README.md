@@ -6,4 +6,4 @@
 - `PREVIOUS_3D_VIDEO_OUTPUTS_DELETION_RESULT_20260915_REMOTE.json`: verified remote deletion result.
 - `PREVIOUS_3D_VIDEO_OUTPUTS_DELETION_RESULT_20260915_LOCAL.json`: verified local deletion result.
 
-See [`../../3D_VISUALIZATION_RESULT_SUMMARY_20260916.md`](../../3D_VISUALIZATION_RESULT_SUMMARY_20260916.md) and [`../../3D_VISUALIZATION_HANDOFF_20260916.md`](../../3D_VISUALIZATION_HANDOFF_20260916.md). The latest JSON files were updated without reconnecting to the currently disconnected 5001 node; they preserve the completion evidence verified before disconnection.
+See [`../../3D_VISUALIZATION_20260916.md`](../../3D_VISUALIZATION_20260916.md). The latest JSON files were updated without reconnecting to the currently disconnected 5001 node; they preserve the completion evidence verified before disconnection.
