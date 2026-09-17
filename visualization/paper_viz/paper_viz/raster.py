@@ -104,7 +104,9 @@ def derived_distance(vertices, object_vertices):
     """Per-vertex (2, 778) distance in meters to nearest object vertex; inf without object."""
     if object_vertices is None or not len(object_vertices):
         return np.full((2, 778), np.inf, np.float32)
-    tree = cKDTree(object_vertices)
+    # The object cloud is ~55k points; an uncompacted, unbalanced tree builds much
+    # faster and answers nearest-neighbour queries with the same exact distances.
+    tree = cKDTree(object_vertices, compact_nodes=False, balanced_tree=False)
     out = np.empty((2, 778), np.float32)
     for side in range(2):
         out[side] = tree.query(vertices[side], k=1)[0]

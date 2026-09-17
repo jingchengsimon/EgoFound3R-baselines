@@ -27,13 +27,17 @@ class VideoWriter:
 
     def add(self, image):
         import numpy as np
-        array = np.asarray(image.convert("RGB"))
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        array = np.asarray(image)
         if self.process is None:
             self._start(array.shape[1], array.shape[0])
         if (array.shape[1], array.shape[0]) != self.size:
             from PIL import Image
             image = image.resize(self.size, Image.Resampling.LANCZOS)
-            array = np.asarray(image.convert("RGB"))
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+            array = np.asarray(image)
         self.process.stdin.write(array.tobytes())
         self.frames += 1
 

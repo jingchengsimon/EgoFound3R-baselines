@@ -44,7 +44,9 @@ class Frame2D:
         self.window = window
         self.index = index
         self.mano = mano
-        rgb = Image.open(rgb_path(window, index)).convert("RGB")
+        rgb = Image.open(rgb_path(window, index))
+        if rgb.mode != "RGB":          # convert() would copy an already-RGB frame
+            rgb = rgb.convert("RGB")
         self.scale = cell_w / rgb.width
         self.width = cell_w
         self.height = int(round(rgb.height * self.scale))
