@@ -5,8 +5,8 @@ Dyn-HaMR, HaWoR, ReViV4D), EgoFound3R geometry, GT geometry, then Ego/GT pairs
 for visibility, contact and contact distance. Hands are drawn in the marker /
 mesh-wireframe style used by the training monitor and mmpose: vertices as dots,
 MANO face edges as lines, colored by the signal value. In figures one frame is
-one row and selected frames stack vertically; in videos one clip is one row and
-time plays along the video axis.
+one row and selected frames stack vertically; each video frame is a semantic
+3-column x 5-row grid and time plays along the video axis.
 """
 from __future__ import annotations
 

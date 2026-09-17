@@ -6,7 +6,8 @@ segment the runner
 1. locates the authoritative Ego inference output
    (``<ego-infer-root>/<dataset>/<segment_id>/``, see USAGE_2D.md step 2),
 2. stages the per-window Ego inputs (``stage_ego_windows.py``),
-3. renders the figure, the 15 panels and the video with the locked style,
+3. renders the 5 x 15 overview and semantic 3 x 5 video with the locked style
+   (plus the 75 selected-frame panels unless ``--skip-panels`` is set),
 4. verifies ``report.json`` and records the outcome.
 
 Segments run in parallel (``--parallel``) and each segment renders its video

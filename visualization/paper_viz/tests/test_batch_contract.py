@@ -21,7 +21,8 @@ MANIFEST = (REPO_ROOT / "visualization" /
 BATCH_PATH = PACKAGE_ROOT / "tools" / "batch_2d_render.py"
 
 sys.path.insert(0, str(PACKAGE_ROOT))
-from paper_viz.cli import frame_locations  # noqa: E402
+from paper_viz.cli import VIDEO_GRID, frame_locations  # noqa: E402
+from paper_viz import render2d  # noqa: E402
 
 spec = importlib.util.spec_from_file_location("batch_2d_render", BATCH_PATH)
 batch = importlib.util.module_from_spec(spec)
@@ -48,6 +49,21 @@ class BatchContractTest(unittest.TestCase):
             SimpleNamespace(selected_indices=[0, 1]),
         ])
         self.assertEqual(frame_locations(segment), [(0, 4), (0, 5), (0, 9), (1, 0), (1, 1)])
+
+    def test_video_grid_is_semantic_3_by_5_and_covers_every_column_once(self):
+        self.assertEqual((len(VIDEO_GRID), len(VIDEO_GRID[0])), (5, 3))
+        flattened = [column for row in VIDEO_GRID for column in row]
+        self.assertEqual(len(flattened), 15)
+        self.assertEqual(set(flattened), set(render2d.COLUMNS))
+        self.assertEqual(VIDEO_GRID[0], (("rgb", "geometry"),
+                                        ("ego", "geometry"),
+                                        ("gt", "geometry")))
+        self.assertEqual(VIDEO_GRID[-2], (("ego", "visibility"),
+                                         ("ego", "contact"),
+                                         ("ego", "distance")))
+        self.assertEqual(VIDEO_GRID[-1], (("gt", "visibility"),
+                                         ("gt", "contact"),
+                                         ("gt", "distance")))
 
     def test_frozen_manifest_frame_refs_are_exact_and_cache_contiguous(self):
         entries = [json.loads(line) for line in MANIFEST.read_text().splitlines() if line.strip()]

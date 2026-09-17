@@ -18,6 +18,16 @@ METHODS = style.METHODS
 VIEWS_FIG = ("front", "left", "top", "right", "side", "bottom")
 VIEWS_VIDEO = ("front", "left", "top")
 
+# Video frames use a compact semantic 3 x 5 layout.  Figure 2 intentionally
+# keeps the 5 x 15 comparison matrix because its rows encode selected time.
+VIDEO_GRID = (
+    (("rgb", "geometry"), ("ego", "geometry"), ("gt", "geometry")),
+    (("wilor", "geometry"), ("pad_hand", "geometry"), ("egoforce", "geometry")),
+    (("dyn_hamr", "geometry"), ("hawor", "geometry"), ("reviv4d", "geometry")),
+    (("ego", "visibility"), ("ego", "contact"), ("ego", "distance")),
+    (("gt", "visibility"), ("gt", "contact"), ("gt", "distance")),
+)
+
 # Frame-parallel workers read the segment through this dict instead of pickling it
 # per task: the pool is forked, so children inherit the loaded sources copy-on-write.
 _WORKER = {}
@@ -190,21 +200,30 @@ def render_2d_block(segment: SegmentSources, out: Path, report: dict, args, sele
             writer.add(image)
         report["outputs"]["video2"] = str(out / "video2_2d_matrix.mp4")
         report["video2_frames"] = writer.close()
+        report["video2_layout"] = "3x5"
 
 
 def video_row(t: int):
-    """Compose one video row (15 columns, one clip frame) — the unit of work."""
+    """Compose one semantic 3 x 5 video grid for one clip frame."""
     segment = _WORKER["segment"]
     args = _WORKER["args"]
     w_index, f_index = frame_locations(segment)[t]
     window = segment.windows[w_index]
     frame = render2d.Frame2D(window, f_index, segment.mano, cell_w=args.cell2d_video)
-    cells = {}
-    for c, (method, signal) in enumerate(render2d.COLUMNS):
-        cells[(0, c)] = render2d.column_cell(frame, method, signal, f_index)
-    return compose_figure2(cells, 1, [f"{window.frame_ids[f_index]}"], segment,
-                           subtitle=f"2D camera-space overlay | clip frame {t} "
-                                    f"| source frame {window.frame_ids[f_index]}")
+    cells, labels = {}, {}
+    for row, columns in enumerate(VIDEO_GRID):
+        for col, column in enumerate(columns):
+            column_index = render2d.COLUMNS.index(column)
+            cells[(row, col)] = render2d.column_cell(frame, *column, f_index)
+            labels[(row, col)] = render2d.COLUMN_LABELS[column_index]
+    from .layout import compose_labeled_grid
+    return compose_labeled_grid(
+        cells, labels, len(VIDEO_GRID), len(VIDEO_GRID[0]),
+        title=f"{segment.dataset} | {segment.sequence_id}",
+        subtitle=f"2D camera-space overlay | clip frame {t} | "
+                 f"source frame {window.frame_ids[f_index]}",
+        footer="Rows: primary | baselines | baselines | Ego signals | GT signals",
+    )
 
 
 def video_rows(segment: SegmentSources, args, indices: list):
