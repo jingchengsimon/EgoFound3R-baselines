@@ -159,6 +159,7 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     args.staged_root = args.staged_root or (args.out_root / "_staged")
+    args.out_root.mkdir(parents=True, exist_ok=True)
 
     entries = [json.loads(line) for line in args.manifest.read_text().splitlines() if line.strip()]
     if args.datasets:
