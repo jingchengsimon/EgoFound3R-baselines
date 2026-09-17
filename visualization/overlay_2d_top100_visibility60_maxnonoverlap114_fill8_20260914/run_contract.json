@@ -1,0 +1,25 @@
+{
+  "selection_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+  "expected_centers": 114,
+  "expected_png": 114,
+  "expected_mp4": 114,
+  "expected_display_frames": 12559,
+  "expected_filled_side_frames": 310,
+  "fps": 30,
+  "layout": "2x4 GT/Ego x geometry/distance/contact/visibility",
+  "ego_intrinsics": "nearest valid stride5 anchor when native K invalid",
+  "interpolation_commit": "8fc061a615895bd3b5a556f7387bae306e32d9db",
+  "interpolation_functions": "numpy-equivalent of _camera_space_smooth_fill and smooth_display_hand_local_shape from commit",
+  "interpolation_scope": "visualization only; source prediction and strict metric validity unchanged; no model rerun or root-UV re-solve",
+  "distance_panel": "GT and Ego vertex_contact_distance in meters, Turbo 0-50 mm",
+  "visibility_panel": "Ego marker_visibility probability projected via fixed 195-to-778 mapping, threshold 0.5; prediction, not RGB-observed hand presence",
+  "status": "verified",
+  "verified_counts": {
+    "png": 114,
+    "mp4": 114,
+    "frame_manifest": 114,
+    "report": 114
+  },
+  "verified_display_frames": 12559,
+  "verified_filled_hand_side_frames": 310
+}

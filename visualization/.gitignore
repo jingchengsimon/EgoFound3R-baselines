@@ -1,0 +1,14 @@
+.DS_Store
+
+# Large rendered media stay in artifact storage/local sync, outside Git.
+overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/png_gallery/
+overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/video_gallery/
+overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/2d_114windows.zip
+
+# Per-frame sidecars and per-clip reports remain with the rendered artifact.
+overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/frame_manifests/
+overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/reports/
+
+# Superseded exploratory pilot; keep only the H2O rank-17 review target.
+overlay_2d_contact_face_3x4_example_20260917/oakink_v2_3291_3x4_face_contact_example.png
+overlay_2d_contact_face_3x4_example_20260917/oakink_v2_3291_3x4_face_contact_example.json

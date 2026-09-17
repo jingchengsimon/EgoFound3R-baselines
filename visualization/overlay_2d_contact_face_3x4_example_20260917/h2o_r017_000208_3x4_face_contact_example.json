@@ -1,0 +1,142 @@
+{
+  "dataset": "h2o",
+  "dataset_rank": 17,
+  "cache_id": "abc07caace9823faa3ffe7ce",
+  "sequence_id": "subject4_ego/h1/5",
+  "window_id": "subject4_ego/h1/5:000156-000215",
+  "frame_index": 52,
+  "frame_id": "000208",
+  "rgb_size": [
+    448,
+    252
+  ],
+  "output_size": [
+    1920,
+    1694
+  ],
+  "layout": "3x4",
+  "rendering": {
+    "granularity": "MANO 778 triangular faces",
+    "face_score": "mean of three vertex values",
+    "alpha": 0.47843137254901963,
+    "occlusion": "object plus both hands, nearest-surface z-buffer",
+    "rgb_clip": true,
+    "gt_visibility": "derived from GT hand/object scene z-buffer",
+    "ego_visibility": "marker_visibility interpolated 195-to-778, then face mean",
+    "comparison_hand": "right",
+    "comparison_geometry": {
+      "ego": "predicted 195-to-778 mesh",
+      "s2contact": "predicted 778 mesh",
+      "contactopt": "predicted 778 mesh",
+      "interactvlm": "GT MANO 778 projection support"
+    }
+  },
+  "ego_intrinsics_source_frame_index": 52,
+  "ego_intrinsics_source_frame_id": "000208",
+  "method_stats": {
+    "ego": {
+      "shape": [
+        60,
+        2,
+        778
+      ],
+      "right_valid_vertices": 778,
+      "right_contact_vertices_p_ge_0_5": 0,
+      "right_probability_min": 0.0,
+      "right_probability_max": 0.0
+    },
+    "s2contact": {
+      "shape": [
+        60,
+        2,
+        778
+      ],
+      "right_valid_vertices": 778,
+      "right_contact_vertices_p_ge_0_5": 170,
+      "right_probability_min": 2.8278929066878458e-18,
+      "right_probability_max": 0.7039675712585449
+    },
+    "contactopt": {
+      "shape": [
+        60,
+        2,
+        778
+      ],
+      "right_valid_vertices": 778,
+      "right_contact_vertices_p_ge_0_5": 164,
+      "right_probability_min": 1.393258745137002e-13,
+      "right_probability_max": 0.5982292890548706
+    },
+    "interactvlm": {
+      "shape": [
+        60,
+        2,
+        778
+      ],
+      "right_valid_vertices": 778,
+      "right_contact_vertices_p_ge_0_5": 386,
+      "right_probability_min": 0.0,
+      "right_probability_max": 0.9998031854629517
+    }
+  },
+  "overlay_pixels": {
+    "gt_geometry": {
+      "0": 3597,
+      "1": 2554
+    },
+    "gt_distance": {
+      "0": 3597,
+      "1": 2554
+    },
+    "gt_contact": {
+      "0": 3597,
+      "1": 2554
+    },
+    "gt_visibility": {
+      "0": 3597,
+      "1": 2554
+    },
+    "ego_geometry": {
+      "0": 3482,
+      "1": 2503
+    },
+    "ego_distance": {
+      "0": 3482,
+      "1": 2503
+    },
+    "ego_contact": {
+      "0": 3482,
+      "1": 2503
+    },
+    "ego_visibility": {
+      "0": 3482,
+      "1": 2503
+    },
+    "ego_contact_compare": {
+      "1": 2503
+    },
+    "s2contact": {
+      "1": 2554
+    },
+    "contactopt": {
+      "1": 2554
+    },
+    "interactvlm": {
+      "1": 2554
+    }
+  },
+  "sources": {
+    "record": "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/h2o/abc07caace9823faa3ffe7ce/window_input.json",
+    "rgb": "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/h2o/abc07caace9823faa3ffe7ce/rgb/052_000208.png",
+    "geometry": "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/h2o/abc07caace9823faa3ffe7ce/geometry/052_000208.npz",
+    "gt": "oss://quic-pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/h2o/gt_cache/h2o/abc07caace9823faa3ffe7ce.npz",
+    "gt_contact": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/vertex_contact_distance_gt/h2o/abc07caace9823faa3ffe7ce.npz",
+    "ego_prediction": "oss://quic-pre-train/ego/eval_artifacts/p95_table_freeze_20260915/recompute_dependency/base3e_traincrop_512_stride5_1078f15_20260908/h2o/h2o/egofound3r/formal/abc07caace9823faa3ffe7ce/predictions.npz",
+    "ego_contact": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/ego_vertex_contact_distance_8095_retry3_20260911/egofound3r_stride5/shards/h2o/h2o/abc07caace9823faa3ffe7ce.npz",
+    "s2contact": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/s2contact_vertex_8095_retry7_20260911/predictions/h2o/0/s2contact/formal/abc07caace9823faa3ffe7ce/predictions.npz",
+    "contactopt": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/contactopt_vertex_8095_retry3_20260911/predictions/h2o/0/contactopt/formal/abc07caace9823faa3ffe7ce/predictions.npz",
+    "interactvlm": "oss://quic-pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/result3_contact_distance_20260912_v1/interactvlm100/windows/h2o/abc07caace9823faa3ffe7ce.npz",
+    "mapping": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoFound3R_pair_new_3e533881_20260907/egohandmetric_prompt/data/mano_upsampling/mano_195_to_778.npz"
+  },
+  "output": "/Users/jingchengshi/Desktop/MIMO-Rutgers/1-Codes/EgoFound3R-baselines/visualization/overlay_2d_contact_face_3x4_example_20260917/h2o_r017_000208_3x4_face_contact_example.png"
+}

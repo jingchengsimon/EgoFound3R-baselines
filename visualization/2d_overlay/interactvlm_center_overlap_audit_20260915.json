@@ -1,0 +1,53 @@
+{
+  "frozen_gallery": "overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914",
+  "frozen_center_count": 114,
+  "interactvlm_source_task": "evaluation:interactvlm:six:100x60f:named:20260906",
+  "interactvlm_window_count": 100,
+  "any_segment_overlap_count": 10,
+  "fully_covered_actual_length_segment_count": 1,
+  "fully_covered_actual_length_segment": {
+    "dataset": "taco",
+    "dataset_rank": 26,
+    "sequence_id": "(pour in some, teapot, teapot)/20231031_118",
+    "center_frame_id": "00083",
+    "actual_length": 60,
+    "interactvlm_covered_frames": 60
+  },
+  "exact_center_overlap_count": 4,
+  "exact_center_overlaps": [
+    {
+      "dataset": "h2o",
+      "dataset_rank": 17,
+      "sequence_id": "subject4_ego/h1/5",
+      "center_frame_id": "000208",
+      "interactvlm_window_id": "subject4_ego/h1/5:000156-000215"
+    },
+    {
+      "dataset": "h2o",
+      "dataset_rank": 68,
+      "sequence_id": "subject4_ego/k1/1",
+      "center_frame_id": "000492",
+      "interactvlm_window_id": "subject4_ego/k1/1:000440-000499"
+    },
+    {
+      "dataset": "taco",
+      "dataset_rank": 26,
+      "sequence_id": "(pour in some, teapot, teapot)/20231031_118",
+      "center_frame_id": "00083",
+      "interactvlm_window_id": "(pour in some, teapot, teapot)/20231031_118:00061-00120"
+    },
+    {
+      "dataset": "taco",
+      "dataset_rank": 67,
+      "sequence_id": "(stir, spatula, bowl)/20231024_153",
+      "center_frame_id": "00003",
+      "interactvlm_window_id": "(stir, spatula, bowl)/20231024_153:00001-00060"
+    }
+  ],
+  "pilot_identity_exactly_covered": false,
+  "pilot_identity": {
+    "dataset": "arctic",
+    "sequence_id": "s02@ketchup_use_03@cam0",
+    "center_frame_id": "00450"
+  }
+}

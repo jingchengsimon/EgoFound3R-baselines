@@ -1,0 +1,211 @@
+{
+  "schema": "overlay-2d-visibility60-max-nonoverlap114-render-audit-v1",
+  "status": "verified",
+  "selection_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+  "selection_count": 114,
+  "output_counts": {
+    "png": 114,
+    "mp4": 114,
+    "frame_manifest": 114,
+    "report": 114
+  },
+  "per_dataset_clips": {
+    "arctic": 9,
+    "h2o": 26,
+    "hoi4d": 0,
+    "hot3d": 1,
+    "oakink_v2": 18,
+    "taco": 60
+  },
+  "per_dataset_display_frames": {
+    "arctic": 2700,
+    "h2o": 3116,
+    "hoi4d": 0,
+    "hot3d": 300,
+    "oakink_v2": 1966,
+    "taco": 4477
+  },
+  "display_frames_manifest": 12559,
+  "display_frames_decoded": 12559,
+  "fps": 30,
+  "nonoverlap_verified": true,
+  "filled_clips": [
+    {
+      "dataset": "arctic",
+      "dataset_rank": 28,
+      "filled_side_frames": 11,
+      "missing_runs": [
+        {
+          "side": "right",
+          "start_display_index": 16,
+          "end_display_index": 26,
+          "length": 11
+        }
+      ]
+    },
+    {
+      "dataset": "arctic",
+      "dataset_rank": 48,
+      "filled_side_frames": 99,
+      "missing_runs": [
+        {
+          "side": "left",
+          "start_display_index": 135,
+          "end_display_index": 184,
+          "length": 50
+        },
+        {
+          "side": "right",
+          "start_display_index": 69,
+          "end_display_index": 117,
+          "length": 49
+        }
+      ]
+    },
+    {
+      "dataset": "arctic",
+      "dataset_rank": 84,
+      "filled_side_frames": 9,
+      "missing_runs": [
+        {
+          "side": "left",
+          "start_display_index": 247,
+          "end_display_index": 255,
+          "length": 9
+        }
+      ]
+    },
+    {
+      "dataset": "oakink_v2",
+      "dataset_rank": 28,
+      "filled_side_frames": 5,
+      "missing_runs": [
+        {
+          "side": "right",
+          "start_display_index": 125,
+          "end_display_index": 129,
+          "length": 5
+        }
+      ]
+    },
+    {
+      "dataset": "oakink_v2",
+      "dataset_rank": 53,
+      "filled_side_frames": 120,
+      "missing_runs": [
+        {
+          "side": "left",
+          "start_display_index": 92,
+          "end_display_index": 97,
+          "length": 6
+        },
+        {
+          "side": "left",
+          "start_display_index": 133,
+          "end_display_index": 142,
+          "length": 10
+        },
+        {
+          "side": "left",
+          "start_display_index": 149,
+          "end_display_index": 153,
+          "length": 5
+        },
+        {
+          "side": "right",
+          "start_display_index": 6,
+          "end_display_index": 39,
+          "length": 34
+        },
+        {
+          "side": "right",
+          "start_display_index": 56,
+          "end_display_index": 85,
+          "length": 30
+        },
+        {
+          "side": "right",
+          "start_display_index": 94,
+          "end_display_index": 126,
+          "length": 33
+        },
+        {
+          "side": "right",
+          "start_display_index": 150,
+          "end_display_index": 151,
+          "length": 2
+        }
+      ]
+    },
+    {
+      "dataset": "oakink_v2",
+      "dataset_rank": 74,
+      "filled_side_frames": 46,
+      "missing_runs": [
+        {
+          "side": "left",
+          "start_display_index": 36,
+          "end_display_index": 45,
+          "length": 10
+        },
+        {
+          "side": "left",
+          "start_display_index": 108,
+          "end_display_index": 143,
+          "length": 36
+        }
+      ]
+    },
+    {
+      "dataset": "taco",
+      "dataset_rank": 30,
+      "filled_side_frames": 18,
+      "missing_runs": [
+        {
+          "side": "right",
+          "start_display_index": 95,
+          "end_display_index": 112,
+          "length": 18
+        }
+      ]
+    },
+    {
+      "dataset": "taco",
+      "dataset_rank": 43,
+      "filled_side_frames": 2,
+      "missing_runs": [
+        {
+          "side": "right",
+          "start_display_index": 49,
+          "end_display_index": 50,
+          "length": 2
+        }
+      ]
+    }
+  ],
+  "filled_clip_count": 8,
+  "filled_hand_side_frames": 310,
+  "center_filled": [
+    {
+      "dataset": "arctic",
+      "dataset_rank": 48,
+      "center_frame_id": "00565",
+      "sides": [
+        true,
+        false
+      ]
+    },
+    {
+      "dataset": "oakink_v2",
+      "dataset_rank": 53,
+      "center_frame_id": "6275",
+      "sides": [
+        false,
+        true
+      ]
+    }
+  ],
+  "interpolation_commit": "8fc061a615895bd3b5a556f7387bae306e32d9db",
+  "interpolation_scope": "visualization-only exact-equivalent camera-space fill and local-shape smoothing; source predictions and strict metric validity unchanged; no inference rerun or root-UV re-solve",
+  "errors": []
+}

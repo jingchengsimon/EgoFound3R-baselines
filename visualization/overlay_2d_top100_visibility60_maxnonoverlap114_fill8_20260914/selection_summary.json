@@ -1,0 +1,43 @@
+{
+  "schema": "overlay-2d-visibility60-max-nonoverlap-v1",
+  "source_candidates": "/private/tmp/bracketable600.json",
+  "criterion": "both hands valid at first/last display frame; maximum internal combined missing run <= 60 frames",
+  "nonoverlap": "maximum interval count per dataset+sequence; ties maximize original 2D score then lexicographic dataset ranks",
+  "selected": 114,
+  "selected_manifest_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+  "display_frames": 12559,
+  "full_300_frame_clips": 10,
+  "clips_with_internal_missing": 8,
+  "per_dataset": {
+    "arctic": {
+      "selected": 9,
+      "with_internal_missing": 3,
+      "display_frames": 2700
+    },
+    "h2o": {
+      "selected": 26,
+      "with_internal_missing": 0,
+      "display_frames": 3116
+    },
+    "hoi4d": {
+      "selected": 0,
+      "with_internal_missing": 0,
+      "display_frames": 0
+    },
+    "hot3d": {
+      "selected": 1,
+      "with_internal_missing": 0,
+      "display_frames": 300
+    },
+    "oakink_v2": {
+      "selected": 18,
+      "with_internal_missing": 3,
+      "display_frames": 1966
+    },
+    "taco": {
+      "selected": 60,
+      "with_internal_missing": 2,
+      "display_frames": 4477
+    }
+  }
+}

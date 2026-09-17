@@ -1,0 +1,95 @@
+{
+  "schema": "egofound3r-2d-overlay-registry-v1",
+  "status": "pilot_review_pending",
+  "project": {
+    "path": "/Users/jingchengshi/Desktop/MIMO-Rutgers/1-Codes/EgoFound3R-baselines",
+    "branch_at_handoff": "formal-hand-fix",
+    "parent_commit": "2fe84f1a940ca241b25e238b3483c60dcdc781ec",
+    "milestone_commit": "resolve with git log -1 -- visualization/2d_overlay/manifest_registry.json",
+    "commit_scope": "isolated 2d paths; shared evaluation changes excluded"
+  },
+  "dataset_inputs": {
+    "h2o": {
+      "raw_root": "/mnt/workspace/sjc/DATA/H2O/h2o_data",
+      "window_root": "/mnt/workspace/sjc/eval_artifacts/prep_h2o_60f_strict_20260822T030835Z_5001_g1/window_inputs/h2o"
+    },
+    "hot3d": {
+      "raw_root": "/mnt/workspace/sjc/DATA/HOT3D/hot3d/hot3d/dataset",
+      "window_root": "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_20260818T0410Z_8b1a806/window_inputs/hot3d"
+    },
+    "arctic": {
+      "raw_root": "/mnt/workspace/sjc/DATA/EgoForce/ARCTIC",
+      "window_root": "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_arctic_20260820T000131Z/window_inputs/arctic"
+    },
+    "oakink_v2": {
+      "raw_root": "/mnt/workspace/sjc/DATA/OakInk-v2",
+      "window_root": "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_oakink_v2_20260819T144050Z/window_inputs/oakink_v2"
+    },
+    "taco": {
+      "raw_root": "/mnt/cpfs/sjc/DATA/TACO_resized",
+      "window_root": "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_taco_20260822T101500Z_5001_g4_bin0/window_inputs/taco"
+    },
+    "hoi4d": {
+      "raw_root": "/mnt/workspace/sjc/DATA/mnt-1/HOI4D",
+      "window_root": "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_60f_strict_hoi4d_20260822T015700Z_5001_g0/window_inputs/hoi4d"
+    }
+  },
+  "selection_input": {
+    "path": "visualization/2d_overlay/bracketable600_20260914.json.gz",
+    "uncompressed_rows": 600,
+    "uncompressed_sha256": "7e36ee5f1a51760304097c8095e6f1d1b235ed3241740c7f02fe071445a89280",
+    "role": "exact input used by the visibility and maximum-nonoverlap selector"
+  },
+  "selection_script": "visualization/2d_overlay/build_visibility60_selected114.py",
+  "frozen_legacy_gallery": {
+    "path": "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914",
+    "layout": "2x4",
+    "selection_manifest": "selected_manifest.jsonl",
+    "selection_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+    "selection_count": 114,
+    "display_frames": 12559,
+    "fps": 30,
+    "output_counts": {
+      "png": 114,
+      "mp4": 114,
+      "frame_manifest": 114,
+      "report": 114
+    },
+    "status": "verified_selection_and_render",
+    "layout_status": "superseded_for_future_rendering"
+  },
+  "current_face_pilot": {
+    "path": "visualization/overlay_2d_contact_face_3x4_example_20260917",
+    "review_png": "h2o_r017_000208_3x4_face_contact_example.png",
+    "metadata": "h2o_r017_000208_3x4_face_contact_example.json",
+    "renderer": "render_example.py",
+    "dataset": "h2o",
+    "dataset_rank": 17,
+    "center_frame_id": "000208",
+    "cache_id": "abc07caace9823faa3ffe7ce",
+    "layout": "3x4 face-level",
+    "status": "single_frame_verified_batch_not_started"
+  },
+  "interactvlm_coverage": {
+    "audit": "visualization/2d_overlay/interactvlm_center_overlap_audit_20260915.json",
+    "exact_center_overlap_count": 4,
+    "fully_covered_actual_length_segment_count": 1,
+    "frozen_centers": 114
+  },
+  "tracked_boundary": {
+    "tracked": [
+      "selection manifests and summaries",
+      "completeness audit and run contract",
+      "rendering provenance code",
+      "one current review PNG and its JSON",
+      "handoff and registry"
+    ],
+    "local_only": [
+      "114 legacy PNG files",
+      "114 legacy MP4 files",
+      "114 frame sidecars",
+      "114 per-clip reports",
+      "2d_114windows.zip"
+    ]
+  }
+}
