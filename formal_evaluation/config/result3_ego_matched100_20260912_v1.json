@@ -1,0 +1,78 @@
+{
+  "protocol": "ego_stride5_predcamera_original100_unfiltered_v1",
+  "source_run_ids": {
+    "hand": "metrics-six-baseline12-plus-result3-directoss-same-mask-frozen-block16-p975-p95-mixed-20260909-v7-61cb6bb66a89",
+    "classification": "result3-p95-completion-stride5-gt-contact-metrics-20260912-v4-c07ead6cde0b",
+    "visibility": "result3-p95-completion-stride5-pred-visibility-table-20260912-v7-ba5a152deaa7",
+    "distance": "result3-p95-contact-distance-ego-stride5-20260912-v1-639f7cecf9a3",
+    "interactvlm": "evaluation-interactvlm-six-100x60f-named-20260906-aa0d6de60368"
+  },
+  "source_roots": {
+    "hand": "/mnt/cpfs/sjc/eval_artifacts/same_mask_baseline12_result3_directoss_block16_20260909_v7",
+    "classification": "/mnt/workspace/sjc/eval_artifacts/result3_classification_retry_20260912_v4/stride5_gt_contact_metrics",
+    "visibility": "/mnt/oss/pre-train/ego/eval_artifacts/result3_classification_retry_20260912_v7/stride5_pred_visibility_table",
+    "distance": "/mnt/cpfs/sjc/eval_artifacts/result3_contact_distance_20260912_v1/ego_stride5"
+  },
+  "interact_prediction_index": "/mnt/oss/pre-train/ego/eval_artifacts/interactvlm_six100_named_20260906_b1fab90/predictions.jsonl",
+  "datasets": {
+    "h2o": {
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/h2o/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "3863f85dae384df9fe4ea9a9c0840a0af6c4d1ed219ca855ad287a3909904296",
+      "ego_windows": 283,
+      "original100_windows": 12,
+      "dyn_prediction_indices": [
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_interact_100_20260906/dyn_h2o12_glx6_v3_20260907/shard_00_of_06/predictions.jsonl",
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_interact_100_20260906/dyn_h2o12_glx6_v3_20260907/shard_01_of_06/predictions.jsonl",
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_interact_100_20260906/dyn_h2o12_glx6_v3_20260907/shard_02_of_06/predictions.jsonl",
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_interact_100_20260906/dyn_h2o12_glx6_v3_20260907/shard_03_of_06/predictions.jsonl",
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_interact_100_20260906/dyn_h2o12_glx6_v3_20260907/shard_04_of_06/predictions.jsonl",
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_interact_100_20260906/dyn_h2o12_glx6_v3_20260907/shard_05_of_06/predictions.jsonl"
+      ]
+    },
+    "hot3d": {
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/hot3d/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "5914c17c79ab122eb08963932a93770fe10c30bc2f112a0ce213326d661010c0",
+      "ego_windows": 400,
+      "original100_windows": 17,
+      "dyn_prediction_indices": [
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_hamr_remaining88_v5_20260907/predictions/hot3d/predictions.jsonl"
+      ]
+    },
+    "arctic": {
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/arctic/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "ef7683b62214dd85217d767f1097105b3f3290212a2c8057b3aa0b95300219cd",
+      "ego_windows": 434,
+      "original100_windows": 18,
+      "dyn_prediction_indices": [
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_hamr_remaining88_v5_20260907/predictions/arctic/predictions.jsonl"
+      ]
+    },
+    "oakink_v2": {
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "99f48ea8d47d40096280b1c97e47499c9047b68213dac20684823e844adc86e8",
+      "ego_windows": 400,
+      "original100_windows": 17,
+      "dyn_prediction_indices": [
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_hamr_remaining88_v5_20260907/predictions/oakink_v2/predictions.jsonl"
+      ]
+    },
+    "taco": {
+      "gt_index": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_taco_metrics_20260831T234159Z/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "e384af03f6c185df486275770805b2046207e43a7299399bc687ce4344303e58",
+      "ego_windows": 400,
+      "original100_windows": 17,
+      "dyn_prediction_indices": [
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_hamr_remaining88_v5_20260907/predictions/taco/predictions.jsonl"
+      ]
+    },
+    "hoi4d": {
+      "gt_index": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_hand6_v2_gtcache_taco_hoi4d_20260825T041940Z/hoi4d/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "d157e125f36bd154eded28362680013a9d17bd516b561bba64e07309060ce571",
+      "ego_windows": 461,
+      "original100_windows": 19,
+      "dyn_prediction_indices": [
+        "/mnt/workspace/sjc/DATA/eval_artifacts/dyn_hamr_remaining88_v5_20260907/predictions/hoi4d/predictions.jsonl"
+      ]
+    }
+  }
+}

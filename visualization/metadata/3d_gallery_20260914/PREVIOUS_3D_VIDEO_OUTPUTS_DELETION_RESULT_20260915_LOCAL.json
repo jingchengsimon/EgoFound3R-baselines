@@ -1,0 +1,11 @@
+{
+  "schema": "local-previous-3d-video-output-deletion-result-v1",
+  "deleted_at_utc": "2026-09-14T22:09:31.652547+00:00",
+  "path": "/Users/jingchengshi/Desktop/MIMO-Rutgers/1-Codes/EgoFound3R-baselines/visualization/.gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_gallery_pre_repair.nosync",
+  "existed_before_delete": true,
+  "bytes_at_delete": 81925,
+  "files_at_delete": 5,
+  "mp4_at_delete": 0,
+  "exists_after_delete": false,
+  "status": "verified"
+}

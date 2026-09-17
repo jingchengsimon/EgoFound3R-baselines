@@ -1,0 +1,14 @@
+# Registered-task operations must go through the exact-ID controller.
+prefix_rule(
+    pattern = ["python3", "formal_evaluation/taskctl.py", ["resolve", "inspect", "path", "watch", "start", "pause", "resume"]],
+    decision = "allow",
+    justification = "Canonical exact-ID task control entrypoint",
+)
+
+# Raw SSH remains available for separately scoped DSW work, but cannot silently
+# replace taskctl for a registered-task operation.
+prefix_rule(
+    pattern = ["ssh"],
+    decision = "prompt",
+    justification = "Registered-task operations must use formal_evaluation/taskctl.py",
+)

@@ -53,7 +53,208 @@
       "state": "present"
     }
   ],
+  "authorized_extensions": {"hand_visibility_detector": "User-authorized visibility baseline setup and six-dataset single-window evaluation, 2026-09-10; historical baseline14 method_order unchanged.", "egoforce": "User-authorized setup and six-dataset one-window smoke, 2026-09-10; historical baseline14 method_order unchanged."},
   "methods": {
+    "hand_visibility_detector": {
+      "category": "joint visibility",
+      "execution_mode": "official_rgb_inference",
+      "runner": "formal_evaluation/hand/adapters/run_hand_visibility_detector.py",
+      "python": "/mnt/workspace/sjc/envs/hand_visibility_6321d62/bin/python",
+      "source_root": "/mnt/workspace/sjc/DATA/runtime_worktrees/hand_visibility_6321d62",
+      "source_commit": "6321d62fb7617cf504d1de6e4d9ecda7aadfb989",
+      "model_repo": "ryhara/hand-visibility-detector",
+      "model_revision": "941b791bcba4a0bb381c325c225f56e0a80cf98f",
+      "execution_status": "gpu_hoi4d_rgb_detector_fix_validated",
+      "input_contract": "Shared six-dataset RGB windows; 256x256 full-frame bilinear resize then official crops; Joint visibility only, no GT geometry.",
+      "required_paths": [
+        {
+          "role": "visibility head",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/best.pt",
+          "bytes": 9947002,
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini source",
+          "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/WiLoR-mini_ebec42f",
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini MANO_RIGHT.pkl",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/pretrained_models/MANO_RIGHT.pkl",
+          "bytes": 3821356,
+          "sha256": "45d60aa3b27ef9107a7afd4e00808f307fd91111e1cfa35afd5c4a62de264767",
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini detector.pt",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/pretrained_models/detector.pt",
+          "bytes": 53582271,
+          "sha256": "5ef3df44e42d2db52d4ffe91f83a22ce9925e2acc9abebf453f2c5d22e380033",
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini mano_mean_params.npz",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/pretrained_models/mano_mean_params.npz",
+          "bytes": 1178,
+          "sha256": "efc0ec58e4a5cef78f3abfb4e8f91623b8950be9eff8b8e0dbb0d036ebc63988",
+          "state": "present"
+        },
+        {
+          "role": "WiLoR-mini wilor_final.ckpt",
+          "path": "/mnt/workspace/sjc/models/hand_visibility_941b791/pretrained_models/wilor_final.ckpt",
+          "bytes": 2564989533,
+          "sha256": "3e97aafc7dd08d883a4cc5a027df61fdb6fda6136dbd1319405413862ada6bb2",
+          "state": "present"
+        }
+      ],
+      "wilor_mini_source_commit": "ebec42f94c389070cdd7dda6fd1bf0b4a659c960",
+      "wilor_mini_model_revision": "b00adea9a6843bbb4c9042109c5eb29ab2a59dea",
+      "checkpoint_sha256": "c26712319e82fd5701d4eb1dd597d69469b770140e5fbf59252c6f08863b44cb",
+      "capabilities": [
+        "hand_visibility",
+        "hand_valid"
+      ],
+      "runtime_validation": {
+        "run_id": "setup-six-hand-visibility-6321d62-256-ea6a1b380b25",
+        "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/hand_visibility_setup_v4_20260910/runtime_readiness.json",
+        "scope": "Five asset SHA-256 checks; official pipeline CPU initialization, strict visibility head load and strict registry path validation.",
+        "gpu_forward_validated": true,
+        "six_dataset_windows": {
+          "run_id": "smoke-six-egoforce-hvd-single60-452d029fb23f",
+          "summary_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_smoke_20260910/smoke_summary.json",
+          "frames_per_window": 60,
+          "processed_resolution_hw": [
+            256,
+            256
+          ],
+          "schema_valid_windows": 6,
+          "nonempty_prediction_windows": 5,
+          "zero_detection_datasets": [
+            "hoi4d"
+          ],
+          "strict_nonempty_smoke_passed": false,
+          "formal_full_benchmark_completed": false
+        },
+        "single_window_metrics": {
+          "run_id": "metrics-six-egoforce-hvd-single60-eabe22b3d3b7",
+          "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_metrics_20260910/hand_visibility_detector_report.json",
+          "gt_windows": 6,
+          "missing_prediction_windows": 0,
+          "windows_per_dataset": 1,
+          "complete_verified": true,
+          "undefined_zero_detection_dataset": "hoi4d"
+        },
+        "rgb_detector_fix_validation": {
+          "code_commit": "831f3142e02f00e7e601235e4ccc2c4d84686342",
+          "run_id": "rerun-hoi4d-egoforce-hvd-rgbfix60-3d50ef87a758",
+          "dataset": "hoi4d",
+          "frames": 60,
+          "processed_resolution_hw": [
+            256,
+            256
+          ],
+          "valid_hands": 34,
+          "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_rgbfix_20260910/hand_visibility_detector_report.json",
+          "complete_verified": true,
+          "other_five_windows_use_previous_adapter": true
+        }
+      }
+    },
+    "egoforce": {
+      "category": "hand reconstruction",
+      "execution_mode": "official_rgb_inference",
+      "runner": "formal_evaluation/hand/adapters/run_egoforce_baseline.py",
+      "python": "/mnt/workspace/sjc/envs/egoforce_480ffb3/bin/python",
+      "source_root": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoForce_480ffb3_nolfs",
+      "input_contract": "Shared six-dataset RGB windows; 256x256 full-frame resize with calibrated intrinsics; official hand/forearm crops; no GT hand geometry or GT camera extrinsics.",
+      "execution_status": "gpu_hoi4d_rgb_detector_fix_validated",
+      "runtime_validation": {
+        "run_id": "setup-six-egoforce-480ffb3-256-60d2a65defed",
+        "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_setup_datapipes_20260910/runtime_readiness.json",
+        "scope": "Official model strict CPU load, MANO/FARM and both detector loads, adapter import, pinhole initialization, MMCV CPU NMS and strict registry validation.",
+        "gpu_forward_validated": true,
+        "six_dataset_windows": {
+          "run_id": "smoke-six-egoforce-hvd-single60-452d029fb23f",
+          "summary_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_smoke_20260910/smoke_summary.json",
+          "frames_per_window": 60,
+          "processed_resolution_hw": [
+            256,
+            256
+          ],
+          "schema_valid_windows": 6,
+          "nonempty_prediction_windows": 5,
+          "zero_detection_datasets": [
+            "hoi4d"
+          ],
+          "strict_nonempty_smoke_passed": false,
+          "formal_full_benchmark_completed": false
+        },
+        "single_window_metrics": {
+          "run_id": "metrics-six-egoforce-hvd-single60-eabe22b3d3b7",
+          "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_metrics_20260910/egoforce_report.json",
+          "gt_windows": 6,
+          "missing_prediction_windows": 0,
+          "windows_per_dataset": 1,
+          "complete_verified": true,
+          "undefined_zero_detection_dataset": "hoi4d"
+        },
+        "rgb_detector_fix_validation": {
+          "code_commit": "831f3142e02f00e7e601235e4ccc2c4d84686342",
+          "run_id": "rerun-hoi4d-egoforce-hvd-rgbfix60-3d50ef87a758",
+          "dataset": "hoi4d",
+          "frames": 60,
+          "processed_resolution_hw": [
+            256,
+            256
+          ],
+          "valid_hands": 34,
+          "report_path": "/mnt/workspace/sjc/DATA/eval_artifacts/egoforce_hvd_rgbfix_20260910/egoforce_report.json",
+          "complete_verified": true,
+          "other_five_windows_use_previous_adapter": true
+        }
+      },
+      "source_commit": "480ffb358516d0d7f971ec9da99b7bb07635731e",
+      "model_repo": "chris10/EgoForce",
+      "model_revision": "5a57b4026babc5b35cb53627c2e1c709e1276b65",
+      "checkpoint_sha256": "722fe84ba2b6ab3569c3a95000c61a9a77c7b3a41cc76585f891b8bc4fe82870",
+      "required_paths": [
+        {
+          "role": "model",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/model_weights.pth",
+          "bytes": 3021671106,
+          "state": "present"
+        },
+        {
+          "role": "hand-arm detector",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/epoch_460.pth",
+          "bytes": 175673166,
+          "state": "present"
+        },
+        {
+          "role": "hand detector",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/detector.torchscript",
+          "bytes": 106977758,
+          "state": "present"
+        },
+        {
+          "role": "left MANO",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/mano/MANO_LEFT.pkl",
+          "bytes": 9938594,
+          "state": "present"
+        },
+        {
+          "role": "right MANO",
+          "path": "/mnt/workspace/sjc/models/egoforce_5a57b40/_DATA/mano/MANO_RIGHT.pkl",
+          "bytes": 9904022,
+          "state": "present"
+        },
+        {
+          "role": "FARM parameters",
+          "path": "/mnt/workspace/sjc/DATA/runtime_worktrees/EgoForce_480ffb3_nolfs/models/arm_model_param_data.npy",
+          "state": "present"
+        }
+      ]
+    },
     "egofound3r": {
       "category": "scene/contact reconstruction",
       "execution_mode": "real_model_forward",

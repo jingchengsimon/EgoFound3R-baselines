@@ -18,8 +18,8 @@ from formal_evaluation.evaluate_six_dataset import (
     _prediction_geometry,
     _target_geometry,
 )
-from formal_evaluation.recompute_hand_literature import read_hand_prediction
 from formal_evaluation.recompute_same_mask_all_methods import remap_gt_row
+from formal_evaluation.common.schema import validate_comparison_output
 
 
 GRANULARITIES = (
@@ -35,6 +35,25 @@ def _jsonl(path: Path) -> list[dict[str, object]]:
 
 def _digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def read_hand_prediction(path: Path) -> tuple[dict[str, object], dict[str, np.ndarray]]:
+    metadata = json.loads((path / "metadata.json").read_text())
+    with np.load(path / "predictions.npz", allow_pickle=False) as archive:
+        names = [
+            key for key in archive.files
+            if key.startswith("hand_") or key in ("camera_c2w", "camera_valid")
+        ]
+        arrays = {key: archive[key] for key in names}
+    subset = dict(
+        metadata,
+        capabilities={
+            key: value for key, value in metadata["capabilities"].items()
+            if key.startswith("hand_") or key in ("camera_c2w", "camera_valid")
+        },
+    )
+    validate_comparison_output(subset, arrays)
+    return metadata, arrays
 
 
 def alignment_metrics(

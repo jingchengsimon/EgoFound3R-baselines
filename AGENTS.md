@@ -12,19 +12,22 @@ A status query returns one snapshot; waiting or ongoing monitoring requires an e
   With autonomous remote authorization and no terminal connector, approved sandbox-external
   execution (`require_escalated`) is the fallback. Never use ordinary sandbox SSH or interpret
   sandbox network failures as remote state.
-- Before the first remote query, identify the target node from the exact registry/task or user's
-  target. Run `python3 formal_evaluation/taskctl.py resources --nodes <target-node>` and retain
-  its JSON as the handshake. Probe multiple nodes only for an explicit fleet query or placement
-  decision. If the node cannot be resolved, report the ambiguity rather than probing the fleet.
-- Reuse a successful connection within the conversation. Only repair a failed connection with the
-  selected configured SSH alias; do not always check/connect to `pai-5000` for another node.
+- Before the first remote query, read the current allocation's instance name, SSH host and port,
+  private-key path, and mount entrance from the connection guide. Record them in the local
+  `.auto_scheduler/current_dsw_instance.json` and run
+  `python3 formal_evaluation/taskctl.py --instance-config .auto_scheduler/current_dsw_instance.json resources`.
+  Retain its JSON as the handshake; refresh the configuration when the allocation changes.
+  For simultaneous allocations, use a separate local profile for each port and select it
+  explicitly with `--instance-config`.
+- Reuse a successful connection within the conversation. Repair a failed connection using the
+  current instance's configured host, port, and key, not a historical node alias.
   If the external channel is unavailable, stop remote work and report the missing channel.
 - For registered task state, resources, paths, and control, taskctl is the sole entrypoint. Do not
   bypass it with raw SSH/process/filesystem searches. Separately authorized non-task operations
   use the verified project connection; no remounting or reconfiguration of OSSFS.
-- Entrances: `5000`, `5001`, `6001` use `/mnt/workspace`; `4091` uses `/mnt/cpfs`.
-  If a probe conflicts with this mapping, report the conflict and do not discover artifacts via
-  the conflicting mount. Do not infer one node's resources from another node.
+- The current instance configuration supplies the entrance (for example, `/mnt/cpfs` on 8094).
+  Verify that entrance with the resource probe. A new port does not make old registered
+  `/mnt/workspace` worktrees, environments, or outputs available; audit exact paths before launch.
 - Before a state change, refresh the relevant checks on the selected node: branch/cleanliness
   for Git updates, GPU ownership for GPU runs, and exact destination/free space for writes.
 

@@ -70,6 +70,7 @@ def validate_comparison_output(metadata: Mapping[str, object], arrays: Mapping[s
         "marker_visibility": (frame_count, 2, 195),
         "joint_contact_probability": (frame_count, 2, 21),
         "marker_contact_probability": (frame_count, 2, 195),
+        "vertex_contact_probability": (frame_count, 2, 778),
     }
     unknown = sorted(set(arrays) - set(shapes))
     if unknown:
@@ -124,6 +125,7 @@ def validate_comparison_output(metadata: Mapping[str, object], arrays: Mapping[s
         "marker_visibility",
         "joint_contact_probability",
         "marker_contact_probability",
+        "vertex_contact_probability",
     ):
         if probability_name in arrays:
             values = arrays[probability_name]

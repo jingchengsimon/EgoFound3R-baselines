@@ -72,11 +72,12 @@ class FormalMetricTests(unittest.TestCase):
         self.assertAlmostEqual(values["camera_rot_error_deg"], 0.0, places=8)
         self.assertAlmostEqual(values["camera_rot_absolute_error_deg"], 150.0, places=8)
 
-    def test_evaluator_derives_egofound3r_vertices_without_formal_gt_pose_lifted_world_metrics(self) -> None:
+    def test_evaluator_derives_egofound3r_vertices_with_gt_camera_oracle_world_metrics(self) -> None:
         rng = np.random.default_rng(3)
         T = 3
         vertices = rng.normal(size=(T, 2, 778, 3)).astype(np.float32)
         markers = downsample_mano_vertices(vertices)
+        vertices = upsample_mano_markers(markers)
         joints = rng.normal(size=(T, 2, 21, 3)).astype(np.float32)
         poses = np.repeat(np.eye(4, dtype=np.float32)[None], T, axis=0)
         poses[:, 0, 3] = np.arange(T, dtype=np.float32)
@@ -99,9 +100,9 @@ class FormalMetricTests(unittest.TestCase):
             targets=target,
         )
         self.assertEqual(result["hand_vertex_geometry_provenance"], "derived_from_195_markers")
-        self.assertEqual(result["hand_vertex_world_pose_source"], "unavailable_without_predicted_camera_c2w")
-        self.assertNotIn("hand_left_vertex_w_mpvpe", result)
-        self.assertNotIn("hand_left_w_mpjpe", result)
+        self.assertEqual(result["hand_vertex_world_pose_source"], "gt_camera_c2w_oracle")
+        self.assertLess(result["hand_left_vertex_w_mpvpe"], 1e-3)
+        self.assertLess(result["hand_left_w_mpjpe"], 1e-3)
 
     def test_evaluator_converts_world_joints_and_markers_to_camera(self) -> None:
         rng = np.random.default_rng(4)
@@ -153,10 +154,10 @@ class FormalMetricTests(unittest.TestCase):
         self.assertEqual(result["hand_vertex_metric_coordinate_source"], "world_to_camera_via_predicted_camera_c2w")
         self.assertLess(result["hand_left_w_mpjpe"], 1e-3)
         self.assertLess(result["hand_right_marker_wa_mpmpe"], 1e-3)
-        self.assertEqual(result["hand_world_alignment_source"], "camera_trajectory")
+        self.assertEqual(result["hand_world_alignment_source"], "hand_points_first2_w_all_wa_sim3")
         self.assertNotIn("hand_left_diagnostic_se3_w_mpjpe", result)
 
-    def test_relative_world_metric_uses_camera_trajectory_sim3_only(self) -> None:
+    def test_relative_world_metric_uses_hand_sim3_for_w_and_wa(self) -> None:
         rng = np.random.default_rng(5)
         frame_count = 4
         joints = rng.normal(size=(frame_count, 2, 21, 3)).astype(np.float32)
@@ -182,9 +183,71 @@ class FormalMetricTests(unittest.TestCase):
             gt_metadata={"dataset": "h2o", "sequence_id": "s", "window_id": "w", "frame_ids": ["0", "1", "2", "3"]},
             targets=target,
         )
-        self.assertNotIn("hand_left_w_mpjpe", result)
+        self.assertLess(result["hand_left_w_mpjpe"], 1e-3)
         self.assertLess(result["hand_left_wa_mpjpe"], 1e-3)
-        self.assertAlmostEqual(result["hand_world_alignment_sim3_scale"], 0.5, places=6)
+        self.assertEqual(result["hand_world_alignment_source"], "hand_points_first2_w_all_wa_sim3")
+
+    def test_camera_only_hand_uses_gt_camera_oracle_for_w_and_wa(self) -> None:
+        rng = np.random.default_rng(6)
+        frame_count = 4
+        joints = rng.normal(size=(frame_count, 2, 21, 3)).astype(np.float32)
+        poses = np.repeat(np.eye(4, dtype=np.float32)[None], frame_count, axis=0)
+        poses[:, 0, 3] = np.arange(frame_count, dtype=np.float32)
+        target = {
+            "camera_c2w": poses,
+            "camera_valid": np.ones(frame_count, dtype=bool),
+            "hand_joints_camera": joints,
+            "hand_valid": np.ones((frame_count, 2), dtype=bool),
+        }
+        result = evaluate_window(
+            method="wilor", config={"group": ["hand"], "scale_type": "metric_hand_camera"},
+            metadata={"frame_ids": ["0", "1", "2", "3"]},
+            predictions={
+                "hand_joints_camera": joints.copy(),
+                "hand_valid": np.ones((frame_count, 2), dtype=bool),
+            },
+            gt_metadata={
+                "dataset": "h2o", "sequence_id": "s", "window_id": "w",
+                "frame_ids": ["0", "1", "2", "3"],
+            },
+            targets=target,
+        )
+        self.assertEqual(result["hand_joint_world_pose_source"], "gt_camera_c2w_oracle")
+        self.assertLess(result["hand_left_w_mpjpe"], 1e-3)
+        self.assertLess(result["hand_left_wa_mpjpe"], 1e-3)
+
+    def test_hawor_identity_fallback_emits_no_hand_geometry_metrics(self) -> None:
+        rng = np.random.default_rng(7)
+        frame_count = 4
+        joints = rng.normal(size=(frame_count, 2, 21, 3)).astype(np.float32)
+        poses = np.repeat(np.eye(4, dtype=np.float32)[None], frame_count, axis=0)
+        target = {
+            "camera_c2w": poses,
+            "camera_valid": np.ones(frame_count, dtype=bool),
+            "hand_joints_camera": joints,
+            "hand_valid": np.ones((frame_count, 2), dtype=bool),
+        }
+        result = evaluate_window(
+            method="hawor", config={"group": ["hand"], "scale_type": "metric_world_hand"},
+            metadata={
+                "frame_ids": ["0", "1", "2", "3"],
+                "detail": {"slam_failed_identity_fallback": True},
+            },
+            predictions={
+                "camera_c2w": poses.copy(),
+                "camera_valid": np.zeros(frame_count, dtype=bool),
+                "hand_joints_world": joints.copy(),
+                "hand_valid": np.ones((frame_count, 2), dtype=bool),
+            },
+            gt_metadata={
+                "dataset": "h2o", "sequence_id": "s", "window_id": "w",
+                "frame_ids": ["0", "1", "2", "3"],
+            },
+            targets=target,
+        )
+        self.assertEqual(result["hand_joint_world_pose_source"], "invalid_identity_camera_fallback")
+        self.assertNotIn("hand_left_mpjpe", result)
+        self.assertNotIn("hand_left_w_mpjpe", result)
 
     def test_depth_keeps_small_positive_gt(self) -> None:
         poses = np.repeat(np.eye(4)[None], 3, axis=0)

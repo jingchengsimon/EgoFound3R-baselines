@@ -1416,10 +1416,13 @@ def register_run(registry_path: Path, *, logical_task_id: str, dataset: str,
             keys = candidate.get("job_keys", [])
             if isinstance(keys, str):
                 keys = [keys]
-            atomic_json(state_path, {section: {
-                str(job): {"status": "pending", "method": str(job)}
-                for job in (keys or [method_set])
-            }})
+            state = read_json(state_path) if state_path.exists() else {}
+            jobs = state.setdefault(section, {})
+            if not isinstance(jobs, dict):
+                raise TaskError(f"INVALID_STATE_SECTION:{section}")
+            for job in (keys or [method_set]):
+                jobs.setdefault(str(job), {"status": "pending", "method": str(job)})
+            atomic_json(state_path, state)
         return {"run_id": run_id, "task_id": logical_task_id, "created": True,
                 "registration_key": key}
 

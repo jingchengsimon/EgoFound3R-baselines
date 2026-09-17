@@ -1,0 +1,18 @@
+{
+  "methods": [
+    "egofound3r",
+    "hawor",
+    "reviv4d"
+  ],
+  "datasets": {
+    "hoi4d": {
+      "expected_windows": 461,
+      "main_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_hoi4d_60f_20260822T112000Z_continuation",
+      "gt_index": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_hand6_v2_gtcache_taco_hoi4d_20260825T041940Z/hoi4d/gt_cache/index_shard_000_of_001.jsonl",
+      "history_roots": {
+        "hawor": "/mnt/oss/pre-train/ego/eval_artifacts/formal_taco_hoi4d_backfill_20260825T103000Z/hoi4d_hawor/hawor",
+        "reviv4d": "/mnt/oss/pre-train/ego/eval_artifacts/formal_taco_hoi4d_backfill_20260825T103000Z/hoi4d_reviv4d/reviv4d"
+      }
+    }
+  }
+}

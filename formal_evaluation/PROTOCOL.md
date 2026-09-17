@@ -56,22 +56,34 @@ is defined exclusively by the supplied manifest.
   method's own predicted `camera_c2w`; GT camera poses are not used for this
   conversion. If a world-space output has no predicted camera pose, its raw
   joint/marker point metrics are undefined instead of mixing coordinates.
-- World metrics first fit one transform from the predicted camera-centre
-  trajectory to the GT camera-centre trajectory for the complete window. The
-  same transform is then applied to both hands and every geometry granularity;
-  hand points never determine this alignment. W uses fixed-scale SE(3) and is
-  emitted only for metric-scale methods. WA uses scale-adjusting Sim(3) and is
-  emitted for metric- and relative-scale methods. Raw unaligned W and the old
-  hand-point-aligned WA/WA2 values are not formal metrics.
-- Camera-only methods without predicted `camera_c2w` do not emit W/WA. Native
-  world outputs also require their own predicted `camera_c2w` so their map can
-  be aligned to GT without using GT hand points.
+- W/WA are hand-aligned world-space metrics. Camera-space predictions are first
+  transformed to world space with the method's predicted `camera_c2w` when it
+  exists. Camera-only methods without a predicted trajectory use GT
+  `camera_c2w` as an explicit oracle input; reports and table labels must record
+  that provenance. Native world-space methods use their native world hand
+  geometry and must not substitute an identity camera fallback for a failed
+  native world reconstruction.
+- W fits one Sim(3) from predicted to GT hand points using the first two valid
+  frames of the complete window, then applies that fixed transform to the full
+  window. WA fits one Sim(3) using all valid hand points in the complete window.
+  Fitting is performed before the frozen P95 mask; masking changes aggregation
+  only and never triggers a refit. The same definition is applied independently
+  at joint, marker, and vertex granularity when that geometry is available.
 - WiLoR, HaWoR, PAD-Hand, and Dyn-HaMR provide native MANO-778 geometry.
   EgoFound3R's vertex metrics are explicitly marked `derived_from_195_markers`
   through the fixed MeshGraphormer upsampling matrix. ReViV4D remains 21-joint
   only.
 - Presence uses `binary_metrics` on every frame, including frames with absent
   GT hands.  Undefined denominators yield `NaN`.
+
+### Archived camera-trajectory alignment experiment
+
+The superseded experiment fitted predicted camera-centre trajectories to GT
+camera-centre trajectories, using fixed-scale SE(3) for W and Sim(3) for WA,
+then applied the camera transform to the hands. Its empirical results were poor,
+so this camera-trajectory alignment is diagnostic history rather than the formal
+W/WA protocol. Results produced by that experiment must not replace the
+first-two-frame W or full-window WA values defined above.
 
 ## Scene
 

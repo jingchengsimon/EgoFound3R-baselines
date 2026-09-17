@@ -66,6 +66,17 @@ CONTACT_METRICS = (
     ("Marker Vis P", "marker_visibility_precision", True, 3),
     ("Marker Vis R", "marker_visibility_recall", True, 3),
     ("Marker Vis F1", "marker_visibility_f1", True, 3),
+    ("Vertex P", "vertex_contact_precision", True, 3),
+    ("Vertex R", "vertex_contact_recall", True, 3),
+    ("Vertex F1", "vertex_contact_f1", True, 3),
+    ("Vertex Vis P", "vertex_visibility_precision", True, 3),
+    ("Vertex Vis R", "vertex_visibility_recall", True, 3),
+    ("Vertex Vis F1", "vertex_visibility_f1", True, 3),
+) + tuple(
+    (prefix.capitalize() + " d(" + scope + ") mm",
+     prefix + "_contact_distance_" + field + "_mm", False, 2)
+    for prefix in ("joint", "marker", "vertex")
+    for scope, field in (("all", "all_valid"), ("contact", "predicted_contact"))
 )
 HAND = {
     "joint": (
@@ -284,7 +295,7 @@ def render(summary: dict, scheme: str) -> tuple[str, dict[str, list[str]]]:
         r"\usepackage[T1]{fontenc}", rf"\title{{Same-mask evaluation: {title}}}",
         r"\author{}", r"\date{}", r"\begin{document}", r"\maketitle",
         rf"\paragraph{{Protocol.}} {protocol}",
-        r"\paragraph{Comparison.} Bold marks the best raw value among methods evaluated on the same 2,378 windows. Dyn-HaMR and InteractVLM carry the superscript $100\mathrm{w}$: their original 100-window values are repeated unchanged in all four documents, are not filtered, and are excluded from bolding and stride5 win counts. Missing native metrics are shown as --. The stride5 win count uses a stricter rule: its raw value must be strictly lower than every available same-window hand baseline value. Hand position errors are mm, velocity errors are mm/s, and acceleration errors are m/s$^2$.",
+        r"\paragraph{Comparison.} Bold marks the best raw value among methods evaluated on the same 2,378 windows. Dyn-HaMR and InteractVLM carry the superscript $100\mathrm{w}$: their original 100-window values are repeated unchanged in all four documents, are not filtered, and are excluded from bolding and stride5 win counts. EgoFound3R vertex visibility is derived from its native 195-marker probabilities and targets through the fixed highest-weight-parent MeshGraphormer level-1 expansion; other contact methods do not report visibility. Missing native metrics are shown as --. The stride5 win count uses a stricter rule: its raw value must be strictly lower than every available same-window hand baseline value. Hand position errors are mm, velocity errors are mm/s, and acceleration errors are m/s$^2$.",
         rf"\paragraph{{Stride5 strict wins.}} {total}/144: "
         + "; ".join(f"{name.capitalize()} {len(items)}/48" for name, items in wins.items()) + ".",
         "",
@@ -294,9 +305,13 @@ def render(summary: dict, scheme: str) -> tuple[str, dict[str, list[str]]]:
         parts.append(table(caption, f"tab:hand-{granularity}-{scheme}", hand_metric_specs(granularity),
                            HAND_DISPLAY_METHODS, data, combined_hand,
                            ranked_methods=HAND_METHODS, always_show_methods=("dyn_hamr",)))
-    parts.append(table("Contact metrics", f"tab:contact-{scheme}", CONTACT_METRICS,
-                       CONTACT_DISPLAY_METHODS, data, scalar,
-                       ranked_methods=CONTACT_METHODS, always_show_methods=("interactvlm",)))
+    for granularity, caption in (
+        ("joint", "21 joints"), ("marker", "195 markers"), ("vertex", "778 vertices"),
+    ):
+        metrics = tuple(spec for spec in CONTACT_METRICS if spec[1].startswith(granularity + "_"))
+        parts.append(table(f"Contact metrics: {caption}", f"tab:contact-{granularity}-{scheme}",
+                           metrics, CONTACT_DISPLAY_METHODS, data, scalar,
+                           ranked_methods=CONTACT_METHODS, always_show_methods=("interactvlm",)))
     parts.extend((r"\end{document}", ""))
     return "\n".join(parts), wins
 
@@ -333,7 +348,22 @@ def self_check() -> None:
     assert math.isclose(combined_hand(row, "mpjpe"), 40 / 3)
     assert combined_hand(row, "mpjae") == 2.0
     assert best_methods({"a": 1.0, "b": 2.0}, False) == {"a"}
-    print(json.dumps({"status": "self_check_passed"}))
+    data = {dataset: {"egofound3r_stride5": {
+        spec[1] + "_mean": float("nan") for spec in CONTACT_METRICS
+    }} for dataset in DATASETS}
+    summary = {"schemes": {"all8_p95": data}}
+    document, wins = render(summary, "all8_p95")
+    assert document.count(r"\begin{longtable}") == 7
+    assert [sum(spec[1].startswith(g + "_") for spec in CONTACT_METRICS)
+            for g in ("joint", "marker", "vertex")] == [8, 8, 8]
+    for granularity in ("joint", "marker", "vertex"):
+        assert document.count("tab:contact-" + granularity + "-all8_p95") == 1
+    assert "nan" not in document.lower()
+    assert not any(wins.values())
+    assert all(math.isnan(value) for rows in data.values()
+               for value in rows["egofound3r_stride5"].values())
+    assert formatted(None, 3, False) == "--"
+    print(json.dumps({"status": "self_check_passed", "tables": 7}))
 
 
 def main() -> None:

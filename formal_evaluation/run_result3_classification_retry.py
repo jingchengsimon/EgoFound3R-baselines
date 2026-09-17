@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 from formal_evaluation.common.aggregation import aggregate_windows
-from formal_evaluation.common.schema import validate_comparison_output
+from formal_evaluation.common.mano_sampling import marker_parent_ids_778
 from formal_evaluation.contact.metrics import compute_contact_metrics
 
 
@@ -39,26 +39,38 @@ def masks(source, expected):
     return result
 
 
-def load_arrays(row, index=None):
+def load_arrays(row, index=None, names=None):
     path = Path(row['array_path'])
     # The registered GT index owns paths below its gt_cache directory.
     if index and '/gt_cache/' in str(path):
         path = Path(index).parent / str(path).split('/gt_cache/', 1)[1]
     with np.load(path, allow_pickle=False) as archive:
-        return {k: archive[k] for k in archive.files}
+        selected = archive.files if names is None else tuple(names)
+        missing = sorted(set(selected) - set(archive.files))
+        if missing:
+            raise ValueError('classification arrays missing: ' + ','.join(missing))
+        return {k: archive[k] for k in selected}
 
 
 def classify(prediction, target, keep, mode):
     result = {}
-    prefixes = ('joint', 'marker', 'vertex') if mode == 'contact' else ('joint', 'marker')
+    prefixes = ('joint', 'marker', 'vertex')
     for prefix in prefixes:
         field = prefix + '_' + mode
-        pred_key = field + '_probability' if mode == 'contact' else ('hand_visibility' if prefix == 'joint' else 'marker_visibility')
-        probability = np.asarray(prediction[pred_key])
-        mask = np.asarray(target[field + '_mask'], dtype=bool) & keep[:, None, None]
+        if mode == 'visibility' and prefix == 'vertex':
+            parents = marker_parent_ids_778()
+            probability = np.asarray(prediction['marker_visibility'])[..., parents]
+            labels = np.asarray(target['marker_visibility_target'])[..., parents]
+            mask = np.asarray(target['marker_visibility_mask'], dtype=bool)[..., parents].copy()
+        else:
+            pred_key = field + '_probability' if mode == 'contact' else ('hand_visibility' if prefix == 'joint' else 'marker_visibility')
+            probability = np.asarray(prediction[pred_key])
+            labels = np.asarray(target[field + '_target'])
+            mask = np.asarray(target[field + '_mask'], dtype=bool).copy()
+        mask &= keep[:, None, None]
         if 'hand_valid' in prediction:
             mask &= np.asarray(prediction['hand_valid'], dtype=bool)[:, :, None]
-        result.update({field + '_' + k: np.asarray(v['ap'] if k == 'average_precision' and isinstance(v, dict) else v).item() for k, v in compute_contact_metrics(probability, target[field + '_target'], mask).items()})
+        result.update({field + '_' + k: np.asarray(v['ap'] if k == 'average_precision' and isinstance(v, dict) else v).item() for k, v in compute_contact_metrics(probability, labels, mask).items()})
     return result
 
 
@@ -89,15 +101,29 @@ def run(spec, root):
                 if source['prediction_format'] == 'canonical':
                     directory = Path(prediction_row['prediction_dir'])
                     metadata = json.loads((directory / 'metadata.json').read_text())
-                    prediction = load_arrays({'array_path': str(directory / 'predictions.npz')})
-                    validate_comparison_output(metadata, prediction)
+                    prediction_names = {'hand_valid'} | (
+                        {'joint_contact_probability', 'marker_contact_probability', 'vertex_contact_probability'}
+                        if spec['mode'] == 'contact' else {'hand_visibility', 'marker_visibility'}
+                    )
+                    prediction = load_arrays(
+                        {'array_path': str(directory / 'predictions.npz')}, names=prediction_names
+                    )
+                    capabilities = metadata.get('capabilities', {})
+                    missing = sorted(name for name in prediction_names if not capabilities.get(name))
+                    if missing:
+                        raise ValueError('canonical capability missing: ' + ','.join(missing))
                     pred_frames = metadata['frame_ids']
                 else:
                     prediction = load_arrays(prediction_row)
                     pred_frames = prediction_row['frame_ids']
                 if pred_frames != frame_ids:
                     raise ValueError('frame identity mismatch: ' + key)
-                target = load_arrays(target_row, source['gt_index'])
+                target_names = {
+                    prefix + '_' + spec['mode'] + '_' + suffix
+                    for prefix in (('joint', 'marker', 'vertex') if spec['mode'] == 'contact' else ('joint', 'marker'))
+                    for suffix in ('target', 'mask')
+                }
+                target = load_arrays(target_row, source['gt_index'], target_names)
                 per_window = {}
                 for scheme in values:
                     keep = ~np.asarray(excluded[key], dtype=bool) if scheme == 'all8_p95' else np.ones(60, dtype=bool)

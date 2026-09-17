@@ -1,0 +1,96 @@
+{
+  "schema_version": "contact_artifact_migration_v1",
+  "chunk_bytes": 4294967296,
+  "datasets": {
+    "hot3d": {
+      "copy": [
+        {
+          "source": "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache",
+          "relative_destination": "geometry_cache"
+        },
+        {
+          "source": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_hot3d_metrics_remap_20260901T051034Z",
+          "relative_destination": "metrics"
+        }
+      ],
+      "external_refs": [
+        {
+          "role": "predictions",
+          "source": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_hot3d_400_20260827T234639Z",
+          "destination": "/mnt/oss/pre-train/ego/eval_artifacts/formal_contact_hot3d_400_20260827T234639Z"
+        },
+        {
+          "role": "gt_cache",
+          "destination": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/hot3d/gt_cache",
+          "expected_files": 801,
+          "expected_bytes": 459649303
+        }
+      ]
+    },
+    "arctic": {
+      "copy": [
+        {
+          "source": "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache",
+          "relative_destination": "geometry_cache/main400"
+        },
+        {
+          "source": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_arctic_metrics_434_20260901T052119Z",
+          "relative_destination": "metrics"
+        }
+      ],
+      "external_refs": [
+        {
+          "role": "geometry_cache_tail34",
+          "source": "/mnt/workspace/sjc/eval_artifacts/formal_arctic_contact_tail34_20260823T151000Z/cache",
+          "destination": "/mnt/oss/pre-train/ego/eval_artifacts/formal_arctic_contact_tail34_20260823T151000Z/cache"
+        },
+        {
+          "role": "predictions_main400",
+          "source": "/mnt/workspace/sjc/eval_artifacts/formal_arctic_contact_retry_400_20260823T231000Z",
+          "destination": "/mnt/oss/pre-train/ego/eval_artifacts/formal_arctic_contact_retry_400_20260823T231000Z"
+        },
+        {
+          "role": "predictions_tail34",
+          "source": "/mnt/workspace/sjc/eval_artifacts/formal_arctic_contact_tail34_20260823T151000Z/contactopt",
+          "destination": "/mnt/oss/pre-train/ego/eval_artifacts/formal_arctic_contact_tail34_20260823T151000Z/contactopt"
+        },
+        {
+          "role": "predictions_tail34_s2contact",
+          "source": "/mnt/workspace/sjc/eval_artifacts/formal_arctic_contact_tail34_20260823T151000Z/s2contact",
+          "destination": "/mnt/oss/pre-train/ego/eval_artifacts/formal_arctic_contact_tail34_20260823T151000Z/s2contact"
+        },
+        {
+          "role": "gt_cache",
+          "destination": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/arctic/gt_cache",
+          "expected_files": 869,
+          "expected_bytes": 571633664
+        }
+      ]
+    },
+    "oakink_v2": {
+      "copy": [
+        {
+          "source": "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache",
+          "relative_destination": "geometry_cache"
+        },
+        {
+          "source": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_oakink_v2_metrics_400_20260901T052119Z",
+          "relative_destination": "metrics"
+        }
+      ],
+      "external_refs": [
+        {
+          "role": "predictions",
+          "source": "/mnt/workspace/sjc/eval_artifacts/formal_oakink_v2_contact_400_20260823T234000Z",
+          "destination": "/mnt/oss/pre-train/ego/eval_artifacts/formal_oakink_v2_contact_400_20260823T234000Z"
+        },
+        {
+          "role": "gt_cache",
+          "destination": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache",
+          "expected_files": 801,
+          "expected_bytes": 523355061
+        }
+      ]
+    }
+  }
+}

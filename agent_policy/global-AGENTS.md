@@ -82,10 +82,12 @@ requirement for collaborators.
 
 ## DSW connections and OSS relay
 
-- DSW compute nodes share host `39.106.218.186`; use
-  `ssh -o BatchMode=yes -p <5000|5001|6001> root@39.106.218.186`. These ports are compute nodes,
-  not OSS endpoints. A local SSH alias is equivalent only when it resolves to the same host and
-  port.
+- DSW allocations are dynamic. Read the currently assigned instance name, SSH host and port,
+  private-key filename, and public-IP whitelist from its connection guide before connecting.
+  Keep the private key locally with mode `600`; use
+  `ssh -o BatchMode=yes -o IdentitiesOnly=yes -i <current-private-key> -p <current-port> root@<current-host>`.
+  For registered tasks, put these values and the verified mount entrance in the local current
+  instance configuration used by `formal_evaluation/taskctl.py --instance-config`.
 - Before a DSW state change, verify the selected node and exact target using the project runbook.
   Check branch/worktree cleanliness for Git updates, GPU ownership for GPU work, and destination
   capacity for writes/transfers. Never infer resource availability from another node.

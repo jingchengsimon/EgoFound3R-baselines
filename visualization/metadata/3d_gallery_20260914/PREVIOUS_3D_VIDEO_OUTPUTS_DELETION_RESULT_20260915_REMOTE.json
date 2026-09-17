@@ -1,0 +1,220 @@
+{
+  "schema": "previous-3d-video-outputs-deletion-result-v1",
+  "deleted_at_utc": "2026-09-14T22:08:57.806672+00:00",
+  "protected_latest_path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_endpoint104_ego_bracketed_8fc061a_20260914_full104_parallel16",
+  "protected_latest_exists": true,
+  "deleted": [
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_endpoint104_ego_bracketed_8fc061a_20260914_pilot_h2o",
+      "bytes_at_delete": 1452305,
+      "files_at_delete": 84,
+      "mp4_at_delete": 0
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_endpoint104_ego_bracketed_8fc061a_20260914_pilot_h2o_v2",
+      "bytes_at_delete": 5027091,
+      "files_at_delete": 86,
+      "mp4_at_delete": 1
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_full177",
+      "bytes_at_delete": 30992277,
+      "files_at_delete": 394,
+      "mp4_at_delete": 5
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_gallery",
+      "bytes_at_delete": 1196592,
+      "files_at_delete": 12,
+      "mp4_at_delete": 0
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard1",
+      "bytes_at_delete": 28764205,
+      "files_at_delete": 337,
+      "mp4_at_delete": 5
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard10",
+      "bytes_at_delete": 23378090,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard11",
+      "bytes_at_delete": 23679165,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard12",
+      "bytes_at_delete": 22753572,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard13",
+      "bytes_at_delete": 22092415,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard14",
+      "bytes_at_delete": 23300216,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard15",
+      "bytes_at_delete": 23363617,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard16",
+      "bytes_at_delete": 23317542,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard2",
+      "bytes_at_delete": 28589006,
+      "files_at_delete": 337,
+      "mp4_at_delete": 5
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard3",
+      "bytes_at_delete": 25191972,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard4",
+      "bytes_at_delete": 23701141,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard5",
+      "bytes_at_delete": 24949166,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard6",
+      "bytes_at_delete": 23778263,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard7",
+      "bytes_at_delete": 21907973,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard8",
+      "bytes_at_delete": 24669143,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel16_handoff_shard9",
+      "bytes_at_delete": 24798579,
+      "files_at_delete": 274,
+      "mp4_at_delete": 4
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel4_gallery",
+      "bytes_at_delete": 1127440,
+      "files_at_delete": 25,
+      "mp4_at_delete": 9
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel4_shard2",
+      "bytes_at_delete": 18688553,
+      "files_at_delete": 144,
+      "mp4_at_delete": 2
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel4_shard3",
+      "bytes_at_delete": 16908268,
+      "files_at_delete": 144,
+      "mp4_at_delete": 2
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel4_shard4",
+      "bytes_at_delete": 19764460,
+      "files_at_delete": 207,
+      "mp4_at_delete": 3
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel8_handoff_gallery",
+      "bytes_at_delete": 1225484,
+      "files_at_delete": 232,
+      "mp4_at_delete": 111
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel8_handoff_shard1",
+      "bytes_at_delete": 80083980,
+      "files_at_delete": 901,
+      "mp4_at_delete": 14
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel8_handoff_shard2",
+      "bytes_at_delete": 81286541,
+      "files_at_delete": 962,
+      "mp4_at_delete": 14
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel8_handoff_shard3",
+      "bytes_at_delete": 73062167,
+      "files_at_delete": 838,
+      "mp4_at_delete": 13
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel8_handoff_shard4",
+      "bytes_at_delete": 81987199,
+      "files_at_delete": 901,
+      "mp4_at_delete": 14
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel8_handoff_shard5",
+      "bytes_at_delete": 74996081,
+      "files_at_delete": 838,
+      "mp4_at_delete": 13
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel8_handoff_shard6",
+      "bytes_at_delete": 74126598,
+      "files_at_delete": 838,
+      "mp4_at_delete": 13
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel8_handoff_shard7",
+      "bytes_at_delete": 76233002,
+      "files_at_delete": 901,
+      "mp4_at_delete": 14
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_parallel8_handoff_shard8",
+      "bytes_at_delete": 80577275,
+      "files_at_delete": 901,
+      "mp4_at_delete": 14
+    },
+    {
+      "path": "/mnt/workspace/sjc/DATA/eval_artifacts/gallery_10s_joint8_p95_wmpjpe_20260913_pilot_oakink",
+      "bytes_at_delete": 13365995,
+      "files_at_delete": 84,
+      "mp4_at_delete": 1
+    }
+  ],
+  "deleted_count": 34,
+  "already_missing": [],
+  "already_missing_count": 0,
+  "deleted_bytes": 1120335373,
+  "deleted_files": 13002,
+  "deleted_mp4": 309,
+  "remaining_old_paths": [],
+  "status": "verified"
+}

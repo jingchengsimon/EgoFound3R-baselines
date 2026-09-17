@@ -1,0 +1,28 @@
+{
+  "scene_only": true,
+  "methods": [
+    "egofound3r",
+    "reviv4d",
+    "vggt",
+    "pi3",
+    "da3_large_1_1",
+    "lingbot_map_long",
+    "vggt_omega"
+  ],
+  "datasets": {
+    "oakink_v2": {
+      "expected_windows": 400,
+      "main_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_oakink_v2_60f_20260820T0022Z_e6c4a5e",
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache/index_shard_000_of_001.jsonl"
+    },
+    "taco": {
+      "expected_windows": 400,
+      "main_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_taco_60f_20260822T112000Z_continuation",
+      "gt_index": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_taco_metrics_20260831T234159Z/gt_cache/index_shard_000_of_001.jsonl",
+      "history_roots": {
+        "reviv4d": "/mnt/oss/pre-train/ego/eval_artifacts/formal_taco_hoi4d_backfill_20260825T103000Z/taco_reviv4d/reviv4d",
+        "vggt": "/mnt/oss/pre-train/ego/eval_artifacts/formal_taco_hoi4d_backfill_20260825T103000Z/taco_vggt_retry_20260825T102500Z/vggt"
+      }
+    }
+  }
+}

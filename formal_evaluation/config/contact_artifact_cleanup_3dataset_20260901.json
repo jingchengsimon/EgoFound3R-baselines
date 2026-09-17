@@ -1,0 +1,29 @@
+{
+  "schema_version": "contact_artifact_cleanup_v1",
+  "datasets": {
+    "hot3d": {
+      "source_bytes": 438232988025,
+      "oss_target": "/mnt/oss/pre-train/ego/eval_artifacts/formal_contact_complete_3dataset_20260901/hot3d",
+      "sources": [
+        "/mnt/workspace/sjc/DATA/hot3d_contact_baseline/cache",
+        "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_hot3d_metrics_remap_20260901T051034Z"
+      ]
+    },
+    "arctic": {
+      "source_bytes": 199831449475,
+      "oss_target": "/mnt/oss/pre-train/ego/eval_artifacts/formal_contact_complete_3dataset_20260901/arctic",
+      "sources": [
+        "/mnt/workspace/sjc/DATA/arctic_contact_baseline/cache",
+        "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_arctic_metrics_434_20260901T052119Z"
+      ]
+    },
+    "oakink_v2": {
+      "source_bytes": 83325239607,
+      "oss_target": "/mnt/oss/pre-train/ego/eval_artifacts/formal_contact_complete_3dataset_20260901/oakink_v2",
+      "sources": [
+        "/mnt/workspace/sjc/DATA/oakink_v2_contact_baseline/cache",
+        "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_oakink_v2_metrics_400_20260901T052119Z"
+      ]
+    }
+  }
+}

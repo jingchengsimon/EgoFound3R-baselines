@@ -39,6 +39,15 @@ def marker_vertex_ids_195() -> np.ndarray:
     return ids.astype(np.int64, copy=False)
 
 
+@lru_cache(maxsize=1)
+def marker_parent_ids_778() -> np.ndarray:
+    """Map every MANO vertex to its dominant fixed level-1 marker parent."""
+    _, upsample = _level1_matrices()
+    if np.any(np.count_nonzero(upsample, axis=1) == 0):
+        raise ValueError("MANO level-1 upsample has an unsupported empty row")
+    return np.abs(upsample).argmax(axis=1).astype(np.int64, copy=False)
+
+
 def downsample_mano_vertices(vertices: np.ndarray) -> np.ndarray:
     """Select the canonical 195 MeshGraphormer marker vertices from MANO-778."""
     value = np.asarray(vertices)

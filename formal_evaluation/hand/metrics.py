@@ -46,8 +46,10 @@ def compute_hand_metrics(
 ) -> dict[str, float | int]:
     """Evaluate one hand geometry granularity.
 
-    Point metrics use the supplied canonical coordinate frame. W and WA are
-    emitted only from world tensors already aligned by the camera trajectory.
+    Point metrics use the supplied canonical coordinate frame. Optional world
+    tensors are a low-level path for callers that have already applied their
+    registered alignment; the six-dataset evaluator computes formal W/WA from
+    hand points at window level.
     """
     if granularity not in _GRANULARITIES:
         raise ValueError(f"unknown hand granularity: {granularity}")

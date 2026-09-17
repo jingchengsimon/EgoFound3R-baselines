@@ -1,0 +1,79 @@
+{
+  "scene_script": "/mnt/cpfs/sjc/eval_artifacts/same_mask_baseline12_result3_directoss_block16_20260909_v7/runtime/.auto_scheduler/result3_filtered_scene_contact_20260909/analyze.py",
+  "datasets": {
+    "h2o": {
+      "expected_windows": 283,
+      "dyn_windows": 12,
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/h2o/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "3863f85dae384df9fe4ea9a9c0840a0af6c4d1ed219ca855ad287a3909904296",
+      "p95_mask": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/h2o/all8_p95_mask.json",
+      "ego_unfiltered_metrics": "/mnt/cpfs/sjc/eval_artifacts/same_mask_baseline12_result3_directoss_block16_20260909_v7/h2o/egofound3r_stride5/unfiltered_window_metrics.jsonl",
+      "dyn_prediction_index": "/mnt/workspace/sjc/eval_artifacts/dyn_hamr_full_hand100_20260912_v1/h2o/predictions.jsonl",
+      "hawor_roots": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_60f_20260822T112000Z_continuation/hawor",
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_hot3d_backfill_20260824T074500Z/hawor"
+      ]
+    },
+    "hot3d": {
+      "expected_windows": 400,
+      "dyn_windows": 17,
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/hot3d/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "5914c17c79ab122eb08963932a93770fe10c30bc2f112a0ce213326d661010c0",
+      "p95_mask": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/hot3d/all8_p95_mask.json",
+      "ego_unfiltered_metrics": "/mnt/cpfs/sjc/eval_artifacts/same_mask_baseline12_result3_directoss_block16_20260909_v7/hot3d/egofound3r_stride5/unfiltered_window_metrics.jsonl",
+      "dyn_prediction_index": "/mnt/workspace/sjc/eval_artifacts/dyn_hamr_full_hand100_20260912_v1/hot3d/predictions.jsonl",
+      "hawor_roots": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_hot3d_60f_20260819T203000Z_e6c4a5e_6001/hawor"
+      ]
+    },
+    "arctic": {
+      "expected_windows": 434,
+      "dyn_windows": 18,
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/arctic/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "ef7683b62214dd85217d767f1097105b3f3290212a2c8057b3aa0b95300219cd",
+      "p95_mask": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/arctic/all8_p95_mask.json",
+      "ego_unfiltered_metrics": "/mnt/cpfs/sjc/eval_artifacts/same_mask_baseline12_result3_directoss_block16_20260909_v7/arctic/egofound3r_stride5/unfiltered_window_metrics.jsonl",
+      "dyn_prediction_index": "/mnt/workspace/sjc/eval_artifacts/dyn_hamr_full_hand100_20260912_v1/arctic/predictions.jsonl",
+      "hawor_roots": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_arctic_60f_20260820T0400Z_e6c4a5e/hawor"
+      ]
+    },
+    "oakink_v2": {
+      "expected_windows": 400,
+      "dyn_windows": 17,
+      "gt_index": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "99f48ea8d47d40096280b1c97e47499c9047b68213dac20684823e844adc86e8",
+      "p95_mask": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/oakink_v2/all8_p95_mask.json",
+      "ego_unfiltered_metrics": "/mnt/cpfs/sjc/eval_artifacts/same_mask_baseline12_result3_directoss_block16_20260909_v7/oakink_v2/egofound3r_stride5/unfiltered_window_metrics.jsonl",
+      "dyn_prediction_index": "/mnt/workspace/sjc/eval_artifacts/dyn_hamr_full_hand100_20260912_v1/oakink_v2/predictions.jsonl",
+      "hawor_roots": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_oakink_v2_60f_20260820T0022Z_e6c4a5e/hawor"
+      ]
+    },
+    "taco": {
+      "expected_windows": 400,
+      "dyn_windows": 17,
+      "gt_index": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_contact_taco_metrics_20260831T234159Z/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "e384af03f6c185df486275770805b2046207e43a7299399bc687ce4344303e58",
+      "p95_mask": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/taco/all8_p95_mask.json",
+      "ego_unfiltered_metrics": "/mnt/cpfs/sjc/eval_artifacts/same_mask_baseline12_result3_directoss_block16_20260909_v7/taco/egofound3r_stride5/unfiltered_window_metrics.jsonl",
+      "dyn_prediction_index": "/mnt/workspace/sjc/eval_artifacts/dyn_hamr_full_hand100_20260912_v1/taco/predictions.jsonl",
+      "hawor_roots": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_taco_60f_20260822T112000Z_continuation/hawor"
+      ]
+    },
+    "hoi4d": {
+      "expected_windows": 461,
+      "dyn_windows": 19,
+      "gt_index": "/mnt/workspace/sjc/DATA/eval_artifacts/formal_hand6_v2_gtcache_taco_hoi4d_20260825T041940Z/hoi4d/gt_cache/index_shard_000_of_001.jsonl",
+      "gt_sha256": "d157e125f36bd154eded28362680013a9d17bd516b561bba64e07309060ce571",
+      "p95_mask": "/mnt/cpfs/sjc/eval_artifacts/base3e_traincrop512_stride5_result3_joint8_allp95_mixed_1078f15_20260909_attempt2/hoi4d/all8_p95_mask.json",
+      "ego_unfiltered_metrics": "/mnt/cpfs/sjc/eval_artifacts/same_mask_baseline12_result3_directoss_block16_20260909_v7/hoi4d/egofound3r_stride5/unfiltered_window_metrics.jsonl",
+      "dyn_prediction_index": "/mnt/workspace/sjc/eval_artifacts/dyn_hamr_full_hand100_20260913_v3/hoi4d/predictions.jsonl",
+      "hawor_roots": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_hoi4d_60f_20260822T112000Z_continuation/hawor",
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_taco_hoi4d_backfill_20260825T103000Z/hoi4d_hawor/hawor"
+      ]
+    }
+  }
+}

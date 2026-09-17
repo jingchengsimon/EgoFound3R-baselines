@@ -4,6 +4,9 @@ docs/
 outputs/
 scripts/
 __pycache__/
+._*
+*.lock
+/.auto_scheduler/
 /WiLoR/mano_data/MANO_RIGHT.pkl
 /HaWoR/thirdparty/DROID-SLAM/droid_backends*.so
 /HaWoR/thirdparty/DROID-SLAM/thirdparty/lietorch/lietorch_backends*.so

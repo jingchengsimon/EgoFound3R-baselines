@@ -20,13 +20,19 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from formal_evaluation.common.io import load_manifest, write_comparison_output
 from formal_evaluation.common.schema import SCHEMA_VERSION
+from formal_evaluation.common.mano_sampling import marker_vertex_ids_195
+try:
+    from formal_evaluation.contact.sharding import select_window_shard
+except ModuleNotFoundError:  # deployed runtime overlay on an older clean worktree
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from sharding import select_window_shard
 from formal_evaluation.datasets.window_inputs import load_window_input
 
 
@@ -54,6 +60,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--phase", choices=("smoke", "pilot", "formal"), default="formal")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--num-shards", type=int, default=1)
+    parser.add_argument("--shard-index", type=int, default=0)
     return parser.parse_args()
 
 
@@ -188,6 +196,8 @@ def _new_window_arrays(windows: Mapping[str, tuple[str, list[str]]]) -> dict[str
     return {
         window_id: {
             "joint_contact_probability": np.zeros((len(frame_ids), 2, 21), dtype=np.float32),
+            "marker_contact_probability": np.zeros((len(frame_ids), 2, 195), dtype=np.float32),
+            "vertex_contact_probability": np.zeros((len(frame_ids), 2, 778), dtype=np.float32),
             "hand_valid": np.zeros((len(frame_ids), 2), dtype=bool),
         }
         for window_id, (_, frame_ids) in windows.items()
@@ -229,16 +239,24 @@ def main() -> None:
             raise ValueError("generic contact mode cannot be combined with --manifest options")
         windows, input_records = _windows_from_input_index(args.window_input_index)
         cache_locations = _cache_locations(args.cache_index)
+        windows, input_records, selected_indices = select_window_shard(
+            windows, input_records, cache_locations,
+            num_shards=args.num_shards, shard_index=args.shard_index,
+        )
     else:
+        if args.num_shards != 1 or args.shard_index != 0:
+            raise ValueError("sharding requires --window-input-index and --cache-index")
         if args.manifest is None:
             raise ValueError("provide --manifest or generic --window-input-index/--cache-index")
         windows = _load_windows(args.manifest, args.materialized_manifest)
         input_records = {}
         cache_locations = {}
+        selected_indices = []
     arrays_by_window = _new_window_arrays(windows)
     method_config = json.loads(args.methods_config.read_text(encoding="utf-8"))["methods"][args.baseline]
     Dataset, model = _load_baseline(args.baseline, args.source_root, args.mano_right)
-    dataset = Dataset(str(args.cache), min_num_cont=1)
+    full_dataset = Dataset(str(args.cache), min_num_cont=1)
+    dataset = Subset(full_dataset, selected_indices) if args.num_shards > 1 else full_dataset
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=0, collate_fn=Dataset.collate_fn)
     state = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     model.load_state_dict(state)
@@ -260,15 +278,22 @@ def main() -> None:
             )
             # Old binary condition was argmax(class) >= 5.  This keeps the
             # corresponding soft probability P(class in {5,...,9}) for AP/F1.
-            probability = torch.softmax(output["contact_hand"], dim=-1)[..., 5:].sum(dim=-1).cpu().numpy()
+            logits = output["contact_hand"]
+            logits = torch.nan_to_num(logits, nan=0.0, posinf=30.0, neginf=-30.0)
+            probability = torch.softmax(logits, dim=-1)[..., 5:].sum(dim=-1)
+            probability = probability.nan_to_num(0.0).clamp(0.0, 1.0).cpu().numpy()
             for batch_index in range(size):
-                record = dataset.dataset[cursor + batch_index]
-                generic_location = cache_locations.get(cursor + batch_index)
+                full_index = selected_indices[cursor + batch_index] if args.num_shards > 1 else cursor + batch_index
+                record = full_dataset.dataset[full_index]
+                generic_location = cache_locations.get(full_index)
                 if generic_location is not None:
                     cache_id, time_index = generic_location
                     arrays = arrays_by_window.get(cache_id)
                     if arrays is not None and 0 <= time_index < len(arrays["hand_valid"]):
                         arrays["joint_contact_probability"][time_index, 1] = probability[batch_index, _joint_vertex_indices(record)]
+                        vertex = probability[batch_index]
+                        arrays["vertex_contact_probability"][time_index, 1] = vertex
+                        arrays["marker_contact_probability"][time_index, 1] = vertex[marker_vertex_ids_195()]
                         arrays["hand_valid"][time_index, 1] = True
                         matched_samples += 1
                     continue
@@ -287,6 +312,9 @@ def main() -> None:
                         continue
                     arrays = arrays_by_window[str(window_id)]
                     arrays["joint_contact_probability"][time_index, 1] = joint_probability
+                    vertex = probability[batch_index]
+                    arrays["vertex_contact_probability"][time_index, 1] = vertex
+                    arrays["marker_contact_probability"][time_index, 1] = vertex[marker_vertex_ids_195()]
                     arrays["hand_valid"][time_index, 1] = True
                     matched_samples += 1
             cursor += size
@@ -336,7 +364,7 @@ def main() -> None:
             },
             native_metadata={"native_logits": "contact_hand, 10 distance-bin logits"},
         )
-    print(json.dumps({"baseline": args.baseline, "windows": len(windows), "cache_samples": len(dataset), "matched_window_samples": matched_samples, "elapsed_seconds": elapsed}, ensure_ascii=False))
+    print(json.dumps({"baseline": args.baseline, "windows": len(windows), "cache_samples": len(dataset), "matched_window_samples": matched_samples, "elapsed_seconds": elapsed, "shard_index": args.shard_index, "num_shards": args.num_shards}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

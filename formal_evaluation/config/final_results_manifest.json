@@ -1,0 +1,195 @@
+{
+  "schema_version": "final_results_manifest_v2",
+  "frozen_at": "2026-09-11",
+  "default_search_scope": "frozen_only",
+  "archive_policy": "historical entries remain addressable by exact run_id; excluded from default final search; CPFS/OSS paths are interchangeable mirrors and do not create new registrations",
+  "results": {
+    "ego_stride1_256_native": {
+      "status": "frozen_candidate",
+      "logical_task_id": "metrics-egofound3r:six:step1599:stride1:ego_stride_final_protocol_20260907:60f",
+      "run_id": "metrics-egofound3r-six-step1599-stride1-ego-stride-final-protocol-20260907-60f-f352829a7fd1",
+      "protocol": "stride1,256x256,native-resize",
+      "cpfs_path": null,
+      "oss_path": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride1",
+      "source_output_root": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride1"
+    },
+    "ego_stride2_256_native": {
+      "status": "frozen_candidate",
+      "logical_task_id": "metrics-egofound3r:six:step1599:stride2:ego_stride_final_protocol_20260907:60f",
+      "run_id": "metrics-egofound3r-six-step1599-stride2-ego-stride-final-protocol-20260907-60f-c4e16ba17416",
+      "protocol": "stride2,256x256,native-resize",
+      "cpfs_path": null,
+      "oss_path": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride2",
+      "source_output_root": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride2"
+    },
+    "ego_stride3_256_native": {
+      "status": "frozen_candidate",
+      "logical_task_id": "metrics-egofound3r:six:step1599:stride3:ego_stride_final_protocol_20260907:60f",
+      "run_id": "metrics-egofound3r-six-step1599-stride3-ego-stride-final-protocol-20260907-60f-cda70acc188f",
+      "protocol": "stride3,256x256,native-resize",
+      "cpfs_path": null,
+      "oss_path": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride3",
+      "source_output_root": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride3"
+    },
+    "ego_stride4_256_native": {
+      "status": "frozen_candidate",
+      "logical_task_id": "metrics-egofound3r:six:step1599:stride4:ego_stride_final_protocol_20260907:60f",
+      "run_id": "metrics-egofound3r-six-step1599-stride4-ego-stride-final-protocol-20260907-60f-d31f8df2a457",
+      "protocol": "stride4,256x256,native-resize",
+      "cpfs_path": null,
+      "oss_path": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride4",
+      "source_output_root": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride4"
+    },
+    "ego_stride5_512_crop_pred_camera": {
+      "status": "frozen_candidate",
+      "logical_task_id": "metrics-egofound3r:six:step1599:stride5:ego_stride_final_protocol_20260907:60f",
+      "run_id": "metrics-egofound3r-six-step1599-stride5-ego-stride-final-protocol-20260907-60f-5ad87cd99785",
+      "protocol": "stride5,512x512,crop,predicted-camera",
+      "cpfs_path": null,
+      "oss_path": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride5",
+      "source_output_root": "/mnt/oss/pre-train/ego/eval_artifacts/ego_stride_final_protocol_20260907/stride5"
+    },
+    "ego_stride5_512_crop_gt_camera": {
+      "status": "frozen_candidate",
+      "logical_task_id": "result3:p95:completion:stride5_gt_camera:20260910:v1",
+      "run_id": "result3-p95-completion-stride5-gt-camera-20260910-v1-0cfd5b52ff8c",
+      "protocol": "stride5,512x512,crop,gt-camera",
+      "cpfs_path": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride5_gt_camera",
+      "oss_path": null,
+      "source_output_root": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride5_gt_camera"
+    },
+    "result3_p95_stride1": {
+      "status": "frozen_candidate",
+      "logical_task_id": "result3:p95:completion:stride1:20260910:v1",
+      "run_id": "result3-p95-completion-stride1-20260910-v1-1feb985401c2",
+      "protocol": "result3-p95",
+      "cpfs_path": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride1",
+      "oss_path": null,
+      "source_output_root": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride1"
+    },
+    "result3_p95_stride2": {
+      "status": "frozen_candidate",
+      "logical_task_id": "result3:p95:completion:stride2:20260910:v1",
+      "run_id": "result3-p95-completion-stride2-20260910-v1-3f6cdba2b919",
+      "protocol": "result3-p95",
+      "cpfs_path": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride2",
+      "oss_path": null,
+      "source_output_root": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride2"
+    },
+    "result3_p95_stride3": {
+      "status": "frozen_candidate",
+      "logical_task_id": "result3:p95:completion:stride3:20260910:v1",
+      "run_id": "result3-p95-completion-stride3-20260910-v1-567d17698ab4",
+      "protocol": "result3-p95",
+      "cpfs_path": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride3",
+      "oss_path": null,
+      "source_output_root": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride3"
+    },
+    "result3_p95_stride4": {
+      "status": "frozen_candidate",
+      "logical_task_id": "result3:p95:completion:stride4:20260910:v1",
+      "run_id": "result3-p95-completion-stride4-20260910-v1-6ac851f4479a",
+      "protocol": "result3-p95",
+      "cpfs_path": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride4",
+      "oss_path": null,
+      "source_output_root": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/stride4"
+    },
+    "interactvlm_100_no_mask": {
+      "status": "frozen_candidate",
+      "logical_task_id": "result3:p95:completion:interactvlm_metrics:20260910:v2",
+      "run_id": "result3-p95-completion-interactvlm-metrics-20260910-v2-af8ef60c9598",
+      "protocol": "100-windows,no-mask",
+      "cpfs_path": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/interactvlm_metrics_v2",
+      "oss_path": null,
+      "source_output_root": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/interactvlm_metrics_v2"
+    },
+    "dyn_hamr_100_no_mask": {
+      "status": "frozen_candidate",
+      "logical_task_id": "result3:p95:completion:dyn_hamr_metrics:20260910:v1",
+      "run_id": "result3-p95-completion-dyn-hamr-metrics-20260910-v1-6057d6ed03d9",
+      "protocol": "100-windows,no-mask",
+      "cpfs_path": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/dyn_hamr_metrics",
+      "oss_path": null,
+      "source_output_root": "/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/dyn_hamr_metrics"
+    },
+    "ablation5_pred_camera": {
+      "status": "frozen_candidate",
+      "logical_task_id": "metrics:ablation5:result3-stride5:shared-joint8-p95:frozen:20260910",
+      "run_id": "metrics-ablation5-result3-stride5-shared-joint8-p95-frozen-20260910-2adb53678b63",
+      "protocol": "five-ablations,shared-result3-p95,predicted-camera",
+      "cpfs_path": "/mnt/cpfs/sjc/eval_artifacts/ablation_result3_p95_20260910",
+      "oss_path": null,
+      "source_output_root": "/mnt/cpfs/sjc/eval_artifacts/ablation_result3_p95_20260910"
+    }
+  },
+  "notes": [
+    "frozen_candidate means the exact registered source was uniquely selected; artifact completeness must be checked with taskctl path before publication",
+    "ablation5 points to the aggregate five-ablation result; individual component runs remain historical unless explicitly promoted"
+  ],
+  "baseline14_catalogs": {
+    "arctic": {
+      "logical_task_id": "artifacts:arctic:baseline14:60f",
+      "run_id": "artifacts-arctic-baseline14-60f-784cc99c785e",
+      "cpfs_path": null,
+      "oss_path": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/arctic/gt_cache",
+      "status": "frozen_catalog_source",
+      "methods": "registered_baseline14_matrix",
+      "coverage": "60f"
+    },
+    "h2o": {
+      "logical_task_id": "artifacts:h2o:baseline14:60f",
+      "run_id": "artifacts-h2o-baseline14-60f-c9a0a02fbbfe",
+      "cpfs_path": null,
+      "oss_path": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/h2o/gt_cache",
+      "status": "frozen_catalog_source",
+      "methods": "registered_baseline14_matrix",
+      "coverage": "60f"
+    },
+    "hoi4d": {
+      "logical_task_id": "artifacts:hoi4d:baseline14:60f",
+      "run_id": "artifacts-hoi4d-baseline14-60f-3daa6a04cdbd",
+      "cpfs_path": null,
+      "oss_path": null,
+      "status": "frozen_catalog_source",
+      "methods": "registered_baseline14_matrix",
+      "coverage": "60f"
+    },
+    "hot3d": {
+      "logical_task_id": "artifacts:hot3d:baseline14:60f",
+      "run_id": "artifacts-hot3d-baseline14-60f-ca26e9d0263d",
+      "cpfs_path": null,
+      "oss_path": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/hot3d/gt_cache",
+      "status": "frozen_catalog_source",
+      "methods": "registered_baseline14_matrix",
+      "coverage": "60f"
+    },
+    "oakink_v2": {
+      "logical_task_id": "artifacts:oakink_v2:baseline14:60f",
+      "run_id": "artifacts-oakink-v2-baseline14-60f-b401e4b84348",
+      "cpfs_path": null,
+      "oss_path": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache",
+      "status": "frozen_catalog_source",
+      "methods": "registered_baseline14_matrix",
+      "coverage": "60f"
+    },
+    "taco": {
+      "logical_task_id": "artifacts:taco:baseline14:60f",
+      "run_id": "artifacts-taco-baseline14-60f-e091a207c0f4",
+      "cpfs_path": null,
+      "oss_path": null,
+      "status": "frozen_catalog_source",
+      "methods": "registered_baseline14_matrix",
+      "coverage": "60f"
+    }
+  },
+  "archive_search_policy": {
+    "default": "manifest only",
+    "historical": "exact run_id only",
+    "path_migration": "update cpfs_path/oss_path on same record; do not register a new logical task",
+    "hard_requirements_removed": [
+      "minimum_free_mb",
+      "fixed VRAM threshold",
+      "filename/version guessing"
+    ]
+  }
+}

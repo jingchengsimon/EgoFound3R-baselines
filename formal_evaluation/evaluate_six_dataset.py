@@ -18,7 +18,7 @@ from formal_evaluation.contact.metrics import compute_contact_metrics
 from formal_evaluation.datasets.six_dataset_gt_cache import load_window_cache
 from formal_evaluation.hand.metrics import compute_hand_metrics
 from formal_evaluation.scene.metrics import compute_scene_metrics
-from egocentric_metrics.alignment import SimilarityTransform, apply_transform, umeyama
+from egocentric_metrics import world_aligned_mpjpe
 
 
 def _load_jsonl(path: Path) -> list[dict[str, object]]:
@@ -114,45 +114,6 @@ def _target_geometry(targets: Mapping[str, np.ndarray], field: str, coordinate: 
     return camera if coordinate == "camera" else _camera_to_world(camera, targets["camera_c2w"])
 
 
-def _camera_trajectory_alignments(
-    predictions: Mapping[str, np.ndarray], targets: Mapping[str, np.ndarray]
-) -> tuple[dict[str, SimilarityTransform], np.ndarray]:
-    """Fit one SE(3) and one Sim(3) from predicted to GT camera centres."""
-    target_pose = np.asarray(targets["camera_c2w"], dtype=float)
-    prediction_pose = predictions.get("camera_c2w")
-    if prediction_pose is None:
-        return {}, np.zeros(target_pose.shape[0], dtype=bool)
-    prediction_pose = np.asarray(prediction_pose, dtype=float)
-    if prediction_pose.shape != target_pose.shape:
-        raise ValueError("prediction camera_c2w shape differs from GT cache")
-    valid = np.isfinite(prediction_pose).all(axis=(1, 2)) & np.isfinite(target_pose).all(axis=(1, 2))
-    if "camera_valid" in predictions:
-        valid &= np.asarray(predictions["camera_valid"], dtype=bool)
-    if "camera_valid" in targets:
-        valid &= np.asarray(targets["camera_valid"], dtype=bool)
-    if np.count_nonzero(valid) < 3:
-        return {}, valid
-    source = prediction_pose[valid, :3, 3]
-    destination = target_pose[valid, :3, 3]
-    transforms = {
-        "se3": umeyama(source, destination, fix_scale=True),
-        "sim3": umeyama(source, destination),
-    }
-    transforms = {
-        name: transform for name, transform in transforms.items()
-        if np.isfinite(transform.scale).all()
-        and np.isfinite(transform.rotation).all()
-        and np.isfinite(transform.translation).all()
-    }
-    return transforms, valid
-
-
-def _apply_world_alignment(points: np.ndarray, transform: SimilarityTransform, valid: np.ndarray) -> np.ndarray:
-    value = np.asarray(points, dtype=float)
-    aligned = apply_transform(value.reshape(-1, 3), transform).reshape(value.shape)
-    return np.where(valid[:, None, None, None], aligned, np.nan)
-
-
 def _world_geometry(
     predictions: Mapping[str, np.ndarray],
     targets: Mapping[str, np.ndarray],
@@ -165,8 +126,33 @@ def _world_geometry(
         return points, _target_geometry(targets, field, "world"), "native_world"
     pose = predictions.get("camera_c2w")
     if pose is None:
-        return None, None, "unavailable_without_predicted_camera_c2w"
-    return _camera_to_world(points, pose), _target_geometry(targets, field, "world"), "predicted_camera_c2w"
+        pose = targets["camera_c2w"]
+        source = "gt_camera_c2w_oracle"
+    else:
+        source = "predicted_camera_c2w"
+    return _camera_to_world(points, pose), _target_geometry(targets, field, "world"), source
+
+
+def _hand_aligned_world_metric(
+    prediction: np.ndarray,
+    target: np.ndarray,
+    valid_frames: np.ndarray,
+    *,
+    mode: str,
+) -> float:
+    point_mask = np.broadcast_to(valid_frames[:, None], prediction.shape[:2]).copy()
+    point_mask &= np.isfinite(prediction).all(axis=-1)
+    point_mask &= np.isfinite(target).all(axis=-1)
+    errors = world_aligned_mpjpe(
+        prediction,
+        target,
+        joint_mask=point_mask,
+        mode=mode,
+        chunk_length=len(prediction),
+        unit_scale=1000.0,
+    )
+    finite = np.isfinite(errors)
+    return float(errors[finite].mean()) if finite.any() else float("nan")
 
 
 def _depth_pairs(prediction: Mapping[str, np.ndarray], target: Mapping[str, np.ndarray]) -> list[tuple[np.ndarray, np.ndarray]]:
@@ -197,15 +183,12 @@ def evaluate_window(
     }
     groups = set(config.get("group", []))
     if "hand" in groups:
-        world_transforms, world_camera_valid = _camera_trajectory_alignments(predictions, targets)
-        scale_type = str(config.get("scale_type", "relative"))
-        emit_w = scale_type in {"metric", "metric_world_hand"} and "se3" in world_transforms
-        emit_wa = scale_type in {"metric", "metric_world_hand", "relative", "up_to_scale"} and "sim3" in world_transforms
-        if world_transforms:
-            result["hand_world_alignment_source"] = "camera_trajectory"
-            result["hand_world_alignment_valid_frame_count"] = int(np.count_nonzero(world_camera_valid))
-            if "sim3" in world_transforms:
-                result["hand_world_alignment_sim3_scale"] = float(world_transforms["sim3"].scale)
+        detail = metadata.get("detail", {})
+        invalid_identity_fallback = (
+            isinstance(detail, Mapping)
+            and detail.get("slam_failed_identity_fallback") is True
+        )
+        result["hand_world_alignment_source"] = "hand_points_first2_w_all_wa_sim3"
         pred_valid = predictions.get("hand_valid")
         if pred_valid is not None:
             pred_valid = np.asarray(pred_valid, dtype=bool)
@@ -222,19 +205,18 @@ def evaluate_window(
             world_pred, world_gt, world_pose_source = _world_geometry(
                 predictions, targets, pred_points, coordinate, granularity
             )
-            w_prediction = (
-                _apply_world_alignment(world_pred, world_transforms["se3"], world_camera_valid)
-                if emit_w and world_pred is not None else None
-            )
-            wa_prediction = (
-                _apply_world_alignment(world_pred, world_transforms["sim3"], world_camera_valid)
-                if emit_wa and world_pred is not None else None
-            )
+            if invalid_identity_fallback:
+                world_pred = world_gt = None
+                world_pose_source = "invalid_identity_camera_fallback"
             metric_points = pred_points
             metric_coordinate = coordinate
             metric_coordinate_source = "native"
             emit_point_metrics = True
-            camera_points, metric_coordinate_source = _prediction_geometry_camera(predictions, granularity)
+            camera_points, metric_coordinate_source = (
+                (None, "invalid_identity_camera_fallback")
+                if invalid_identity_fallback
+                else _prediction_geometry_camera(predictions, granularity)
+            )
             if camera_points is None:
                 emit_point_metrics = False
                 metric_coordinate = "unavailable"
@@ -256,12 +238,33 @@ def evaluate_window(
                 granularity=granularity,
                 root_prediction=roots_pred,
                 root_target=roots_gt,
-                world_prediction=w_prediction,
-                world_aligned_prediction=wa_prediction,
-                world_target=world_gt if w_prediction is not None or wa_prediction is not None else None,
                 temporal_fps=temporal_fps,
                 emit_point_metrics=emit_point_metrics,
             ))
+            if world_pred is not None and world_gt is not None:
+                world_valid = np.asarray(targets["hand_valid"], dtype=bool).copy()
+                world_valid &= pred_valid
+                target_camera_valid = targets.get("camera_valid")
+                if target_camera_valid is not None:
+                    world_valid &= np.asarray(target_camera_valid, dtype=bool)[:, None]
+                if world_pose_source == "predicted_camera_c2w" and "camera_valid" in predictions:
+                    world_valid &= np.asarray(predictions["camera_valid"], dtype=bool)[:, None]
+                for hand_index, side in enumerate(("left", "right")):
+                    prefix = (
+                        f"hand_{side}_" if granularity == "joint"
+                        else f"hand_{side}_{granularity}_"
+                    )
+                    position_name = {
+                        "joint": "mpjpe", "marker": "mpmpe", "vertex": "mpvpe"
+                    }[granularity]
+                    result[f"{prefix}w_{position_name}"] = _hand_aligned_world_metric(
+                        world_pred[:, hand_index], world_gt[:, hand_index],
+                        world_valid[:, hand_index], mode="first2",
+                    )
+                    result[f"{prefix}wa_{position_name}"] = _hand_aligned_world_metric(
+                        world_pred[:, hand_index], world_gt[:, hand_index],
+                        world_valid[:, hand_index], mode="all",
+                    )
             result[f"hand_{granularity}_geometry_provenance"] = provenance
             result[f"hand_{granularity}_metric_coordinate"] = metric_coordinate
             result[f"hand_{granularity}_metric_coordinate_source"] = metric_coordinate_source

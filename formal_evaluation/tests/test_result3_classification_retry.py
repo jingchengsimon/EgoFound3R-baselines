@@ -4,7 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 import numpy as np
-from formal_evaluation.run_result3_classification_retry import classify, keyed, masks
+from formal_evaluation.run_result3_classification_retry import classify, keyed, load_arrays, masks
 
 
 def test_classification():
@@ -26,7 +26,10 @@ def test_classification():
         prediction['hand_visibility' if prefix == 'joint' else 'marker_visibility'] = prediction[prefix + '_contact_probability']
         for suffix in ['target', 'mask']:
             target[prefix + '_visibility_' + suffix] = target[prefix + '_contact_' + suffix]
-    assert classify(prediction, target, keep, 'visibility')['joint_visibility_f1'] == 1
+    visibility = classify(prediction, target, keep, 'visibility')
+    assert visibility['joint_visibility_f1'] == 1
+    assert visibility['vertex_visibility_f1'] == 1
+    assert visibility['vertex_visibility_valid_count'] == 59 * 2 * 778
 
 
 def test_identity():
@@ -48,6 +51,19 @@ def test_identity():
                 pass
             else:
                 raise AssertionError('modified mask accepted')
+
+
+def test_selective_array_loading():
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / 'arrays.npz'
+        np.savez(path, wanted=np.arange(3), unused=np.arange(1000))
+        assert set(load_arrays({'array_path': str(path)}, names={'wanted'})) == {'wanted'}
+        try:
+            load_arrays({'array_path': str(path)}, names={'missing'})
+        except ValueError as error:
+            assert 'classification arrays missing: missing' in str(error)
+        else:
+            raise AssertionError('missing classification array accepted')
 
 
 if __name__ == '__main__':

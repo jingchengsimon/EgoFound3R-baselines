@@ -1,0 +1,29 @@
+{
+  "split_path": "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_s1s4_stratified_20260817T145429Z/dataset_sequence_splits.json",
+  "split_sha256": "a62a0fd5ef2aa57f93dab6e44e63f1b730c3b66accc55d6cec88e0345003d394",
+  "window_manifest": "/mnt/workspace/sjc/eval_artifacts/prep_6dataset_s1s4_stratified_20260817T145429Z/evaluation_test_windows_60f_strict.jsonl",
+  "window_sha256": "b50fc2f6bef609b0cf55454ab9d018d049d1aa4d1ac7c78b81f7a2eca3536799",
+  "window_counts": {
+    "arctic": 434,
+    "h2o": 489,
+    "hoi4d": 461,
+    "hot3d": 1008,
+    "oakink_v2": 774,
+    "taco": 1255
+  },
+  "evaluation_sequence_counts": {
+    "h2o": 46,
+    "taco": 637,
+    "hot3d": 7,
+    "oakink_v2": 31,
+    "arctic": 37,
+    "hoi4d": 126
+  },
+  "custom_test_fractions": {
+    "hot3d": 0.1,
+    "oakink_v2": 0.1,
+    "arctic": 0.25,
+    "hoi4d": 0.15
+  },
+  "taco_depth_3r_status": "blocked_invalid_uint8_depth_gt"
+}
