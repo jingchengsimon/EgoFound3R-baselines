@@ -41,8 +41,18 @@ Ego visibility | GT visibility | Ego contact | GT contact | Ego distance | GT di
 cd /mnt/workspace/sjc/paper_viz_2d/visualization/paper_viz
 ```
 
-这是 baselines 仓库 `viz-paper-20260917` 分支的 git worktree（代码与本地仓库一致，
-`git pull` 即可更新）。文档、脚本、代码都在这里。
+这是 baselines 仓库 `viz-paper-20260917` 分支的 git worktree（detached checkout），
+代码、脚本、本文档都在这里。更新到最新版：
+
+```bash
+cd /mnt/workspace/sjc/paper_viz_2d
+git fetch /mnt/workspace/sjc/EgoFound3R-baselines viz-paper-20260917   # 该分支由本地开发机 push 进来
+git checkout --detach FETCH_HEAD
+git log --oneline -1
+```
+
+> 该 worktree 故意保持 detached：`viz-paper-20260917` 一旦被某个 worktree 检出，
+> 从本地 `git push` 就会被 `receive.denyCurrentBranch` 拒绝。
 
 ### 运行时要求
 
@@ -184,6 +194,30 @@ python3 tools/batch_2d_render.py \
   `rendered_frame_count_mismatch` / `failed`。
 * 只想看会跑哪些段、不执行：`--dry-run`；只跑某些数据集：`--datasets arctic h2o`；
   只跑前 N 段：`--limit 3`；只跑指定段或 cache：`--only <segment_id 或 cache_id>`。
+
+### 给任意一段单独造一份清单（样式复核/试跑用）
+
+冒烟段 `arctic__00063-00362` 是当初用来定样式的片段，**它不在 114 段清单里**，
+所以对清单用 `--only arctic__00063-00362` 会选到 0 段。给单段造清单：
+
+```bash
+/usr/local/bin/python3 - <<'PY'
+import json
+sel = json.load(open("<staged smoke inputs>/selection.json"))
+fids, refs = [], []
+for w in sel["windows"]:
+    for j, fid in enumerate(w["frame_ids"]):
+        fids.append(fid)
+        refs.append({"window_id": w["window_id"], "cache_id": w["cache_id"], "index": j})
+entry = {"dataset": sel["dataset"], "sequence_id": sel["sequence_id"],
+         "window_id": sel["windows"][0]["window_id"],
+         "frame_ids": fids, "frame_refs": refs}
+open("smoke_manifest.jsonl", "w").write(json.dumps(entry) + "\n")
+PY
+```
+
+然后用 `--manifest smoke_manifest.jsonl` 跑 batch 脚本即可（已验证：批量链路产出的
+矩阵/视频/15 张 panel 与手工渲染 **md5 完全相同**）。
 
 ### 批量前置检查（建议每次先跑）
 
