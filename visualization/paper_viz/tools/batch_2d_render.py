@@ -25,6 +25,8 @@ Example
 from __future__ import annotations
 
 import argparse
+from collections import Counter
+import hashlib
 import json
 import os
 import shlex
@@ -57,7 +59,9 @@ def cache_ids_of(entry: dict) -> list[str]:
 
 def segment_id_of(entry: dict) -> str:
     frames = entry["frame_ids"]
-    return f"{entry['dataset']}__{frames[0]}-{frames[-1]}"
+    sequence = str(entry.get("sequence_id") or entry.get("window_id") or "unknown")
+    sequence_key = hashlib.sha1(sequence.encode("utf-8")).hexdigest()[:10]
+    return f"{entry['dataset']}__{sequence_key}__{frames[0]}-{frames[-1]}"
 
 
 def run(command: list[str], log) -> None:
@@ -76,7 +80,11 @@ def render_segment(entry: dict, args) -> dict:
     report_path = out_dir / "report.json"
     if report_path.is_file() and not args.force:
         report = json.loads(report_path.read_text())
-        result.update(status="skipped_existing", video2_frames=report.get("video2_frames"))
+        expected = (frames + max(args.video_stride, 1) - 1) // max(args.video_stride, 1)
+        status = ("skipped_existing" if report.get("video2_frames") == expected
+                  else "existing_frame_count_mismatch")
+        result.update(status=status, video2_frames=report.get("video2_frames"),
+                      expected_video2_frames=expected)
         return result
 
     log_path = args.out_root / "_logs" / f"{segment}.log"
@@ -93,10 +101,14 @@ def render_segment(entry: dict, args) -> dict:
     with log_path.open("w") as log:
         try:
             if not (staged / "selection.json").is_file() or args.force:
+                staged.mkdir(parents=True, exist_ok=True)
+                entry_path = staged / "manifest_entry.json"
+                stage_entry = dict(entry, segment_id=segment)
+                entry_path.write_text(json.dumps(stage_entry, indent=2) + "\n")
                 run([sys.executable, str(HERE / "stage_ego_windows.py"),
                      "--infer-dir", str(infer_dir), "--npz", str(npz),
                      "--prepared-root", str(args.prepared_root / dataset),
-                     "--dataset", dataset, "--caches", *caches,
+                     "--dataset", dataset, "--entry-json", str(entry_path),
                      "--out", str(staged)], log)
             command = [sys.executable, "-m", "paper_viz.cli",
                        "--stages", "fig2", "--rows", str(args.rows),
@@ -122,7 +134,9 @@ def render_segment(entry: dict, args) -> dict:
     report = json.loads(report_path.read_text())
     result.update(status="rendered", video2_frames=report.get("video2_frames"),
                   log=str(log_path))
-    if report.get("video2_frames") != frames // max(args.video_stride, 1):
+    expected = (frames + max(args.video_stride, 1) - 1) // max(args.video_stride, 1)
+    result["expected_video2_frames"] = expected
+    if report.get("video2_frames") != expected:
         result["status"] = "rendered_frame_count_mismatch"
     return result
 
@@ -159,7 +173,6 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     args.staged_root = args.staged_root or (args.out_root / "_staged")
-    args.out_root.mkdir(parents=True, exist_ok=True)
 
     entries = [json.loads(line) for line in args.manifest.read_text().splitlines() if line.strip()]
     if args.datasets:
@@ -170,11 +183,17 @@ def main() -> None:
                    if segment_id_of(e) in wanted or wanted & set(cache_ids_of(e))]
     if args.limit:
         entries = entries[:args.limit]
+    segment_ids = [segment_id_of(entry) for entry in entries]
+    duplicates = sorted(segment for segment, count in Counter(segment_ids).items()
+                        if count > 1)
+    if duplicates:
+        raise ValueError(f"non-unique segment ids: {duplicates[:5]}")
     print(f"{len(entries)} segments selected; parallel={args.parallel} jobs/segment={args.jobs}")
     if args.dry_run:
         for entry in entries:
             print(" ", segment_id_of(entry), cache_ids_of(entry))
         return
+    args.out_root.mkdir(parents=True, exist_ok=True)
 
     started = time.time()
     results = []

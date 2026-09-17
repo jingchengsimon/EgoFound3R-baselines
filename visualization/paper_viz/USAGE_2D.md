@@ -10,13 +10,14 @@
 
 ## 0. 产物是什么
 
-对每一段 300 帧（5 × 60 帧窗口）的片段，一次运行输出三样东西：
+对清单中的每个实际片段（60–300 帧，严格遵循 `frame_refs`，不补齐边界），一次运行输出三样东西：
 
 | 产物 | 内容 | 规格（定稿） |
 |---|---|---|
 | `fig2_2d_matrix.png` | 多帧拼接大图，每帧一行 | 5 行 × 15 列，cell 720 px |
-| `panels_2d/*.png` | 每列单独一张 PNG，方便手动拼进论文 | 15 张，720×514 |
-| `video2_2d_matrix.mp4` | 每 clip 一行的 15 列视频 | 300 帧 / 5746×596 / 30 fps / 10 s |
+| `panels_2d/*.png` | 中间入选帧的兼容版独立列 | 15 张，720×514 |
+| `panels_2d/<frame>/*.png` | 5 个入选帧逐帧、逐方法/信号拆分 | 5 × 15 张，720×514 |
+| `video2_2d_matrix.mp4` | 每 clip 一行的 15 列视频 | 与清单实际帧数一致 / 5746×596 / 30 fps |
 
 15 列合同（左→右）：
 
@@ -124,7 +125,7 @@ PYTHONPATH=/mnt/workspace/sjc/EgoFound3R_viz_8fc061a_20260917 \
   --upsample-mano --global-stride 5 --device cuda:0
 ```
 
-* `<segment_300f.mp4>`：把该段连续帧按 30 fps 拼成的视频（300 帧）。
+* `<segment_300f.mp4>`：把清单 `frame_ids` 指定的连续片段按 30 fps 拼成视频；边界片段可少于 300 帧。
 * 后处理默认全开（`--root-z-smooth` / `--hand-anchor-filter` / `--hand-fill-missing` /
   `--hand-local-smooth` / `--root-uv-smooth` / `--hand-depth-scale` / `--overlap-depth-scale`），
   不要显式关闭；`--input-resize-mode keep_aspect` 是默认值。
@@ -137,6 +138,9 @@ PYTHONPATH=/mnt/workspace/sjc/EgoFound3R_viz_8fc061a_20260917 \
   viz_inputs/ego_infer_300f.npz
   viz_inputs/ego_infer_300f_plus.npz     # 含 joint21_xyz_camera
 ```
+
+`segment_id` 由 batch 脚本生成：`<dataset>__<sequence_id 的 10 位 sha1>__<首帧>-<末帧>`。
+不能只用数据集和首末帧，因为不同序列可能具有相同帧号。
 
 ### 3.3 staging + 渲染（CPU，一条命令）
 
@@ -190,15 +194,19 @@ python3 tools/batch_2d_render.py \
 <out-root>/<segment_id>/{fig2_2d_matrix.png,panels_2d/,video2_2d_matrix.mp4,report.json}
 ```
 
+staging 会逐项验证 `frame_refs.cache_id/index` 与 prepared window 中的 `frame_ids`，只渲染清单
+实际区间。它不会把截断片段扩成完整的 60 帧窗口。
+
 * 常见状态：`rendered` / `skipped_existing` / `missing_ego_infer`（该段还没跑推理）/
   `rendered_frame_count_mismatch` / `failed`。
 * 只想看会跑哪些段、不执行：`--dry-run`；只跑某些数据集：`--datasets arctic h2o`；
-  只跑前 N 段：`--limit 3`；只跑指定段或 cache：`--only <segment_id 或 cache_id>`。
+  只跑前 N 段：`--limit 3`；只跑指定段或 cache：先从 `--dry-run` 复制完整
+  `<segment_id>`，或使用 `<cache_id>`。
 
 ### 给任意一段单独造一份清单（样式复核/试跑用）
 
-冒烟段 `arctic__00063-00362` 是当初用来定样式的片段，**它不在 114 段清单里**，
-所以对清单用 `--only arctic__00063-00362` 会选到 0 段。给单段造清单：
+冒烟段 `arctic__00063-00362` 是当初用来定样式的片段，**它不在 114 段清单里**。
+给单段造清单后先运行 `--dry-run`，再复制带 sequence hash 的新 `<segment_id>`：
 
 ```bash
 /usr/local/bin/python3 - <<'PY'
@@ -269,11 +277,12 @@ python3 tools/relay_sources.py --dataset arctic \
 ## 6. 验收清单
 
 ```bash
-jq . <out>/<segment>/report.json        # 应有 video2_frames == 300
+jq . <out>/<segment>/report.json        # video2_frames 应等于 manifest actual_length
 ffprobe -v error -select_streams v:0 \
   -show_entries stream=nb_frames,width,height,r_frame_rate -of default=nw=1 \
-  <out>/<segment>/video2_2d_matrix.mp4  # 300 帧 / 5746×596 / 30 fps
-ls <out>/<segment>/panels_2d | wc -l    # 15
+  <out>/<segment>/video2_2d_matrix.mp4  # 帧数应等于 manifest actual_length，5746×596 / 30 fps
+find <out>/<segment>/panels_2d -mindepth 1 -maxdepth 1 -type d | wc -l  # 5 个入选帧
+find <out>/<segment>/panels_2d -mindepth 2 -maxdepth 2 -name '*.png' | wc -l  # 75
 ```
 
 人工抽查：Dyn-HaMR 列在未注册窗口必须是 `unavailable` 瓦片；几何列的背面点线仍在

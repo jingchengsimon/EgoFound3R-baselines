@@ -50,6 +50,7 @@ class WindowSources:
     rgb_dir: Path
     geometry_dir: Path
     record: dict
+    selected_indices: list[int] = field(default_factory=list)
     methods: dict = field(default_factory=dict)          # name -> npz dict (T=60)
     baselines: dict = field(default_factory=dict)        # name -> npz dict
     ego_native: dict | None = None                       # marker_visibility etc.
@@ -67,7 +68,8 @@ class SegmentSources:
 
 
 def load_window(cache_id: str, window_id: str, prepared_root: Path, method_files: dict,
-                baseline_files: dict, mano: ManoAsset) -> WindowSources:
+                baseline_files: dict, mano: ManoAsset,
+                selected_indices: list[int] | None = None) -> WindowSources:
     window_root = prepared_root / cache_id
     record = json.loads((window_root / "window_input.json").read_text())
     methods = {}
@@ -87,6 +89,8 @@ def load_window(cache_id: str, window_id: str, prepared_root: Path, method_files
         rgb_dir=window_root / "rgb",
         geometry_dir=window_root / "geometry",
         record=record,
+        selected_indices=(list(selected_indices) if selected_indices is not None
+                          else list(range(len(record["frame_ids"])))),
         methods=methods,
         baselines=baselines,
     )

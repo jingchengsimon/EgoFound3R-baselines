@@ -64,6 +64,7 @@ def build_registry(args) -> dict:
         registry["windows"].append({
             "cache_id": cache,
             "window_id": window["window_id"],
+            "frame_indices": window.get("frame_indices", list(range(len(window["frame_ids"])))),
             "methods": {k: str(v) for k, v in methods.items()},
             "baselines": {k: str(v) for k, v in baselines.items()},
         })
@@ -76,31 +77,41 @@ def load_segment(registry: dict, args) -> SegmentSources:
     for entry in registry["windows"]:
         windows.append(load_window(entry["cache_id"], entry["window_id"],
                                    Path(args.prepared_root), entry["methods"],
-                                   entry["baselines"], mano))
+                                   entry["baselines"], mano, entry.get("frame_indices")))
     return SegmentSources(dataset=registry["dataset"], sequence_id=registry["sequence_id"],
                           segment_id=registry["segment_id"], windows=windows, mano=mano,
                           mapping_path=Path(args.mapping))
 
 
-def gt_valid_mask(segment: SegmentSources) -> np.ndarray:
+def gt_valid_mask(segment: SegmentSources, selected_only: bool = False) -> np.ndarray:
     pieces = []
     for window in segment.windows:
         gt = window.methods["gt"]
-        pieces.append(gt["hand_valid"].astype(bool) & np.isfinite(gt["hand_joints_camera"]).all(axis=(2, 3)))
+        valid = (gt["hand_valid"].astype(bool)
+                 & np.isfinite(gt["hand_joints_camera"]).all(axis=(2, 3)))
+        pieces.append(valid[window.selected_indices] if selected_only else valid)
     return np.concatenate(pieces)
+
+
+def frame_locations(segment: SegmentSources) -> list[tuple[int, int]]:
+    """Return exact manifest-order ``(window, local frame)`` locations."""
+    return [(window_index, local_index)
+            for window_index, window in enumerate(segment.windows)
+            for local_index in window.selected_indices]
 
 
 def render_segment(segment: SegmentSources, out: Path, args) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     if args.stages == "fig2_frame":
         return render_fig2_frame(segment, out, args)
-    selected = select_frames(gt_valid_mask(segment), count=5)
     if args.stages == "fig2":
+        selected = select_frames(gt_valid_mask(segment, selected_only=True), count=5)
         report = {"segment_id": segment.segment_id, "selected_frames": selected.tolist(),
                   "outputs": {}}
         render_2d_block(segment, out, report, args, selected)
         (out / "report.json").write_text(json.dumps(report, indent=2) + "\n")
         return report
+    selected = select_frames(gt_valid_mask(segment), count=5)
     scene = build_scene(segment.windows, METHODS, segment.mano, selected,
                         segment.sequence_id, segment.segment_id, segment.dataset)
     report = {"segment_id": segment.segment_id, "selected_frames": selected.tolist(),
@@ -136,15 +147,16 @@ def render_segment(segment: SegmentSources, out: Path, args) -> dict:
 
 def render_2d_block(segment: SegmentSources, out: Path, report: dict, args, selected) -> None:
     """Figure 2 (one frame per row), per-column panels and the 2D overlay video."""
-    figure_frames = select_frames(gt_valid_mask(segment), count=args.rows)
+    locations = frame_locations(segment)
+    figure_frames = select_frames(gt_valid_mask(segment, selected_only=True), count=args.rows)
     cells = {}
     for r, t in enumerate(figure_frames):
-        w_index, f_index = divmod(int(t), 60)
+        w_index, f_index = locations[int(t)]
         window = segment.windows[w_index]
         frame = render2d.Frame2D(window, f_index, segment.mano, cell_w=args.cell2d)
         for c, (method, signal) in enumerate(render2d.COLUMNS):
             cells[(r, c)] = render2d.column_cell(frame, method, signal, f_index)
-    row_labels = [f"frame {int(t)} / {segment.windows[int(t) // 60].frame_ids[int(t) % 60]}"
+    row_labels = [f"frame {int(t)} / {segment.windows[locations[int(t)][0]].frame_ids[locations[int(t)][1]]}"
                   for t in figure_frames]
     figure2 = compose_figure2(cells, len(figure_frames), row_labels, segment,
                               subtitle="2D camera-space overlay | one frame per row | "
@@ -152,20 +164,27 @@ def render_2d_block(segment: SegmentSources, out: Path, report: dict, args, sele
     figure2.save(out / "fig2_2d_matrix.png")
     report["outputs"]["fig2"] = str(out / "fig2_2d_matrix.png")
     if not args.skip_panels:
-        center = int(selected[len(selected) // 2])
-        w_index, f_index = divmod(center, 60)
-        window = segment.windows[w_index]
-        frame = render2d.Frame2D(window, f_index, segment.mano, cell_w=args.cell2d)
         panel_dir = out / "panels_2d"
         panel_dir.mkdir(parents=True, exist_ok=True)
+        panel_frames = []
+        for r, t in enumerate(figure_frames):
+            w_index, f_index = locations[int(t)]
+            frame_id = segment.windows[w_index].frame_ids[f_index]
+            frame_dir = panel_dir / f"{r:02d}_clip{int(t):04d}_frame{frame_id}"
+            frame_dir.mkdir(parents=True, exist_ok=True)
+            for c, (method, signal) in enumerate(render2d.COLUMNS):
+                cells[(r, c)].save(frame_dir / f"{c:02d}_{method}_{signal}.png")
+            panel_frames.append({"clip_index": int(t), "frame_id": frame_id,
+                                 "path": str(frame_dir)})
+        center_row = len(figure_frames) // 2
         for c, (method, signal) in enumerate(render2d.COLUMNS):
-            render2d.column_cell(frame, method, signal, f_index).save(
-                panel_dir / f"{c:02d}_{method}_{signal}.png")
+            cells[(center_row, c)].save(panel_dir / f"{c:02d}_{method}_{signal}.png")
         report["outputs"]["panels_2d"] = str(panel_dir)
+        report["panel_frames"] = panel_frames
 
     if not args.skip_videos:
         writer = VideoWriter(out / "video2_2d_matrix.mp4", fps=args.fps)
-        total_frames = 60 * len(segment.windows)
+        total_frames = len(locations)
         indices = list(range(0, total_frames, args.video_stride))
         for image in video_rows(segment, args, indices):
             writer.add(image)
@@ -177,7 +196,7 @@ def video_row(t: int):
     """Compose one video row (15 columns, one clip frame) — the unit of work."""
     segment = _WORKER["segment"]
     args = _WORKER["args"]
-    w_index, f_index = divmod(t, 60)
+    w_index, f_index = frame_locations(segment)[t]
     window = segment.windows[w_index]
     frame = render2d.Frame2D(window, f_index, segment.mano, cell_w=args.cell2d_video)
     cells = {}
@@ -212,8 +231,9 @@ def video_rows(segment: SegmentSources, args, indices: list):
 
 
 def render_fig2_frame(segment: SegmentSources, out: Path, args) -> dict:
-    t0 = int(np.linspace(0, 299, 6).astype(int)[2])
-    w_index, f_index = divmod(t0, 60)
+    locations = frame_locations(segment)
+    t0 = int(np.linspace(0, len(locations) - 1, 6).astype(int)[2])
+    w_index, f_index = locations[t0]
     window = segment.windows[w_index]
     frame = render2d.Frame2D(window, f_index, segment.mano, cell_w=args.cell2d)
     cells = {}
