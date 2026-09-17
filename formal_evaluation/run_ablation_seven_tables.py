@@ -70,14 +70,19 @@ def run(spec, pilot=False):
     if not (upstream/'COMPLETE').is_file():
         raise RuntimeError('upstream hand evaluation incomplete: '+str(upstream))
     previous = json.loads((upstream/'report.json').read_text())
-    assert previous['windows'] == 2378 and previous['selection_sha256'] == spec['selection_sha256']
+    assert previous['windows'] == sum(j['expected_windows'] for j in spec['jobs']) and previous['selection_sha256'] == spec['selection_sha256']
     root = Path(spec['output_root']); root.mkdir(parents=True, exist_ok=False)
     def progress(**row):
         row['time'] = time.time()
         with (root/'progress.jsonl').open('a') as out: out.write(json.dumps(row)+'\n')
         print(json.dumps(row), flush=True)
+    def mapped(path):
+        for old, new in spec.get('path_mappings', []):
+            if path == old or path.startswith(old + '/'):
+                return new + path[len(old):]
+        return path
     def arrays(row, index=None):
-        path = Path(row['array_path'])
+        path = Path(mapped(row['array_path']))
         if index and '/gt_cache/' in str(path): path = Path(index).parent / str(path).split('/gt_cache/',1)[1]
         with np.load(path, allow_pickle=False) as archive: return dict(archive)
     def classify(pred, target, keep, mode):
@@ -112,7 +117,7 @@ def run(spec, pilot=False):
         else: found=common.prediction_rows('egofound3r',{'dataset':ds,'expected_windows':len(gt),'predictions':{'egofound3r':{'formal_roots':job['formal_roots']}}},Path('/unused'),aliases,direct_oss=True)
         inputs={}
         for r in common.read_jsonl(Path(job['input_index'])):
-            record=json.loads(Path(r['window_input']).read_text()); inputs[record['window_id']]=record
+            record=json.loads(Path(mapped(r['window_input'])).read_text()); inputs[record['window_id']]=record
         cg={r['window_id']:r for r in contact_rows if r['dataset']==ds}
         vg={r['window_id']:r for r in common.read_jsonl(Path(job['visibility_gt_index']))}
         assert set(found)==set(gt)==set(inputs)==set(cg)==set(vg) and len(gt)==job['expected_windows'], ds
@@ -131,7 +136,7 @@ def run(spec, pilot=False):
                 assert len(record['geometry_paths'])==len(keep)
                 with (bvh.install(geometry.surface_kernel()) if bvh else nullcontext()) as accelerator:
                     for f,path in enumerate(record['geometry_paths']):
-                        with np.load(path,allow_pickle=False) as a: surfaces=dict(a)
+                        with np.load(mapped(path),allow_pickle=False) as a: surfaces=dict(a)
                         if accelerator is not None: accelerator.clear()
                         for key,v in geometry.frame_geometry_metrics({k:v[f] for k,v in query.items()},pred['hand_valid'][f],surfaces,faces,'cpu').items(): collected.setdefault(key,[]).append(v)
                 overlay={k:np.stack(v) for k,v in collected.items()}
@@ -150,7 +155,7 @@ def run(spec, pilot=False):
         (folder/'COMPLETE').write_text('complete\n')
         (root/'report.json').write_text(json.dumps(common.json_safe(report),allow_nan=False))
     if 'shard_id' not in spec:
-        assert report['windows']==2378
+        assert report['windows']==sum(j['expected_windows'] for j in spec['jobs'])
     report['status']='complete'
     (root/'report.json').write_text(json.dumps(common.json_safe(report),allow_nan=False))
     (root/'summary.json').write_text(json.dumps({'status':'complete','windows':report['windows'],'tables':7,'method':spec['method'],'shard_id':spec.get('shard_id')}))

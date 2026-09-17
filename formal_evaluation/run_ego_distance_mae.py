@@ -93,7 +93,7 @@ def run(spec):
             for path in [pd+'/metadata.json',pd+'/predictions.npz',remap(cg['array_path'],spec['path_mappings']),*[remap(x,spec['path_mappings']) for x in record['geometry_paths']]]:
                 if not Path(path).is_file():raise FileNotFoundError(path)
             jobs.append((ds,wid,pd,record,cg,sel))
-    assert len(jobs)==2378
+    assert len(jobs)==sum(j['expected_windows'] for j in spec['jobs'])
     root=Path(spec['output_root']);root.mkdir(parents=True,exist_ok=False)
     (root/'input_audit.json').write_text(json.dumps({'windows':len(jobs),'status':'complete','selection_sha256':spec['selection_sha256']}))
     grouped={j['dataset']:[] for j in spec['jobs']}

@@ -83,6 +83,11 @@ def main():
                 found[record['window_id']] = folder
                 progress(stage='inference',dataset=ds,completed=i,total=len(records),stride=spec['stride'],model_load_count=1,wall_seconds=time.monotonic()-start)
             (target_root/'predictions.jsonl').write_text(''.join(json.dumps({'method':'egofound3r','dataset':ds,'window_id':k,'prediction_dir':str(v)})+'\n' for k,v in found.items()))
+        elif 'prediction_index' in job:
+            indexed = common.read_jsonl(Path(job['prediction_index']))
+            found = {r['window_id']: Path(r['prediction_dir']) for r in indexed}
+            if len(found) != len(indexed):
+                raise ValueError('duplicate prediction window')
         else:
             aliases = {r['cache_id']: r['window_id'] for r in gt_rows}
             found = common.prediction_rows('egofound3r', {'dataset':ds,'expected_windows':len(gt),'predictions':{'egofound3r':{'formal_roots':job['formal_roots']}}},Path('/unused'),aliases,direct_oss=True)
@@ -106,7 +111,7 @@ def main():
         completed_total += len(rows)
         (target_root/'COMPLETE').write_text('complete\n')
         (root/'report.json').write_text(json.dumps(common.json_safe(report),indent=2,allow_nan=False))
-    if completed_total != 2378:
+    if completed_total != sum(j['expected_windows'] for j in spec['jobs']):
         raise ValueError('final coverage mismatch')
     report.update(status='complete',windows=completed_total)
     (root/'report.json').write_text(json.dumps(common.json_safe(report),indent=2,allow_nan=False))

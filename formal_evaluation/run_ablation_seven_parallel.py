@@ -69,7 +69,7 @@ def run(spec):
     raw=Path(spec['selection']).read_bytes();assert hashlib.sha256(raw).hexdigest()==spec['selection_sha256']
     selection={(r['dataset'],r['window_id']):r for r in map(json.loads,raw.splitlines())}
     upstream=Path(spec['upstream_root']);assert (upstream/'COMPLETE').exists()
-    report=json.loads((upstream/'report.json').read_text());assert report['windows']==2378 and report['selection_sha256']==spec['selection_sha256']
+    report=json.loads((upstream/'report.json').read_text());assert report['windows']==sum(j['expected_windows'] for j in spec['jobs']) and report['selection_sha256']==spec['selection_sha256']
     report.update(status='running',tables=7,workers=workers,resume_root=str(old),windows=0,
                   geometry_backend_for_new_windows=spec.get('geometry_backend','legacy'),
                   completed_metrics_preserved=True)
@@ -89,11 +89,11 @@ def run(spec):
             for wid in sorted(merged):out.write(json.dumps(merged[wid],allow_nan=False)+'\n')
         report['datasets'][ds].update(aggregate_windows(list(merged.values()),method=spec['method']))
         report['windows']+=len(merged);(folder/'COMPLETE').write_text('complete\n')
-    assert report['windows']==2378
+    assert report['windows']==sum(j['expected_windows'] for j in spec['jobs'])
     report['status']='complete'
     (root/'report.json').write_text(json.dumps(common.json_safe(report),allow_nan=False))
     (root/'source_windows.jsonl').write_text(''.join(json.dumps(r)+'\n' for r in provenance))
-    (root/'summary.json').write_text(json.dumps({'status':'complete','windows':2378,'tables':7,'workers':workers,'method':spec['method']}))
+    (root/'summary.json').write_text(json.dumps({'status':'complete','windows':report['windows'],'tables':7,'workers':workers,'method':spec['method']}))
     (root/'COMPLETE').write_text('complete\n')
 
 
