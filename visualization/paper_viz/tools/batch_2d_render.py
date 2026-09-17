@@ -49,6 +49,13 @@ DEFAULT_MAPPING = Path("/mnt/workspace/sjc/EgoFound3R_viz_8fc061a_20260917/"
                        "egohandmetric_prompt/data/mano_upsampling/mano_195_to_778.npz")
 
 
+def complete_results(results: list[dict], expected: int) -> bool:
+    """Return true only when every selected segment has a usable final output."""
+    return (len(results) == expected
+            and all(result.get("status") in {"rendered", "skipped_existing"}
+                    for result in results))
+
+
 def cache_ids_of(entry: dict) -> list[str]:
     ids: list[str] = []
     for ref in entry.get("frame_refs") or []:
@@ -172,6 +179,8 @@ def main() -> None:
                         help="segment ids or cache ids to render")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--require-complete", action="store_true",
+                        help="fail and omit COMPLETE unless every selected segment rendered")
     args = parser.parse_args()
     args.staged_root = args.staged_root or (args.out_root / "_staged")
 
@@ -212,6 +221,13 @@ def main() -> None:
     (args.out_root / "batch_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary["status_counts"], indent=2))
     print(f"wall {summary['seconds']}s -> {args.out_root/'batch_summary.json'}")
+    if args.require_complete:
+        if not complete_results(results, len(entries)):
+            print("batch incomplete; COMPLETE not written", file=sys.stderr)
+            raise SystemExit(2)
+        complete = {"manifest": str(args.manifest), "segments": len(entries),
+                    "status_counts": summary["status_counts"]}
+        (args.out_root / "COMPLETE").write_text(json.dumps(complete, indent=2) + "\n")
 
 
 if __name__ == "__main__":

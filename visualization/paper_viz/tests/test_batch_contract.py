@@ -65,6 +65,13 @@ class BatchContractTest(unittest.TestCase):
                                          ("gt", "contact"),
                                          ("gt", "distance")))
 
+    def test_complete_results_rejects_partial_or_missing_segments(self):
+        self.assertTrue(batch.complete_results(
+            [{"status": "rendered"}, {"status": "skipped_existing"}], 2))
+        self.assertFalse(batch.complete_results([{"status": "rendered"}], 2))
+        self.assertFalse(batch.complete_results(
+            [{"status": "rendered"}, {"status": "missing_ego_infer"}], 2))
+
     def test_frozen_manifest_frame_refs_are_exact_and_cache_contiguous(self):
         entries = [json.loads(line) for line in MANIFEST.read_text().splitlines() if line.strip()]
         for entry in entries:

@@ -189,12 +189,14 @@ python3 tools/batch_2d_render.py \
   --ego-infer-root /mnt/workspace/sjc/DATA/eval_artifacts/paper_viz_infer_8fc061a_batch \
   --src-dir      /mnt/workspace/sjc/DATA/eval_artifacts/paper_viz_src_20260917 \
   --out-root     /mnt/workspace/sjc/DATA/eval_artifacts/paper_viz_2d_batch \
-  --parallel 6 --jobs 8 --skip-panels
+  --parallel 6 --jobs 8 --skip-panels --require-complete
 ```
 
 `--skip-panels` 是全量人工初筛的默认用法：每段只保留 1 张 5×15 总览图、1 个
 3×5 视频和 `report.json`。人类选中窗口后，再把入选 `segment_id` 渲染到新的
 selected 输出根（不加 `--skip-panels`），导出 5×15=75 张独立 panel，不覆盖初筛结果。
+`--require-complete` 只在全部段均产生可用结果时写入顶层 `COMPLETE`；任一缺输入、
+失败或帧数不一致都会非零退出。
 
 * `--parallel N`：同时渲染 N 段；`--jobs M`：每段内部用 M 个 worker 渲染视频帧。
   经验值：单机 160 核时 `N×M ≤ 96` 比较稳（例如 6×8 或 8×8）。
