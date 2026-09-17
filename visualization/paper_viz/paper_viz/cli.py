@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +17,10 @@ from .video import VideoWriter
 METHODS = style.METHODS
 VIEWS_FIG = ("front", "left", "top", "right", "side", "bottom")
 VIEWS_VIDEO = ("front", "left", "top")
+
+# Frame-parallel workers read the segment through this dict instead of pickling it
+# per task: the pool is forked, so children inherit the loaded sources copy-on-write.
+_WORKER = {}
 
 
 def build_registry(args) -> dict:
@@ -161,18 +166,49 @@ def render_2d_block(segment: SegmentSources, out: Path, report: dict, args, sele
     if not args.skip_videos:
         writer = VideoWriter(out / "video2_2d_matrix.mp4", fps=args.fps)
         total_frames = 60 * len(segment.windows)
-        for t in range(0, total_frames, args.video_stride):
-            w_index, f_index = divmod(t, 60)
-            window = segment.windows[w_index]
-            frame = render2d.Frame2D(window, f_index, segment.mano, cell_w=args.cell2d_video)
-            cells = {}
-            for c, (method, signal) in enumerate(render2d.COLUMNS):
-                cells[(0, c)] = render2d.column_cell(frame, method, signal, f_index)
-            writer.add(compose_figure2(cells, 1, [f"{window.frame_ids[f_index]}"], segment,
-                                       subtitle=f"2D camera-space overlay | clip frame {t} "
-                                                f"| source frame {window.frame_ids[f_index]}"))
+        indices = list(range(0, total_frames, args.video_stride))
+        for image in video_rows(segment, args, indices):
+            writer.add(image)
         report["outputs"]["video2"] = str(out / "video2_2d_matrix.mp4")
         report["video2_frames"] = writer.close()
+
+
+def video_row(t: int):
+    """Compose one video row (15 columns, one clip frame) — the unit of work."""
+    segment = _WORKER["segment"]
+    args = _WORKER["args"]
+    w_index, f_index = divmod(t, 60)
+    window = segment.windows[w_index]
+    frame = render2d.Frame2D(window, f_index, segment.mano, cell_w=args.cell2d_video)
+    cells = {}
+    for c, (method, signal) in enumerate(render2d.COLUMNS):
+        cells[(0, c)] = render2d.column_cell(frame, method, signal, f_index)
+    return compose_figure2(cells, 1, [f"{window.frame_ids[f_index]}"], segment,
+                           subtitle=f"2D camera-space overlay | clip frame {t} "
+                                    f"| source frame {window.frame_ids[f_index]}")
+
+
+def video_rows(segment: SegmentSources, args, indices: list):
+    """Yield composed rows in clip order, rendered serially or by a fork pool.
+
+    Rows are independent (each builds its own Frame2D), so ``--jobs`` renders them
+    in parallel; ``imap`` keeps the frame order the H.264 stream needs.  Without
+    fork support the render falls back to the serial path.
+    """
+    _WORKER["segment"], _WORKER["args"] = segment, args
+    if args.jobs <= 1 or len(indices) <= 1:
+        for t in indices:
+            yield video_row(t)
+        return
+    try:
+        context = multiprocessing.get_context("fork")
+    except ValueError:
+        for t in indices:
+            yield video_row(t)
+        return
+    with context.Pool(args.jobs) as pool:
+        for image in pool.imap(video_row, indices, chunksize=1):
+            yield image
 
 
 def render_fig2_frame(segment: SegmentSources, out: Path, args) -> dict:
@@ -248,6 +284,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--skip-videos", action="store_true")
     parser.add_argument("--video-stride", type=int, default=1)
+    parser.add_argument("--jobs", type=int, default=1,
+                        help="parallel workers for video rows (fork-based); frames are "
+                             "independent, so output is unchanged")
     parser.add_argument("--skip-panels", action="store_true")
     parser.add_argument("--stages", choices=("all", "fig2", "fig2_frame"), default="all")
     return parser

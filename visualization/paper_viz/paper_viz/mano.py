@@ -13,6 +13,16 @@ class ManoAsset:
             self.weights = archive["geometry_weights"]
             self.anchors = archive["source_vertex_ids"]
             self.faces = archive["faces"]
+        self._edges = None
+
+    @property
+    def edges(self) -> np.ndarray:
+        """(E, 2) unique mesh edges, computed once and shared by every frame."""
+        if self._edges is None:
+            pairs = np.concatenate([self.faces[:, [0, 1]], self.faces[:, [1, 2]],
+                                    self.faces[:, [2, 0]]])
+            self._edges = np.unique(np.sort(pairs, axis=1), axis=0)
+        return self._edges
 
     def upsample(self, markers: np.ndarray) -> np.ndarray:
         """markers: (..., 195, 3) -> (..., 778, 3) with exact anchor restoration."""

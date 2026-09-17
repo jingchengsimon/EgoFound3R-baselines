@@ -185,8 +185,10 @@ def _boost(rgb, saturation: float = 1.0, value: float = 1.0):
 def _boost_array(colors: np.ndarray, value: float) -> np.ndarray:
     if value == 1.0:
         return colors
-    return np.array([_boost(tuple(int(c) for c in row), 1.0, value) for row in colors],
-                    dtype=colors.dtype)
+    unique, inverse = np.unique(colors.reshape(-1, 3), axis=0, return_inverse=True)
+    boosted = np.array([_boost(tuple(int(c) for c in row), 1.0, value) for row in unique],
+                       dtype=colors.dtype)
+    return boosted[inverse].reshape(colors.shape)
 
 
 def set_brightness(geometry: float = 1.0, signal: float = 1.0) -> None:
@@ -263,16 +265,34 @@ def distance_palette(values_m):
     values_m = np.asarray(values_m, np.float32)
     if PALETTE_MODE == "soft":
         return interpolate_palette(values_m / CONTACT_DISTANCE_DISPLAY_MAX_M, DISTANCE_STOPS)
-    import cv2
-
     colors = np.empty(values_m.shape + (3,), np.uint8)
     colors[...] = np.asarray(_boost(SEMANTIC_UNKNOWN_RGB, 1.0, SIGNAL_BRIGHTNESS), np.uint8)
     finite = np.isfinite(values_m)
     normalized = np.clip(values_m[finite] / CONTACT_DISTANCE_DISPLAY_MAX_M, 0.0, 1.0)
     indices = np.rint(normalized * 255.0).astype(np.uint8).reshape(-1, 1)
-    turbo = cv2.applyColorMap(indices, cv2.COLORMAP_TURBO).reshape(-1, 3)[:, ::-1]
-    colors[finite] = _boost_array(turbo, SIGNAL_BRIGHTNESS)
+    colors[finite] = turbo_lookup(SIGNAL_BRIGHTNESS)[indices.ravel()]
     return colors
+
+
+_TURBO_CACHE: dict[float, np.ndarray] = {}
+
+
+def turbo_lookup(value: float) -> np.ndarray:
+    """256-entry TURBO palette with the signal brightness lift applied.
+
+    ``cv2.applyColorMap`` is a per-value lookup, so mapping the 256 possible
+    indices once and indexing the table gives exactly the same colours as
+    colouring a full per-vertex index array, without the per-frame cv2 call.
+    """
+    cached = _TURBO_CACHE.get(value)
+    if cached is None:
+        import cv2
+
+        indices = np.arange(256, dtype=np.uint8).reshape(-1, 1)
+        turbo = cv2.applyColorMap(indices, cv2.COLORMAP_TURBO).reshape(-1, 3)[:, ::-1]
+        cached = _boost_array(turbo, value)
+        _TURBO_CACHE[value] = cached
+    return cached
 
 
 def font(size: int, bold: bool = False, hand: bool = True) -> ImageFont.FreeTypeFont:

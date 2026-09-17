@@ -66,7 +66,7 @@ class Frame2D:
                       self.width, 0, zbuf, owner, face_id)
         self.object_zbuf = zbuf
         self.object_owner = owner
-        self._edges = mano_edges(mano.faces)
+        self._edges = mano.edges
         self._scene_cache = {}
 
     def _resolve_ego_K(self, window: WindowSources, index: int):
@@ -111,11 +111,6 @@ class Frame2D:
                           self.height, self.width, side + 1, zbuf, owner, face_id)
         self._scene_cache[cache_key] = (zbuf, owner, face_id)
         return zbuf, owner, face_id
-
-
-def mano_edges(faces: np.ndarray) -> np.ndarray:
-    pairs = np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
-    return np.unique(np.sort(pairs, axis=1), axis=0)
 
 
 def project_side(frame: Frame2D, vertices: np.ndarray, K: np.ndarray | None = None):
@@ -202,7 +197,9 @@ def wireframe_cell(frame: Frame2D, vertices: np.ndarray, valid: np.ndarray, vert
     split keeps the boundary crisp, which is also how the mmpose reference draws
     "edges take their endpoint colour".
     """
-    image = frame.rgb.copy() if base is None else base.convert("RGB").copy()
+    # alpha_composite below builds a new image, so neither branch has to copy:
+    # ``base`` is only read, and the RGB frame is never written to.
+    image = frame.rgb if base is None else (base if base.mode == "RGB" else base.convert("RGB"))
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     scene = (frame.hand_scene(vertices, valid, K=K, with_object=with_object, key=key)
