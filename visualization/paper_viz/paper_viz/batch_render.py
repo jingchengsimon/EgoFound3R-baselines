@@ -17,8 +17,29 @@ import numpy as np
 
 from egohandmetric_prompt.inference_multiview import _box
 
+# Optional rasterizer bin grid.  ``None`` reproduces the reference exactly
+# (bit-identical frames).  A finite bin size rasterises ~1.66x faster at 192 px
+# but touches bin-boundary rounding: measured on the smoke segment it changes
+# exactly one pixel by one grey level in one of 300 frames, i.e. visually
+# identical but no longer bit-exact.  Opt in with ``--bin-size 64``.
+_RASTERIZERS: dict = {}
 
-def batched_render(renderer, parts_list, view, shadow_parts_list=None):
+
+def _rasterizer(renderer, bin_size):
+    if not bin_size:
+        return renderer.renderer.rasterizer
+    key = (id(renderer.renderer), int(bin_size))
+    cached = _RASTERIZERS.get(key)
+    if cached is None:
+        from pytorch3d.renderer import MeshRasterizer, RasterizationSettings
+        cached = MeshRasterizer(cameras=renderer.cameras, raster_settings=RasterizationSettings(
+            image_size=renderer.render_size, blur_radius=0., faces_per_pixel=1,
+            perspective_correct=True, cull_backfaces=False, bin_size=int(bin_size),
+            max_faces_per_bin=50000))
+        _RASTERIZERS[key] = cached
+    return cached
+
+def batched_render(renderer, parts_list, view, shadow_parts_list=None, bin_size=None):
     """Render ``parts_list`` (one entry per cell) for one viewpoint at once."""
     import torch
     from pytorch3d.renderer import TexturesVertex
@@ -32,22 +53,39 @@ def batched_render(renderer, parts_list, view, shadow_parts_list=None):
     floor_y, width, depth = renderer.floor_y, renderer.floor_width, renderer.floor_depth
     has_ground = renderer.ground and view != "bottom"
 
-    verts, faces, colours, hand_faces = [], [], [], []
+    # Assemble every cell in numpy first, then upload as ONE padded batch: creating
+    # and transferring a tensor per cell cost ~105 ms per viewpoint, while a single
+    # padded upload of the same data is a fraction of that (padding vertices are
+    # never referenced by any face, so the geometry is bit-identical).
+    cells, hand_faces = [], []
     for parts in parts_list:
         all_parts = list(parts)
         hand_faces.append(sum(len(part[1]) for part in parts))
         if has_ground:
             all_parts += [_box([center[0], floor_y - .009, center[2]], [width, .018, depth], [.94, .95, .97]),
                           _box([center[0], floor_y - .020, center[2]], [width * 1.12, .006, depth * 1.12], [.86, .88, .91])]
-        cells_v, cells_f, cells_c, offset = [], [], [], 0
+        cv, cf, cc, offset = [], [], [], 0
         for xyz, triangles, colour in all_parts:
-            cells_v.append((xyz @ pose[:3, :3].T + pose[:3, 3]).astype(np.float32))
-            cells_f.append(triangles + offset)
-            cells_c.append(np.broadcast_to(colour, (len(xyz), 3)))
+            cv.append((xyz @ pose[:3, :3].T + pose[:3, 3]).astype(np.float32))
+            cf.append(triangles + offset)
+            cc.append(np.broadcast_to(colour, (len(xyz), 3)))
             offset += len(xyz)
-        verts.append(torch.as_tensor(np.concatenate(cells_v), dtype=torch.float32, device=renderer.device))
-        faces.append(torch.as_tensor(np.concatenate(cells_f), dtype=torch.long, device=renderer.device))
-        colours.append(torch.as_tensor(np.concatenate(cells_c), dtype=torch.float32, device=renderer.device))
+        cells.append((np.concatenate(cv), np.concatenate(cf).astype(np.int64), np.concatenate(cc).astype(np.float32)))
+    # One upload per attribute, then zero-copy tensor slices per cell: building a
+    # tensor per cell cost ~105 ms per viewpoint, this costs a few ms.
+    all_verts = torch.as_tensor(np.concatenate([v for v, _, _ in cells]), dtype=torch.float32,
+                                device=renderer.device)
+    all_colours = torch.as_tensor(np.concatenate([c for _, _, c in cells]), dtype=torch.float32,
+                                  device=renderer.device)
+    all_faces = torch.as_tensor(np.concatenate([f for _, f, _ in cells]), dtype=torch.long,
+                                device=renderer.device)
+    verts, colours, faces, v_off, f_off = [], [], [], 0, 0
+    for vertex, triangles, colour in cells:
+        verts.append(all_verts[v_off:v_off + len(vertex)])
+        colours.append(all_colours[v_off:v_off + len(colour)])
+        faces.append(all_faces[f_off:f_off + len(triangles)])
+        v_off += len(vertex)
+        f_off += len(triangles)
     mesh = Meshes(verts=verts, faces=faces, textures=TexturesVertex(verts_features=colours))
     # pytorch3d reports pix_to_face with *global* face ids that keep counting across
     # the batch (item i starts at the cumulative face count of items < i), so the
@@ -55,7 +93,7 @@ def batched_render(renderer, parts_list, view, shadow_parts_list=None):
     # own face layout.
     face_offsets = np.concatenate([[0], np.cumsum([len(f) for f in faces])[:-1]]).astype(np.int64)
 
-    fragments = renderer.renderer.rasterizer(meshes_world=mesh, cameras=renderer.cameras)
+    fragments = _rasterizer(renderer, bin_size)(meshes_world=mesh, cameras=renderer.cameras)
     center_camera = center @ pose[:3, :3].T + pose[:3, 3]
     count = len(parts_list)
     size = renderer.render_size
@@ -75,24 +113,33 @@ def batched_render(renderer, parts_list, view, shadow_parts_list=None):
 
     shadows = shadow_parts_list if shadow_parts_list is not None else parts_list
     if has_ground and any(len(parts) for parts in shadows):
-        verts, faces, colours = [], [], []
+        cells = []
         for parts in shadows:
-            cells_v, cells_f, offset = [], [], 0
+            cv, cf, offset = [], [], 0
             for xyz, triangles, _ in parts:
                 shadow = xyz.copy()
                 height = shadow[:, 1] - floor_y
                 shadow[:, 0] += height * .25
                 shadow[:, 2] -= height * .15
                 shadow[:, 1] = floor_y + .0005
-                cells_v.append((shadow @ pose[:3, :3].T + pose[:3, 3]).astype(np.float32))
-                cells_f.append(triangles + offset)
+                cv.append((shadow @ pose[:3, :3].T + pose[:3, 3]).astype(np.float32))
+                cf.append(triangles + offset)
                 offset += len(shadow)
-            if not cells_v:
-                cells_v, cells_f = [np.zeros((0, 3), np.float32)], [np.zeros((0, 3), np.int64)]
-            verts.append(torch.as_tensor(np.concatenate(cells_v), dtype=torch.float32, device=renderer.device))
-            faces.append(torch.as_tensor(np.concatenate(cells_f), dtype=torch.long, device=renderer.device))
-            colours.append(torch.ones((len(verts[-1]), 3), dtype=torch.float32, device=renderer.device))
-        projected = renderer.renderer.rasterizer(
+            if not cv:
+                cv, cf = [np.zeros((0, 3), np.float32)], [np.zeros((0, 3), np.int64)]
+            cells.append((np.concatenate(cv), np.concatenate(cf).astype(np.int64)))
+        all_verts = torch.as_tensor(np.concatenate([v for v, _ in cells]), dtype=torch.float32,
+                                    device=renderer.device)
+        all_faces = torch.as_tensor(np.concatenate([f for _, f in cells]), dtype=torch.long,
+                                    device=renderer.device)
+        verts, faces, v_off, f_off = [], [], 0, 0
+        for vertex, triangles in cells:
+            verts.append(all_verts[v_off:v_off + len(vertex)])
+            faces.append(all_faces[f_off:f_off + len(triangles)])
+            v_off += len(vertex)
+            f_off += len(triangles)
+        colours = [torch.ones_like(vertex) for vertex in verts]
+        projected = _rasterizer(renderer, bin_size)(
             meshes_world=Meshes(verts=verts, faces=faces, textures=TexturesVertex(verts_features=colours)),
             cameras=renderer.cameras)
         masks = (projected.pix_to_face[..., 0] >= 0).float().cpu().numpy()

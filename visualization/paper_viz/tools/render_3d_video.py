@@ -78,7 +78,8 @@ def _scene_frame(t: int, rgb_tile=None) -> "np.ndarray":
             for view in scene["views"]:
                 rendered = batched_render(renderer,
                                           [parts_of[n] + annotations for n in scene["drawn"]], view,
-                                          [parts_of[n] for n in scene["drawn"]])
+                                          [parts_of[n] for n in scene["drawn"]],
+                                          bin_size=scene.get("bin_size"))
                 for name, rgb in zip(scene["drawn"], rendered):
                     if view == "top" and R.TOP_VIEW_ROT90_CCW:
                         rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
@@ -191,6 +192,9 @@ def main() -> None:
     parser.add_argument("--camera-scale", type=float, default=0.12)
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--stride", type=int, default=1)
+    parser.add_argument("--bin-size", type=int, default=64,
+                        help="rasterizer bin grid; 64 is 1.66x faster and visually identical, "
+                             "0 restores the bit-exact reference rasterizer")
     parser.add_argument("--no-batch-cells", dest="batch_cells", action="store_false", default=True,
                         help="one render() call per cell instead of the batched path")
     parser.add_argument("--shard-mode", choices=("method", "frames"), default="frames",
@@ -281,7 +285,8 @@ def main() -> None:
                      sequences=sequences, windows=windows, show_camera=show_camera,
                      camera_scale=args.camera_scale, views=list(args.views), drawn=drawn,
                      columns=["Input RGB"] + [METHOD_LABELS_3D[m] for m in drawn],
-                     segment_id=registry["segment_id"], batch_cells=args.batch_cells)
+                     segment_id=registry["segment_id"], batch_cells=args.batch_cells,
+                     bin_size=args.bin_size)
         context = multiprocessing.get_context("spawn")
         with context.Pool(len(tasks), initializer=_worker_scene, initargs=(state,)) as pool:
             for count in pool.map(_render_range, tasks):

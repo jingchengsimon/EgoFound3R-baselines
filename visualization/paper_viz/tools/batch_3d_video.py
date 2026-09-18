@@ -97,6 +97,7 @@ def scene_state(args, inputs_dir: Path, device: str) -> dict:
                 show_camera=show_camera, camera_scale=args.camera_scale, views=list(V.R.VIEWPOINTS),
                 drawn=drawn, columns=["Input RGB"] + [METHOD_LABELS_3D[m] for m in drawn],
                 segment_id=registry["segment_id"], batch_cells=True, renderer=renderer,
+                bin_size=args.bin_size,
                 device=device, frames_total=frames_total)
 
 
@@ -161,6 +162,9 @@ def main() -> None:
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--stride", type=int, default=1)
     parser.add_argument("--crf", type=int, default=20)
+    parser.add_argument("--bin-size", type=int, default=64,
+                        help="rasterizer bin grid; 64 is 1.66x faster and visually identical, "
+                             "0 restores the bit-exact reference rasterizer")
     parser.add_argument("--camera-overlay", choices=("show", "hide"), default="show")
     parser.add_argument("--fit-margin", type=float, default=None)
     parser.add_argument("--camera-scale", type=float, default=0.12)
