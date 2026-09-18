@@ -134,7 +134,9 @@ python3 tools/batch_3d_render.py \
 | 行 | front / right / back / left（40° 斜视）+ top（85° 俯视，**逆时针转 90°**，开关 `TOP_VIEW_ROT90_CCW`） |
 | 手部配色 | 参考 8fc061a 的 Morandi 左右手色 + 时间渐变 `SIDE_LIGHT→SIDE_DARK` |
 | ReViV4D | **只画 21 关节骨架**（细骨管 + 关节块），且关节顺序必须过 `paper_viz.joint_order.joints_in_gt_order("reviv4d", ...)` |
-| 世界系 | 8 方法统一到 GT world（标定 c2w / native 逐窗对齐 / pred 相机对齐），再按"相机朝上"做水平化旋转 |
+| 世界系 | 8 方法统一到 GT world（标定 c2w / native·pred 逐窗刚体对齐），再按"相机朝上"做水平化旋转 |
+| 相机口径 | **每个方法优先用自己的预测外参**：Dyn-HaMR / HaWoR / ReViV4D / EgoFound3R 画**绿色 pred 相机**；GT / WiLoR / PAD-Hand / EgoForce 不预测相机，用**橙色标定相机**。内参同理优先自己预测（目前只有 EgoFound3R 有 `intrinsics_pred`，fx≈2075 vs 标定 2319），其余回落标定 K |
+| 轨迹 | 视频：只画**当前帧及过去**（累积，不画未来）；图片：画整段完整轨迹。两者都与手部一起做逐窗对齐，手—相机相对关系保持不变 |
 | 地面 | 平台由**整条手部轨迹** AABB 驱动（最低点下方固定 gap，footprint ×1.55） |
 | 取景 | 手部轨迹 4–96 分位盒反解距离：`--camera-overlay show` margin 0.82、`hide` 0.72（`--fit-margin` 可覆盖） |
 | 标签 | TTF（DejaVuSans，回退随包 PatrickHand），字号 0.115×cell，行列名**居中** |

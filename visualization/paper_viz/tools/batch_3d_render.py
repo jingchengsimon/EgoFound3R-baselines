@@ -45,6 +45,88 @@ from paper_viz.sequences3d import METHOD_LABELS_3D                 # noqa: E402
 _W: dict = {}
 
 
+PATH_STEP = 5      # decimate the trajectory tube list: one part per 5 frames
+
+
+def _camera_sequences(scene):
+    """One HandSequence-like camera object per method (own pred, else calibrated)."""
+    from egohandmetric_prompt.inference_multiview import HandSequence
+    cached = scene.get("cameras")
+    if cached is not None:
+        return cached
+    vertex_count = int(scene["store"]["gt"]["faces"].max()) + 1
+    cameras = {}
+    for name in scene["drawn"]:
+        bundle = scene["store"].get(name, {}).get("camera")
+        if bundle is None:
+            continue
+        frames = len(bundle["c2w"])
+        cameras[name] = HandSequence(
+            name=f"Camera ({bundle['source']})",
+            vertices=np.zeros((frames, 2, vertex_count, 3), np.float32),
+            valid=np.zeros((frames, 2, vertex_count), bool),
+            faces=scene["store"]["gt"]["faces"], camera_source=bundle["source"],
+            camera_to_display=bundle["c2w"], camera_valid=np.asarray(bundle["valid"], bool),
+            camera_K=bundle["K"], camera_K_valid=np.asarray(bundle["K_valid"], bool),
+            image_size_hw=bundle["size_hw"])
+    scene["cameras"] = cameras
+    return cameras
+
+
+def _path_parts_per_segment(scene, method):
+    """Trajectory tubes split per decimated segment, so the video can crop them.
+
+    ``camera_overlay_parts`` returns the whole path as one part, which cannot be
+    limited to "up to the current frame"; splitting it costs one trimesh build per
+    decimated step and is done once per clip.
+    """
+    from egohandmetric_prompt.inference_multiview import CAMERA_COLORS, _tube_part
+    store = scene.setdefault("path_parts", {})
+    if method in store:
+        return store[method]
+    camera = _camera_sequences(scene).get(method)
+    if camera is None:
+        store[method] = []
+        return []
+    indices = np.arange(0, scene["frames_total"], PATH_STEP)
+    points = camera.camera_to_display[indices, :3, 3]
+    valid = np.asarray(camera.camera_valid, bool)[indices]
+    color = CAMERA_COLORS[camera.camera_source]
+    radius = scene["camera_scale"] * .018
+    parts = []
+    for index in range(len(indices) - 1):
+        if valid[index] and valid[index + 1] and np.isfinite(points[index:index + 2]).all():
+            parts.append(_tube_part(np.stack([points[index], points[index + 1]], axis=0)[None],
+                                    color, radius))
+        else:
+            parts.append([])
+    store[method] = parts
+    return parts
+
+
+def _method_annotations(scene, method, t, *, temporal: bool):
+    """Frustum at the requested time step plus the trajectory drawn so far."""
+    from egohandmetric_prompt.inference_multiview import camera_overlay_parts
+    if not scene["show_camera"]:
+        return []
+    camera = _camera_sequences(scene).get(method)
+    if camera is None:
+        return []
+    times = list(t) if temporal else [t]
+    parts = camera_overlay_parts(camera, times, show_frustums=True, path_indices=(),
+                                 scale=scene["camera_scale"])
+    if temporal:
+        parts += camera_overlay_parts(camera, [], show_frustums=False,
+                                      path_indices=np.arange(scene["frames_total"]),
+                                      scale=scene["camera_scale"])
+    else:
+        tracks = _path_parts_per_segment(scene, method)
+        count = min(len(tracks), int(t) // PATH_STEP + 1)
+        for part in tracks[:count]:
+            parts += part
+    return parts
+
+
 def _renderer(scene, cell, supersample):
     """Renderer for a given cell size (the scene keeps one per size)."""
     cache = scene.setdefault("renderers", {})
@@ -98,10 +180,8 @@ def render_summary(scene, out_dir: Path, args) -> None:
     from egohandmetric_prompt.inference_multiview import camera_overlay_parts
     keyframes = np.rint(np.linspace(0, scene["frames_total"] - 1, args.keyframes)).astype(int)
     parts = _cell_parts(scene, keyframes)
-    annotations = (camera_overlay_parts(scene["camera"], list(keyframes), show_frustums=True,
-                                        path_indices=(), scale=scene["camera_scale"])
-                   + _path_parts(scene)) if scene["show_camera"] else []
-    items = [parts[n] + annotations for n in scene["drawn"]]
+    items = [parts[n] + _method_annotations(scene, n, list(keyframes), temporal=True)
+             for n in scene["drawn"]]
     shadows = [parts[n] for n in scene["drawn"]]
     cells = {}
     renderer = _renderer(scene, args.cell, args.supersample)
@@ -162,11 +242,12 @@ def worker(device: str, tasks, out_root: str, args_dict: dict) -> None:
             start, stop = task[2], task[3]
             frames_dir = out_dir / "_frames"
             frames_dir.mkdir(parents=True, exist_ok=True)
-            if scene["show_camera"]:
-                # Keep the whole-clip trajectory in every video frame (same look as
-                # the figure); the frustums still follow the current time step.
-                scene["extra_annotations"] = _path_parts(scene)
             for t in range(start, stop, args.stride):
+                # Each row draws its own camera (pred when the method has one, else
+                # calibrated) and only the trajectory up to the current frame.
+                scene["annotations_by_method"] = {name: _method_annotations(scene, name, t,
+                                                                           temporal=False)
+                                                  for name in scene["drawn"]}
                 PILImage.fromarray(V._scene_frame(t)).save(frames_dir / f"{t:05d}.png")
 
 

@@ -60,7 +60,8 @@ def _scene_frame(t: int, tile=None) -> "np.ndarray":
     renderer = scene["renderer"]
     annotations = (camera_overlay_parts(scene["camera"], [t], show_frustums=True, path_indices=(),
                                         scale=scene["camera_scale"])
-                   + list(scene.get("extra_annotations", ())) if scene["show_camera"] else [])
+                   + list(scene.get("extra_annotations") or ()) if scene["show_camera"] else [])
+    by_method = scene.get("annotations_by_method")     # per-row cameras (batch path)
     cells = {}
     from paper_viz.batch_render import batched_render
     with torch.no_grad():
@@ -78,7 +79,8 @@ def _scene_frame(t: int, tile=None) -> "np.ndarray":
             # per-cell path and ~2.6x faster per frame.
             for view in scene["views"]:
                 rendered = batched_render(renderer,
-                                          [parts_of[n] + annotations for n in scene["drawn"]], view,
+                                          [parts_of[n] + (by_method[n] if by_method else annotations)
+                                           for n in scene["drawn"]], view,
                                           [parts_of[n] for n in scene["drawn"]],
                                           bin_size=scene.get("bin_size"))
                 for name, rgb in zip(scene["drawn"], rendered):
@@ -87,8 +89,10 @@ def _scene_frame(t: int, tile=None) -> "np.ndarray":
                     cells[(R.METHOD_LABELS_3D[name], view)] = rgb
         else:
             for name in scene["drawn"]:
+                row_annotations = by_method[name] if by_method else annotations
                 for view in scene["views"]:
-                    rgb = renderer.render(parts_of[name] + annotations, view, shadow_parts=parts_of[name])
+                    rgb = renderer.render(parts_of[name] + row_annotations, view,
+                                          shadow_parts=parts_of[name])
                     if view == "top" and R.TOP_VIEW_ROT90_CCW:
                         rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
                     cells[(R.METHOD_LABELS_3D[name], view)] = rgb
