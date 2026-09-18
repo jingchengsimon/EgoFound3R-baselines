@@ -127,6 +127,32 @@ def _method_annotations(scene, method, t, *, temporal: bool):
     return parts
 
 
+def _fit_with_cameras(scene, args):
+    """Extend the fit box to every row's camera centres (and their frustums)."""
+    cameras = _camera_sequences(scene)
+    points = [np.asarray(scene["framing"], float)]
+    for camera in cameras.values():
+        valid = np.asarray(camera.camera_valid, bool)
+        if valid.any():
+            centres = np.asarray(camera.camera_to_display)[valid][:, :3, 3]
+            points.append(centres - args.camera_scale)
+            points.append(centres + args.camera_scale)
+    cloud = np.concatenate([p for p in points if len(p)], axis=0)
+    low, high = cloud.min(0), cloud.max(0)
+    center, size = 0.5 * (low + high), high - low
+    gap = max(0.015, 0.08 * float(size[1]))
+    scene["bounds"] = (np.array([center[0] - 0.62 * size[0], low[1] - gap, center[2] - 0.62 * size[2]]),
+                       np.array([center[0] + 0.62 * size[0], high[1] + 0.30 * size[1],
+                                 center[2] + 0.62 * size[2]]))
+    scene["framing"] = cloud
+    trimmed = np.percentile(cloud, [2, 98], axis=0)
+    scene["fit_points"] = np.array(np.meshgrid(*zip(trimmed[0], trimmed[1]))).T.reshape(-1, 3)
+    scene["scene_center"] = 0.5 * (scene["bounds"][0] + scene["bounds"][1])
+    scene["margin"] = args.fit_margin if args.fit_margin else 1.02
+    scene["renderers"] = {}          # rebuild with the wider framing
+    scene.pop("path_parts", None)
+
+
 def _renderer(scene, cell, supersample):
     """Renderer for a given cell size (the scene keeps one per size)."""
     cache = scene.setdefault("renderers", {})
@@ -232,6 +258,8 @@ def worker(device: str, tasks, out_root: str, args_dict: dict) -> None:
             scene.update(scene_state(args, Path(segment), device))
             # The video path (`_scene_frame`) reads ``scene["renderer"]``; the image
             # path builds renderers lazily per cell size, so bind the video one here.
+            if args.fit_with_cameras:
+                _fit_with_cameras(scene, args)
             scene["renderer"] = _renderer(scene, args.cell, args.supersample)
             current = segment
         out_dir = Path(out_root) / Path(segment).name
@@ -274,6 +302,9 @@ def main() -> None:
     parser.add_argument("--camera-overlay", choices=("show", "hide"), default="show")
     parser.add_argument("--fit-margin", type=float, default=None)
     parser.add_argument("--camera-scale", type=float, default=0.12)
+    parser.add_argument("--fit-with-cameras", action="store_true",
+                        help="widen the framing so each row's camera frustum and trajectory "
+                             "are fully visible (hands get smaller)")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--video-frames", type=int, default=None,
                         help="render only the first N frames of each video (testing)")
