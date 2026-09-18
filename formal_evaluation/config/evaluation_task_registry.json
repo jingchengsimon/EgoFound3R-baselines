@@ -6811,6 +6811,13 @@
       "phase": "screening",
       "protocol": "frozen-final13-overview5x16-video4x5-no-panels-gtk-v1"
     },
+    "visualization:five:2d-final13:true-gt-k-multiclip:5000:20260918:v2": {
+      "dataset": "five",
+      "latest": "visualization-five-2d-final13-true-gt-k-multiclip-5000-20260918-v2",
+      "method_set": "egofound3r_stride5_gt_k",
+      "phase": "visualization",
+      "protocol": "long-segment-multiclip"
+    },
     "visualization:four:10s-gallery:endpoint104:5000:auxmethods-hawor-native-handzoom-panels:pilot_arctic_auxmethods_handzoom_panels_v1:20260915": {
       "dataset": "four",
       "latest": "visualization-four-10s-gallery-endpoint104-5000-auxmethods-hawor-native-handzoom-panels-pilot_arctic_auxmethods_handzoom_panels_v1-20260915",
@@ -7265,6 +7272,9 @@
     ],
     "egofound3r_stride5_filter_gtcamera_distribution": [
       "egofound3r"
+    ],
+    "egofound3r_stride5_gt_k": [
+      "egofound3r_stride5_gt_k"
     ],
     "egofound3r_stride5_joint2_frozen_p95_gtcamera_v2": [
       "egofound3r"
@@ -83803,6 +83813,108 @@
       "registration_key": "a87acb0a3bf37cd18db5d53e8007b03eff0a5d4ac195137c48a6049db4f0a7a4",
       "scheduler_id": "manual:paper-viz-2d-final13-4x5-gtk-6001-20260918-v1",
       "state_file": ".auto_scheduler/paper_viz_2d_final13_gtk_20260918/render_6001_v1_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 13,
+      "task_type": "visualization"
+    },
+    "visualization-five-2d-final13-true-gt-k-multiclip-5000-20260918-v2": {
+      "completion_artifacts": [
+        {
+          "min_bytes": 1,
+          "path": "/mnt/cpfs/paper_viz_2d_gt_k_multiclip_final13_20260918_v2/COMPLETE"
+        },
+        {
+          "min_bytes": 1,
+          "path": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2/batch_summary.json"
+        },
+        {
+          "min_bytes": 1,
+          "path": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2/COMPLETE"
+        }
+      ],
+      "created_at_epoch": 1789738153,
+      "identity": {
+        "code_commit": "44f847aa",
+        "layout": "overview5x16-video4x5",
+        "model_commit": "8fc061a615895bd3b5a556f7387bae306e32d9db",
+        "node": "5000",
+        "root_k_source": "gt",
+        "segments": "13",
+        "true_model_rerun": "true"
+      },
+      "job_keys": [
+        "five::final13"
+      ],
+      "launch": {
+        "command": "set -euo pipefail; env OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 '{python}' -u '{runtime_root}/visualization/paper_viz/tools/run_gt_k_multiclip_final13.py' --manifest '{runtime_root}/visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl' --only-file '{runtime_root}/visualization/paper_viz/final_selected_ids_20260918.txt' --pred-root '{pred_root}' --output-root '{gt_k_root}' --ego-repo '{ego_repo}' --python '{python}' --gpus '{gpu}'; exec env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH='{runtime_root}/visualization/paper_viz' '{python}' -u '{runtime_root}/visualization/paper_viz/tools/batch_2d_render.py' --manifest '{runtime_root}/visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl' --ego-infer-root '{pred_root}' --ego-gt-k-infer-root '{gt_k_root}' --src-dir /mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/src --prepared-root /mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared --hawor-root /mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor --contact-root /mnt/cpfs/sjc/DATA/eval_artifacts/result3_completion_20260910_v1 --mapping /mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/mano_195_to_778.npz --out-root '{output_root}' --parallel 6 --jobs 8 --skip-panels --require-complete --only arctic__256d4a5dfe__00230-00529 arctic__48b73ae1b1__00115-00414 arctic__807596a5cf__00320-00619 h2o__abfac9ba98__000714-000773 h2o__e9ff42af5e__000582-000761 h2o__fe5179dbcb__000000-000059 hot3d__49afad1fc6__57552408297471-57555741544656 oakink_v2__8a385974b3__11773-12009 oakink_v2__8a385974b3__12494-12730 taco__279b0b7ba6__00061-00120 taco__69d56ee923__00061-00180 taco__ac882ed842__00001-00060 taco__c035a542c4__00001-00120",
+        "controller_path": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2/runtime/formal_evaluation/remote_task_control.py",
+        "deploy_before_preflight": true,
+        "gpu_candidates": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "handle_path": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2/runtime/handle.json",
+        "log_path": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2/runtime/worker.log",
+        "method": "paper_viz_2d_true_gt_k",
+        "node_candidates": [
+          5000
+        ],
+        "preflight_paths": [
+          "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+          "/mnt/workspace/sjc/EgoFound3R_viz_8fc061a_20260917/infer_marker_multiclip.py",
+          "/mnt/workspace/sjc/EgoFound3R_viz_8fc061a_20260917/export_marker_inference_gt.py",
+          "/mnt/cpfs/paper_viz_2d_infer_8fc061a_frozen114_20260917_r1/COMPLETE",
+          "/mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/COMPLETE",
+          "/mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared",
+          "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor",
+          "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/mano_195_to_778.npz",
+          "/mnt/cpfs/sjc/DATA/eval_artifacts/result3_completion_20260910_v1"
+        ],
+        "required_gpu_count": 7,
+        "resource": "gpu",
+        "runtime_root": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2/runtime",
+        "support_files": [
+          "formal_evaluation/remote_task_control.py",
+          "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+          "visualization/paper_viz/final_selected_ids_20260918.txt",
+          "visualization/paper_viz/paper_viz/__init__.py",
+          "visualization/paper_viz/paper_viz/cli.py",
+          "visualization/paper_viz/paper_viz/inputs.py",
+          "visualization/paper_viz/paper_viz/joint_order.py",
+          "visualization/paper_viz/paper_viz/layout.py",
+          "visualization/paper_viz/paper_viz/mano.py",
+          "visualization/paper_viz/paper_viz/raster.py",
+          "visualization/paper_viz/paper_viz/render2d.py",
+          "visualization/paper_viz/paper_viz/render3d.py",
+          "visualization/paper_viz/paper_viz/scene.py",
+          "visualization/paper_viz/paper_viz/style.py",
+          "visualization/paper_viz/paper_viz/video.py",
+          "visualization/paper_viz/tools/batch_2d_render.py",
+          "visualization/paper_viz/tools/export_ego_viz_inputs.py",
+          "visualization/paper_viz/tools/run_gt_k_multiclip_final13.py",
+          "visualization/paper_viz/tools/stage_ego_windows.py"
+        ],
+        "validate_runtime_registry": false,
+        "values": {
+          "ego_repo": "/mnt/workspace/sjc/EgoFound3R_viz_8fc061a_20260917",
+          "gt_k_root": "/mnt/cpfs/paper_viz_2d_gt_k_multiclip_final13_20260918_v2",
+          "output_root": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2",
+          "pred_root": "/mnt/cpfs/paper_viz_2d_infer_8fc061a_frozen114_20260917_r1",
+          "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
+          "runtime_root": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2/runtime"
+        }
+      },
+      "logical_task_id": "visualization:five:2d-final13:true-gt-k-multiclip:5000:20260918:v2",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2",
+      "registration_key": "a33abba55af584bc471a5ccf9aaec294978eee2f3323b27adc8037dc235087e3",
+      "scheduler_id": "manual:paper-viz-2d-final13-true-gt-k-multiclip-5000-20260918-v2",
+      "state_file": ".auto_scheduler/paper_viz_2d_final13_true_gtk_20260918/render_5000_v2_state.json",
       "state_section": "jobs",
       "target_windows_per_method": 13,
       "task_type": "visualization"
