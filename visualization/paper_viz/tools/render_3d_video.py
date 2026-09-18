@@ -37,6 +37,78 @@ from paper_viz.video import VideoWriter                            # noqa: E402
 _WORK: dict = {}
 
 
+def _scene_frame(t: int) -> "np.ndarray":
+    """Compose the full matrix for one time step (used by every shard mode)."""
+    import torch
+    from egohandmetric_prompt.inference_multiview import camera_overlay_parts, mesh_parts
+    scene = _SCENE
+    renderer = scene["renderer"]
+    annotations = (camera_overlay_parts(scene["camera"], [t], show_frustums=True, path_indices=(),
+                                        scale=scene["camera_scale"]) if scene["show_camera"] else [])
+    cells = {}
+    with torch.no_grad():
+        for name in scene["drawn"]:
+            if name in scene["sequences"]:
+                parts = mesh_parts(scene["sequences"][name], [t], scene["times"], temporal_colors=False)
+            else:
+                entry = scene["store"][name]
+                parts = R.skeleton_parts(entry["joints"], entry["valid"], [t], scene["times"],
+                                         temporal_colors=False)
+            for view in scene["views"]:
+                rgb = renderer.render(parts + annotations, view, shadow_parts=parts)
+                if view == "top" and R.TOP_VIEW_ROT90_CCW:
+                    rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
+                cells[(R.METHOD_LABELS_3D[name], view)] = rgb
+    from PIL import Image as PILImage
+    w_index, f_index = divmod(int(t), 60)
+    picture = PILImage.open(rgb_path(scene["windows"][w_index], f_index))
+    if picture.mode != "RGB":
+        picture = picture.convert("RGB")
+    scale = scene["cell"] / picture.width
+    picture = picture.resize((scene["cell"], max(1, int(round(picture.height * scale)))),
+                             PILImage.Resampling.LANCZOS)
+    tile = PILImage.new("RGB", (scene["cell"], scene["cell"]), (255, 255, 255))
+    tile.paste(picture, (0, max((scene["cell"] - picture.height) // 2, 0)))
+    for view in scene["views"]:
+        cells[("Input RGB", view)] = np.asarray(tile)
+    camera_note = "with camera rig" if scene["show_camera"] else "hand-only (camera hidden)"
+    return R.compose_matrix(cells, scene["columns"], list(scene["views"]),
+                            title=f"{scene['segment_id']} | frame {int(t)} | world space | "
+                                  f"rows = views, columns = methods | {camera_note} | "
+                                  "EgoFound3R = 8fc061a infer (default post-processing)",
+                            cell_px=scene["cell"], temporal=False,
+                            camera_legend=scene["show_camera"])
+
+
+_SCENE: dict = {}
+
+
+def _worker_scene(state: dict) -> None:
+    """Spawned worker for frame-range sharding: adopt the scene state."""
+    _SCENE.update(state)
+
+
+def _render_range(task) -> int:
+    """Render one contiguous frame range and write lossless PNG frames."""
+    from PIL import Image as PILImage
+    device, indices, frames_dir = task
+    if _SCENE.get("device") != device:            # build this worker's own renderer
+        _SCENE["device"] = device
+        _SCENE["renderer"] = R.HandMultiviewRenderer(_SCENE["bounds"], cell_size=_SCENE["cell"],
+                                                     device=device, ground=True,
+                                                     supersample=_SCENE["supersample"],
+                                                     framing_points=_SCENE["framing"])
+        for name, (yaw, pitch) in R.VIEWPOINTS.items():
+            _SCENE["renderer"].view_poses[name] = R.turntable_pose(_SCENE["scene_center"],
+                                                                   _SCENE["fit_points"], yaw, pitch,
+                                                                   margin=_SCENE["margin"])
+    written = 0
+    for t in indices:
+        PILImage.fromarray(_scene_frame(t)).save(Path(frames_dir) / f"{t:05d}.png")
+        written += 1
+    return written
+
+
 def _worker_init(state: dict) -> None:
     """Spawned worker: adopt the (pickled) scene state."""
     _WORK.update(state)
@@ -97,13 +169,17 @@ def main() -> None:
     parser.add_argument("--camera-scale", type=float, default=0.12)
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--stride", type=int, default=1)
+    parser.add_argument("--shard-mode", choices=("method", "frames"), default="frames",
+                        help="frames = each GPU renders a contiguous time range into lossless "
+                             "PNGs, then one ffmpeg pass (no per-frame sync/IPC)")
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--frames", type=int, default=None, help="limit for a preview")
     parser.add_argument("--crf", type=int, default=20)
     args = parser.parse_args()
 
     devices = args.devices or [args.device]
-    sharded = len(devices) > 1
+    sharded = len(devices) > 1 and args.shard_mode == "method"
+    frame_sharded = len(devices) > 1 and args.shard_mode == "frames"
     registry, windows, mano = R.load_segment(args)
     store = R.build_segment_sequences(type("S", (), {"windows": windows})(), mano)
     from egohandmetric_prompt.inference_multiview import (HandSequence, camera_overlay_parts,
@@ -164,7 +240,36 @@ def main() -> None:
                                                          margin=margin)
 
     args.out.mkdir(parents=True, exist_ok=True)
+    stop = frames_total if args.frames is None else min(frames_total, args.start + args.frames)
     writer = VideoWriter(args.out / "video1_3d_matrix.mp4", fps=args.fps)
+    if frame_sharded:
+        # Frame-range sharding: every GPU renders a contiguous time range into
+        # lossless PNGs (identical pixels to the piped path), then one ffmpeg pass.
+        frames_dir = args.out / "_frames"
+        frames_dir.mkdir(parents=True, exist_ok=True)
+        indices = list(range(args.start, stop, args.stride))
+        per = int(np.ceil(len(indices) / len(devices)))
+        tasks = [(device, indices[i * per:(i + 1) * per], frames_dir)
+                 for i, device in enumerate(devices) if indices[i * per:(i + 1) * per]]
+        state = dict(bounds=bounds, framing=framing_all, fit_points=fit_points,
+                     scene_center=scene_center, margin=margin, cell=args.cell,
+                     supersample=args.supersample, store=store, camera=camera, times=times,
+                     sequences=sequences, windows=windows, show_camera=show_camera,
+                     camera_scale=args.camera_scale, views=list(args.views), drawn=drawn,
+                     columns=["Input RGB"] + [METHOD_LABELS_3D[m] for m in drawn],
+                     segment_id=registry["segment_id"])
+        context = multiprocessing.get_context("spawn")
+        with context.Pool(len(tasks), initializer=_worker_scene, initargs=(state,)) as pool:
+            for count in pool.map(_render_range, tasks):
+                print(f"  shard done ({count} frames)", flush=True)
+        import subprocess
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(args.fps),
+                        "-i", str(frames_dir / "%05d.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                        "-crf", str(args.crf), "-movflags", "+faststart",
+                        str(args.out / "video1_3d_matrix.mp4")], check=True)
+        print(f"wrote {args.out / 'video1_3d_matrix.mp4'} ({len(indices)} frames, cell {args.cell}, "
+              f"camera {args.camera_overlay}, {len(tasks)} frame shards)")
+        return
     pool = None
     if sharded:
         # Fork *after* the scene exists: children inherit it and only exchange
@@ -179,7 +284,6 @@ def main() -> None:
         pool = multiprocessing.get_context("spawn").Pool(len(devices), initializer=_worker_init,
                                                          initargs=(state,))
 
-    stop = frames_total if args.frames is None else min(frames_total, args.start + args.frames)
     written = 0
     for t in range(args.start, stop, args.stride):
         cells = {}
