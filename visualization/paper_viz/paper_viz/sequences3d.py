@@ -153,16 +153,33 @@ def _window_world(method: str, window: WindowSources, mano, vertices_camera=None
 
 
 def concatenate_cameras(cameras: list, total: int) -> dict:
-    """Stack the per-window camera bundle over the clip (pad missing windows).
+    """Stack the per-window camera bundles over the clip, one entry per window.
 
-    Every camera array is padded to ``total`` frames so a method with a sparse or
-    absent prediction (Dyn-HaMR) still lines up with the shared time axis.
+    ``cameras`` is in window order and may contain ``None`` for windows where the
+    method has no prediction; those windows are filled with an invalid (NaN) camera
+    *in place*, so window *i* keeps the frames of window *i*.  Dropping the missing
+    windows instead slid every later rig to the start of the clip: Dyn-HaMR (1 of 5
+    windows here) was drawn during frames 0-59 while its hand lives in 120-179.
     """
-    first = cameras[0]
-    c2w = np.concatenate([c["c2w"] for c in cameras], axis=0)
-    valid = np.concatenate([np.asarray(c["valid"], bool) for c in cameras])
-    K = np.concatenate([c["K"] for c in cameras], axis=0)
-    K_valid = np.concatenate([np.asarray(c["K_valid"], bool) for c in cameras])
+    present = [camera for camera in cameras if camera is not None]
+    if not present:
+        raise ValueError("no camera to concatenate")
+    first = present[0]
+    frames, intrinsics = np.asarray(first["c2w"], float).shape[0], np.asarray(first["K"], float)
+    placeholder_K = (intrinsics[None] if intrinsics.ndim == 2 else intrinsics[:1]).astype(float)
+    parts = []
+    for camera in cameras:
+        if camera is not None:
+            parts.append(camera)
+            continue
+        parts.append({"c2w": np.full((frames, 4, 4), np.nan),
+                      "valid": np.zeros(frames, bool),
+                      "K": np.repeat(placeholder_K, frames, axis=0),
+                      "K_valid": np.zeros(frames, bool)})
+    c2w = np.concatenate([c["c2w"] for c in parts], axis=0)
+    valid = np.concatenate([np.asarray(c["valid"], bool) for c in parts])
+    K = np.concatenate([c["K"] for c in parts], axis=0)
+    K_valid = np.concatenate([np.asarray(c["K_valid"], bool) for c in parts])
     if len(c2w) < total:
         pad = total - len(c2w)
         c2w = np.concatenate([c2w, np.full((pad,) + c2w.shape[1:], np.nan)], axis=0)
@@ -190,8 +207,9 @@ def build_segment_sequences(segment, mano) -> dict:
         frames = len(window.frame_ids)
         for method in METHODS_3D:
             vertices, joints, valid, camera = _window_world(method, window, mano)
-            if camera is not None:
-                out[method]["camera"].append(camera)
+            # One slot per window, ``None`` when this window has no prediction, so the
+            # stacked rig keeps the segment's time axis.
+            out[method]["camera"].append(camera)
             if vertices is not None:
                 kinds[method] = "mesh"
             elif joints is not None and method not in kinds:
@@ -224,7 +242,11 @@ def build_segment_sequences(segment, mano) -> dict:
         if store["joints"]:
             entry["joints"] = np.concatenate(store["joints"], axis=0)
         if store["camera"]:
-            entry["camera"] = concatenate_cameras(store["camera"], len(valid_frames))
+            assert len(store["camera"]) == len(segment.windows), (
+                f"{method}: {len(store['camera'])} camera bundles for "
+                f"{len(segment.windows)} windows - the time axis would drift")
+            if any(camera is not None for camera in store["camera"]):
+                entry["camera"] = concatenate_cameras(store["camera"], len(valid_frames))
         result[method] = entry
     return result
 
