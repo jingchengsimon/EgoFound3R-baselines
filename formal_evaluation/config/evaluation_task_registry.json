@@ -6804,6 +6804,13 @@
       "phase": "formal",
       "protocol": "60f"
     },
+    "visualization:five:2d-final13:4x5-gtk:6001:20260918:v1": {
+      "dataset": "five",
+      "latest": "visualization-five-2d-final13-4x5-gtk-6001-20260918-v1",
+      "method_set": "paper-viz-2d-screening-16",
+      "phase": "screening",
+      "protocol": "frozen-final13-overview5x16-video4x5-no-panels-gtk-v1"
+    },
     "visualization:four:10s-gallery:endpoint104:5000:auxmethods-hawor-native-handzoom-panels:pilot_arctic_auxmethods_handzoom_panels_v1:20260915": {
       "dataset": "four",
       "latest": "visualization-four-10s-gallery-endpoint104-5000-auxmethods-hawor-native-handzoom-panels-pilot_arctic_auxmethods_handzoom_panels_v1-20260915",
@@ -7459,6 +7466,24 @@
     ],
     "pad_temporal": [
       "pad_hand"
+    ],
+    "paper-viz-2d-screening-16": [
+      "rgb",
+      "wilor",
+      "pad_hand",
+      "egoforce",
+      "dyn_hamr",
+      "hawor",
+      "reviv4d",
+      "egofound3r",
+      "egofound3r_gt_k",
+      "gt",
+      "ego_visibility",
+      "gt_visibility",
+      "ego_contact",
+      "gt_contact",
+      "ego_distance",
+      "gt_distance"
     ],
     "pi3-depth-fixed-mask": [
       "pi3"
@@ -83713,6 +83738,73 @@
       "state_file": ".auto_scheduler/10s_gallery_5000_pilot_oakink_20260913.json",
       "state_section": "jobs",
       "target_windows_per_method": 1,
+      "task_type": "visualization"
+    },
+    "visualization-five-2d-final13-4x5-gtk-6001-20260918-v1": {
+      "completion_artifacts": [
+        {
+          "min_bytes": 1,
+          "path": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_gtk_20260918_v1/batch_summary.json"
+        },
+        {
+          "min_bytes": 1,
+          "path": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_gtk_20260918_v1/COMPLETE"
+        }
+      ],
+      "created_at_epoch": 1789705384,
+      "identity": {
+        "code_commit": "74d95f40e63cd4dfaa8b14f139e6e39c5e383541",
+        "export_panels": "false",
+        "instance_id": "dsw-454648-7b77454858-ts5zm-6001-paper-viz-2d",
+        "layout": "overview5x16-video4x5",
+        "node": "6001",
+        "segments": "13",
+        "selected_ids_sha256": "c5bb3f8b03fc278cb9f080a9a095ebeb312111e2226469b5907bc5b01107688a"
+      },
+      "job_keys": [
+        "five::final13"
+      ],
+      "launch": {
+        "command": "set -euo pipefail; git -C '{worktree}' diff --quiet; git -C '{worktree}' diff --cached --quiet; test \"$(git -C '{worktree}' rev-parse HEAD)\" = 74d95f40e63cd4dfaa8b14f139e6e39c5e383541; exec env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH='{worktree}/visualization/paper_viz' '{python}' -u '{worktree}/visualization/paper_viz/tools/batch_2d_render.py' --manifest '{worktree}/visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl' --ego-infer-root /mnt/cpfs/paper_viz_2d_infer_8fc061a_frozen114_20260917_r1 --src-dir /mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/src --prepared-root /mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared --hawor-root /mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor --contact-root /mnt/cpfs/sjc/DATA/eval_artifacts/result3_completion_20260910_v1 --mapping /mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/mano_195_to_778.npz --out-root '{output_root}' --parallel 6 --jobs 8 --skip-panels --require-complete --only arctic__256d4a5dfe__00230-00529 arctic__48b73ae1b1__00115-00414 arctic__807596a5cf__00320-00619 h2o__abfac9ba98__000714-000773 h2o__e9ff42af5e__000582-000761 h2o__fe5179dbcb__000000-000059 hot3d__49afad1fc6__57552408297471-57555741544656 oakink_v2__8a385974b3__11773-12009 oakink_v2__8a385974b3__12494-12730 taco__279b0b7ba6__00061-00120 taco__69d56ee923__00061-00180 taco__ac882ed842__00001-00060 taco__c035a542c4__00001-00120",
+        "controller_path": "/mnt/workspace/sjc/paper_viz_2d_gtk_sparse_20260918_74d95f40/formal_evaluation/remote_task_control.py",
+        "deploy_before_preflight": false,
+        "handle_path": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_gtk_20260918_v1/runtime/handle.json",
+        "log_path": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_gtk_20260918_v1/runtime/worker.log",
+        "method": "paper_viz_2d",
+        "node_candidates": [
+          6001
+        ],
+        "preflight_paths": [
+          "/usr/local/bin/python3",
+          "/mnt/workspace/sjc/paper_viz_2d_gtk_sparse_20260918_74d95f40/formal_evaluation/remote_task_control.py",
+          "/mnt/workspace/sjc/paper_viz_2d_gtk_sparse_20260918_74d95f40/visualization/paper_viz/tools/batch_2d_render.py",
+          "/mnt/workspace/sjc/paper_viz_2d_gtk_sparse_20260918_74d95f40/visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+          "/mnt/cpfs/paper_viz_2d_infer_8fc061a_frozen114_20260917_r1/COMPLETE",
+          "/mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/COMPLETE",
+          "/mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared",
+          "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor",
+          "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/mano_195_to_778.npz",
+          "/mnt/cpfs/sjc/DATA/eval_artifacts/result3_completion_20260910_v1"
+        ],
+        "resource": "cpu",
+        "runtime_root": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_gtk_20260918_v1/runtime",
+        "validate_runtime_registry": false,
+        "values": {
+          "output_root": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_gtk_20260918_v1",
+          "python": "/usr/local/bin/python3",
+          "worktree": "/mnt/workspace/sjc/paper_viz_2d_gtk_sparse_20260918_74d95f40"
+        },
+        "worktree": "/mnt/workspace/sjc/paper_viz_2d_gtk_sparse_20260918_74d95f40",
+        "worktree_commit": "74d95f40e63cd4dfaa8b14f139e6e39c5e383541"
+      },
+      "logical_task_id": "visualization:five:2d-final13:4x5-gtk:6001:20260918:v1",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_gtk_20260918_v1",
+      "registration_key": "a87acb0a3bf37cd18db5d53e8007b03eff0a5d4ac195137c48a6049db4f0a7a4",
+      "scheduler_id": "manual:paper-viz-2d-final13-4x5-gtk-6001-20260918-v1",
+      "state_file": ".auto_scheduler/paper_viz_2d_final13_gtk_20260918/render_6001_v1_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 13,
       "task_type": "visualization"
     },
     "visualization-four-10s-gallery-endpoint104-5000-auxmethods-hawor-native-handzoom-panels-pilot_arctic_auxmethods_handzoom_panels_v1-20260915": {
