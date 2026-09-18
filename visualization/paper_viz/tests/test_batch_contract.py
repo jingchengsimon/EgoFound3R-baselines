@@ -67,15 +67,17 @@ class BatchContractTest(unittest.TestCase):
                                          ("gt", "contact"),
                                          ("gt", "distance")))
 
-    def test_ego_gt_k_reuses_ego_geometry_with_calibrated_k(self):
+    def test_ego_columns_use_their_own_inference_intrinsics(self):
+        pred_k, gt_k = np.eye(3) * 2, np.eye(3) * 3
         frame = SimpleNamespace(window=SimpleNamespace(), K=np.eye(3),
-                                ego_K=np.eye(3) * 2, width=1, height=1)
+                                ego_Ks={"ego": pred_k, "ego_gt_k": gt_k},
+                                width=1, height=1)
         geometry = (np.zeros((2, 778, 3)), np.ones(2, dtype=bool), None)
         with patch.object(render2d, "method_geometry", return_value=geometry), \
                 patch.object(render2d, "geometry_cell",
                              side_effect=lambda *args, **kwargs: kwargs["K"]):
-            self.assertIs(render2d.column_cell(frame, "ego", "geometry", 0), frame.ego_K)
-            self.assertIs(render2d.column_cell(frame, "ego_gt_k", "geometry", 0), frame.K)
+            self.assertIs(render2d.column_cell(frame, "ego", "geometry", 0), pred_k)
+            self.assertIs(render2d.column_cell(frame, "ego_gt_k", "geometry", 0), gt_k)
 
     def test_complete_results_rejects_partial_or_missing_segments(self):
         self.assertTrue(batch.complete_results(
@@ -107,6 +109,7 @@ class BatchContractTest(unittest.TestCase):
                 sys.executable, str(BATCH_PATH),
                 "--manifest", str(MANIFEST),
                 "--ego-infer-root", str(Path(tmp) / "infer"),
+                "--ego-gt-k-infer-root", str(Path(tmp) / "infer-gt-k"),
                 "--src-dir", str(Path(tmp) / "src"),
                 "--out-root", str(out),
                 "--dry-run",

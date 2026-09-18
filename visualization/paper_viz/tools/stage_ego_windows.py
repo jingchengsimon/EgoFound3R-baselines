@@ -74,6 +74,7 @@ def main() -> None:
     parser.add_argument("--entry-json", type=Path,
                         help="exact manifest entry with frame_ids/frame_refs")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--method-name", choices=("ego", "ego_gt_k"), default="ego")
     parser.add_argument("--frames-per-window", type=int, default=DEFAULT_WINDOW)
     args = parser.parse_args()
 
@@ -157,7 +158,7 @@ def main() -> None:
                 raise ValueError(
                     f"{cache}[{local_index}]={frame_ids[local_index]} != manifest {expected_frame_id}")
         np.savez_compressed(
-            args.out / f"{index}_ego.npz",
+            args.out / f"{index}_{args.method_name}.npz",
             hand_vertices_camera=padded_window(vertices, assignments, window, np.nan),
             hand_joints_camera=padded_window(joints, assignments, window, np.nan),
             hand_valid=padded_window(validity, assignments, window, False),
@@ -208,7 +209,7 @@ def main() -> None:
                     for i, r in enumerate(records)],
     }
     (args.out / "selection.json").write_text(json.dumps(selection, indent=2) + "\n")
-    print(f"wrote {len(records)} ego windows + selection.json to {args.out}")
+    print(f"wrote {len(records)} {args.method_name} windows + selection.json to {args.out}")
 
 
 if __name__ == "__main__":

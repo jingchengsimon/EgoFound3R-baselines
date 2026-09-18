@@ -55,7 +55,11 @@ class Frame2D:
         record = window.record
         self.K = (np.array(record["intrinsics"][index], float) * self.scale).astype(float)
         self.K[2, 2] = 1.0
-        self.ego_K = self._resolve_ego_K(window, index)
+        self.ego_Ks = {
+            method: self._resolve_ego_K(window, index, method)
+            for method in ("ego", "ego_gt_k")
+        }
+        self.ego_K = self.ego_Ks["ego"]
         geometry = arrays(geometry_path(window, index))
         self.object_vertices = geometry["object_vertices"].astype(np.float32)
         self.object_faces = geometry["object_faces"].astype(np.int64)
@@ -72,15 +76,15 @@ class Frame2D:
         self._edges = mano.edges
         self._scene_cache = {}
 
-    def _resolve_ego_K(self, window: WindowSources, index: int):
-        """Cell-space intrinsics for the Ego column: predicted K mapped through keep_aspect.
+    def _resolve_ego_K(self, window: WindowSources, index: int, method: str):
+        """Cell-space intrinsics for one Ego inference, mapped through keep_aspect.
 
         The model predicts intrinsics in its own resized input frame (for the smoke
         segment 256x176). The renderer draws in source pixels, so the pred K has to be
         undone through the recorded source->model affine before scaling to the cell.
         GT and baseline columns keep using the calibrated K.
         """
-        ego = window.methods.get("ego")
+        ego = window.methods.get(method)
         if ego is None or "intrinsics_pred" not in ego:
             return None
         K = np.array(ego["intrinsics_pred"][index], float)
@@ -577,8 +581,7 @@ def window_joints(window: WindowSources, method: str):
 
 def method_geometry(frame: Frame2D, method: str, index: int):
     window = frame.window
-    source_method = "ego" if method == "ego_gt_k" else method
-    data = window.methods.get(source_method)
+    data = window.methods.get(method)
     if data is None:
         return None
     if method == "gt":
@@ -586,15 +589,15 @@ def method_geometry(frame: Frame2D, method: str, index: int):
         joints = joints[index] if joints is not None else None
         return frame.gt_vertices, frame.gt_valid, joints
     try:
-        vertices = window_vertices(window, source_method, frame.mano)[index]
+        vertices = window_vertices(window, method, frame.mano)[index]
     except KeyError:
-        joints = window_joints(window, source_method)
+        joints = window_joints(window, method)
         if joints is None:
             return None
         joints = joints_in_gt_order(method, joints[index])
         return ("skeleton", joints, data["hand_valid"][index].astype(bool))
     valid = data["hand_valid"][index].astype(bool) & np.isfinite(vertices).all(axis=(1, 2))
-    joints = window_joints(window, source_method)
+    joints = window_joints(window, method)
     joints = joints[index] if joints is not None else None
     if joints is not None:
         joints = joints_in_gt_order(method, joints)
@@ -640,8 +643,8 @@ def column_cell(frame: Frame2D, method: str, signal: str, index: int) -> Image.I
         # The Ego hand lives in the model's predicted camera frame: project with the
         # requested K, and let only the hand itself act as a depth occluder (object
         # geometry is in the calibrated frame).
-        if method == "ego":
-            K = frame.ego_K if frame.ego_K is not None else frame.K
+        method_K = frame.ego_Ks.get(method)
+        K = method_K if method_K is not None else frame.K
         with_object = False
     key = (method, index)
     if signal == "geometry":

@@ -53,6 +53,7 @@ def build_registry(args) -> dict:
         methods = {
             "gt": src / "gt.npz",
             "ego": Path(args.inputs_dir) / f"{index}_ego.npz",
+            "ego_gt_k": Path(args.inputs_dir) / f"{index}_ego_gt_k.npz",
             "ego_full": src / "ego_full.npz",
             "wilor": src / "wilor.npz",
             "hawor": hawor_dir / "predictions.npz",

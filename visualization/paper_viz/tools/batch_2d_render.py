@@ -3,7 +3,7 @@
 One manifest entry = one 300-frame (5 x 60-frame window) segment.  For every
 segment the runner
 
-1. locates the authoritative Ego inference output
+1. locates the authoritative pred-K and GT-K Ego inference outputs
    (``<ego-infer-root>/<dataset>/<segment_id>/``, see USAGE_2D.md step 2),
 2. stages the per-window Ego inputs (``stage_ego_windows.py``),
 3. renders the 5 x 16 overview and semantic 4 x 5 video with the locked style
@@ -97,27 +97,42 @@ def render_segment(entry: dict, args) -> dict:
 
     log_path = args.out_root / "_logs" / f"{segment}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    infer_dir = args.ego_infer_root / dataset / segment
-    npz_candidates = sorted((infer_dir / "viz_inputs").glob("*_plus.npz")) or \
-        sorted((infer_dir / "viz_inputs").glob("ego_infer_*f.npz"))
-    if not (infer_dir / "inference_output.pt").is_file() or not npz_candidates:
+    def resolve_infer(root: Path):
+        directory = root / dataset / segment
+        candidates = sorted((directory / "viz_inputs").glob("*_plus.npz")) or \
+            sorted((directory / "viz_inputs").glob("ego_infer_*f.npz"))
+        return directory, (candidates[0] if candidates else None)
+
+    infer_dir, npz = resolve_infer(args.ego_infer_root)
+    if not (infer_dir / "inference_output.pt").is_file() or npz is None:
         result.update(status="missing_ego_infer", infer_dir=str(infer_dir))
         return result
-    npz = npz_candidates[0]
+    gt_k_infer_dir, gt_k_npz = resolve_infer(args.ego_gt_k_infer_root)
+    if not (gt_k_infer_dir / "inference_output.pt").is_file() or gt_k_npz is None:
+        result.update(status="missing_ego_gt_k_infer", infer_dir=str(gt_k_infer_dir))
+        return result
 
     staged = args.staged_root / segment
     with log_path.open("w") as log:
         try:
-            if not (staged / "selection.json").is_file() or args.force:
-                staged.mkdir(parents=True, exist_ok=True)
-                entry_path = staged / "manifest_entry.json"
-                stage_entry = dict(entry, segment_id=segment)
-                entry_path.write_text(json.dumps(stage_entry, indent=2) + "\n")
+            staged.mkdir(parents=True, exist_ok=True)
+            entry_path = staged / "manifest_entry.json"
+            stage_entry = dict(entry, segment_id=segment)
+            entry_path.write_text(json.dumps(stage_entry, indent=2) + "\n")
+            if args.force or any(not (staged / f"{index}_ego.npz").is_file()
+                                 for index in range(len(caches))):
                 run([sys.executable, str(HERE / "stage_ego_windows.py"),
                      "--infer-dir", str(infer_dir), "--npz", str(npz),
                      "--prepared-root", str(args.prepared_root / dataset),
                      "--dataset", dataset, "--entry-json", str(entry_path),
                      "--out", str(staged)], log)
+            if args.force or any(not (staged / f"{index}_ego_gt_k.npz").is_file()
+                                 for index in range(len(caches))):
+                run([sys.executable, str(HERE / "stage_ego_windows.py"),
+                     "--infer-dir", str(gt_k_infer_dir), "--npz", str(gt_k_npz),
+                     "--prepared-root", str(args.prepared_root / dataset),
+                     "--dataset", dataset, "--entry-json", str(entry_path),
+                     "--method-name", "ego_gt_k", "--out", str(staged)], log)
             command = [sys.executable, "-m", "paper_viz.cli",
                        "--stages", "fig2", "--rows", str(args.rows),
                        "--cell2d", str(args.cell2d), "--cell2d-video", str(args.cell2d_video),
@@ -155,6 +170,8 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--ego-infer-root", type=Path, required=True,
                         help="<root>/<dataset>/<segment_id>/inference_output.pt (+ viz_inputs/)")
+    parser.add_argument("--ego-gt-k-infer-root", type=Path, required=True,
+                        help="true GT-K multiclip inference root with the same layout")
     parser.add_argument("--src-dir", type=Path, required=True,
                         help="relayed per-window npz (tools/relay_sources.py)")
     parser.add_argument("--out-root", type=Path, required=True)
