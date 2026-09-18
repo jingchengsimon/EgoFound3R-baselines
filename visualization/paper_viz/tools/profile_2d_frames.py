@@ -1,6 +1,6 @@
 """Profile the per-frame 2D render cost of one segment (same flags as paper_viz.cli).
 
-Renders ``--frames`` video-style frames (cell2d-video, full 15-column row) with
+Renders ``--frames`` video-style frames (cell2d-video, full comparison grid) with
 cProfile and prints the cumulative time of the hottest functions plus the wall
 time per stage (frame load, columns, compose).  Used to size the 2D batch run.
 """

@@ -1,12 +1,13 @@
 """2D camera-space overlay rendering with the fixed per-frame column contract.
 
 Columns (left to right): raw RGB, baseline geometry (WiLoR, PAD-Hand, EgoForce,
-Dyn-HaMR, HaWoR, ReViV4D), EgoFound3R geometry, GT geometry, then Ego/GT pairs
+Dyn-HaMR, HaWoR, ReViV4D), EgoFound3R geometry with predicted K and GT K,
+GT geometry, then Ego/GT pairs
 for visibility, contact and contact distance. Hands are drawn in the marker /
 mesh-wireframe style used by the training monitor and mmpose: vertices as dots,
 MANO face edges as lines, colored by the signal value. In figures one frame is
 one row and selected frames stack vertically; each video frame is a semantic
-3-column x 5-row grid and time plays along the video axis.
+4-column x 5-row grid and time plays along the video axis.
 """
 from __future__ import annotations
 
@@ -27,13 +28,13 @@ COLUMNS = (
     ("rgb", "geometry"),
     ("wilor", "geometry"), ("pad_hand", "geometry"), ("egoforce", "geometry"),
     ("dyn_hamr", "geometry"), ("hawor", "geometry"), ("reviv4d", "geometry"),
-    ("ego", "geometry"), ("gt", "geometry"),
+    ("ego", "geometry"), ("ego_gt_k", "geometry"), ("gt", "geometry"),
     ("ego", "visibility"), ("gt", "visibility"),
     ("ego", "contact"), ("gt", "contact"),
     ("ego", "distance"), ("gt", "distance"),
 )
 COLUMN_LABELS = ("RGB", "WiLoR", "PAD-Hand", "EgoForce", "Dyn-HaMR", "HaWoR", "ReViV4D",
-                 "EgoFound3R", "GT", "Ego visibility", "GT visibility",
+                 "EgoFound3R", "EgoFound3R (GT K)", "GT", "Ego visibility", "GT visibility",
                  "Ego contact", "GT contact", "Ego distance", "GT distance")
 
 
@@ -576,7 +577,8 @@ def window_joints(window: WindowSources, method: str):
 
 def method_geometry(frame: Frame2D, method: str, index: int):
     window = frame.window
-    data = window.methods.get(method)
+    source_method = "ego" if method == "ego_gt_k" else method
+    data = window.methods.get(source_method)
     if data is None:
         return None
     if method == "gt":
@@ -584,15 +586,15 @@ def method_geometry(frame: Frame2D, method: str, index: int):
         joints = joints[index] if joints is not None else None
         return frame.gt_vertices, frame.gt_valid, joints
     try:
-        vertices = window_vertices(window, method, frame.mano)[index]
+        vertices = window_vertices(window, source_method, frame.mano)[index]
     except KeyError:
-        joints = window_joints(window, method)
+        joints = window_joints(window, source_method)
         if joints is None:
             return None
         joints = joints_in_gt_order(method, joints[index])
         return ("skeleton", joints, data["hand_valid"][index].astype(bool))
     valid = data["hand_valid"][index].astype(bool) & np.isfinite(vertices).all(axis=(1, 2))
-    joints = window_joints(window, method)
+    joints = window_joints(window, source_method)
     joints = joints[index] if joints is not None else None
     if joints is not None:
         joints = joints_in_gt_order(method, joints)
@@ -634,11 +636,12 @@ def column_cell(frame: Frame2D, method: str, signal: str, index: int) -> Image.I
     if method == "rgb":
         return frame.rgb.copy()
     K, with_object = frame.K, True
-    if method == "ego":
+    if method in {"ego", "ego_gt_k"}:
         # The Ego hand lives in the model's predicted camera frame: project with the
-        # predicted K mapped through the keep_aspect affine, and let only the hand
-        # itself act as a depth occluder (object geometry is in the calibrated frame).
-        K = frame.ego_K if frame.ego_K is not None else frame.K
+        # requested K, and let only the hand itself act as a depth occluder (object
+        # geometry is in the calibrated frame).
+        if method == "ego":
+            K = frame.ego_K if frame.ego_K is not None else frame.K
         with_object = False
     key = (method, index)
     if signal == "geometry":

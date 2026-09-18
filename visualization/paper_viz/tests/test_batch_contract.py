@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
 
@@ -50,13 +51,14 @@ class BatchContractTest(unittest.TestCase):
         ])
         self.assertEqual(frame_locations(segment), [(0, 4), (0, 5), (0, 9), (1, 0), (1, 1)])
 
-    def test_video_grid_is_semantic_3_by_5_and_covers_every_column_once(self):
-        self.assertEqual((len(VIDEO_GRID), len(VIDEO_GRID[0])), (5, 3))
+    def test_video_grid_is_semantic_4_by_5_and_covers_every_column_once(self):
+        self.assertEqual((len(VIDEO_GRID), len(VIDEO_GRID[0])), (5, 4))
         flattened = [column for row in VIDEO_GRID for column in row]
-        self.assertEqual(len(flattened), 15)
+        self.assertEqual(len(flattened), 16)
         self.assertEqual(set(flattened), set(render2d.COLUMNS))
         self.assertEqual(VIDEO_GRID[0], (("rgb", "geometry"),
                                         ("ego", "geometry"),
+                                        ("ego_gt_k", "geometry"),
                                         ("gt", "geometry")))
         self.assertEqual(VIDEO_GRID[-2], (("ego", "visibility"),
                                          ("ego", "contact"),
@@ -64,6 +66,16 @@ class BatchContractTest(unittest.TestCase):
         self.assertEqual(VIDEO_GRID[-1], (("gt", "visibility"),
                                          ("gt", "contact"),
                                          ("gt", "distance")))
+
+    def test_ego_gt_k_reuses_ego_geometry_with_calibrated_k(self):
+        frame = SimpleNamespace(window=SimpleNamespace(), K=np.eye(3),
+                                ego_K=np.eye(3) * 2, width=1, height=1)
+        geometry = (np.zeros((2, 778, 3)), np.ones(2, dtype=bool), None)
+        with patch.object(render2d, "method_geometry", return_value=geometry), \
+                patch.object(render2d, "geometry_cell",
+                             side_effect=lambda *args, **kwargs: kwargs["K"]):
+            self.assertIs(render2d.column_cell(frame, "ego", "geometry", 0), frame.ego_K)
+            self.assertIs(render2d.column_cell(frame, "ego_gt_k", "geometry", 0), frame.K)
 
     def test_complete_results_rejects_partial_or_missing_segments(self):
         self.assertTrue(batch.complete_results(

@@ -18,12 +18,14 @@ METHODS = style.METHODS
 VIEWS_FIG = ("front", "left", "top", "right", "side", "bottom")
 VIEWS_VIDEO = ("front", "left", "top")
 
-# Video frames use a compact semantic 3 x 5 layout.  Figure 2 intentionally
-# keeps the 5 x 15 comparison matrix because its rows encode selected time.
+# Video frames use a compact semantic 4 x 5 layout.  Figure 2 intentionally
+# keeps one selected frame per row across all comparison columns.
 VIDEO_GRID = (
-    (("rgb", "geometry"), ("ego", "geometry"), ("gt", "geometry")),
-    (("wilor", "geometry"), ("pad_hand", "geometry"), ("egoforce", "geometry")),
-    (("dyn_hamr", "geometry"), ("hawor", "geometry"), ("reviv4d", "geometry")),
+    (("rgb", "geometry"), ("ego", "geometry"), ("ego_gt_k", "geometry"),
+     ("gt", "geometry")),
+    (("wilor", "geometry"), ("pad_hand", "geometry"), ("egoforce", "geometry"),
+     ("dyn_hamr", "geometry")),
+    (("hawor", "geometry"), ("reviv4d", "geometry")),
     (("ego", "visibility"), ("ego", "contact"), ("ego", "distance")),
     (("gt", "visibility"), ("gt", "contact"), ("gt", "distance")),
 )
@@ -200,11 +202,11 @@ def render_2d_block(segment: SegmentSources, out: Path, report: dict, args, sele
             writer.add(image)
         report["outputs"]["video2"] = str(out / "video2_2d_matrix.mp4")
         report["video2_frames"] = writer.close()
-        report["video2_layout"] = "3x5"
+        report["video2_layout"] = "4x5"
 
 
 def video_row(t: int):
-    """Compose one semantic 3 x 5 video grid for one clip frame."""
+    """Compose one semantic 4 x 5 video grid for one clip frame."""
     segment = _WORKER["segment"]
     args = _WORKER["args"]
     w_index, f_index = frame_locations(segment)[t]

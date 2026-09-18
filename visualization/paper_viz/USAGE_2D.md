@@ -14,29 +14,29 @@
 
 | 产物 | 内容 | 规格（定稿） |
 |---|---|---|
-| `fig2_2d_matrix.png` | 多帧拼接大图，每帧一行 | 5 行 × 15 列，cell 720 px |
-| `panels_2d/*.png` | 中间入选帧的兼容版独立列 | 15 张，720×514 |
-| `panels_2d/<frame>/*.png` | 5 个入选帧逐帧、逐方法/信号拆分 | 5 × 15 张，720×514 |
-| `video2_2d_matrix.mp4` | 每个时刻的语义 3 列 × 5 行视频 | 与清单实际帧数一致 / 30 fps |
+| `fig2_2d_matrix.png` | 多帧拼接大图，每帧一行 | 5 行 × 16 列，cell 720 px |
+| `panels_2d/*.png` | 中间入选帧的兼容版独立列 | 16 张，720×514 |
+| `panels_2d/<frame>/*.png` | 5 个入选帧逐帧、逐方法/信号拆分 | 5 × 16 张，720×514 |
+| `video2_2d_matrix.mp4` | 每个时刻的语义 4 列 × 5 行视频 | 与清单实际帧数一致 / 30 fps |
 
-15 列静态总览图合同（左→右）：
+16 列静态总览图合同（左→右）：
 
 ```
-RGB | WiLoR | PAD-Hand | EgoForce | Dyn-HaMR | HaWoR | ReViV4D | EgoFound3R | GT |
+RGB | WiLoR | PAD-Hand | EgoForce | Dyn-HaMR | HaWoR | ReViV4D | EgoFound3R | EgoFound3R (GT K) | GT |
 Ego visibility | GT visibility | Ego contact | GT contact | Ego distance | GT distance
 ```
 
-视频内部的 3×5 排版：
+视频内部的 4×5 排版：
 
 ```
-RGB             | EgoFound3R  | GT
-WiLoR           | PAD-Hand    | EgoForce
-Dyn-HaMR        | HaWoR       | ReViV4D
+RGB             | EgoFound3R  | EgoFound3R (GT K) | GT
+WiLoR           | PAD-Hand    | EgoForce           | Dyn-HaMR
+HaWoR           | ReViV4D
 Ego visibility  | Ego contact | Ego distance
 GT visibility   | GT contact  | GT distance
 ```
 
-* 前 8 个方法列只画 hand geometry（点 + 面连线 + joint 骨架）；
+* 前 9 个方法列只画 hand geometry（点 + 面连线 + joint 骨架）；
 * visibility / contact / distance 只对 EgoFound3R 与 GT 画；
 * 几何列**完全不使用物体**（不看物体遮挡、不做物体提亮）；
   只有 GT 的 visibility / contact / distance 三列用物体（它们本身就是手—物信号）；
@@ -192,9 +192,9 @@ python3 tools/batch_2d_render.py \
   --parallel 6 --jobs 8 --skip-panels --require-complete
 ```
 
-`--skip-panels` 是全量人工初筛的默认用法：每段只保留 1 张 5×15 总览图、1 个
-3×5 视频和 `report.json`。人类选中窗口后，再把入选 `segment_id` 渲染到新的
-selected 输出根（不加 `--skip-panels`），导出 5×15=75 张独立 panel，不覆盖初筛结果。
+`--skip-panels` 是全量人工初筛的默认用法：每段只保留 1 张 5×16 总览图、1 个
+4×5 视频和 `report.json`。人类选中窗口后，再把入选 `segment_id` 渲染到新的
+selected 输出根（不加 `--skip-panels`），导出 5×16=80 张独立 panel，不覆盖初筛结果。
 `--require-complete` 只在全部段均产生可用结果时写入顶层 `COMPLETE`；任一缺输入、
 失败或帧数不一致都会非零退出。
 
@@ -241,7 +241,7 @@ PY
 ```
 
 然后用 `--manifest smoke_manifest.jsonl` 跑 batch 脚本即可（已验证：批量链路产出的
-矩阵/视频/15 张 panel 与手工渲染 **md5 完全相同**）。
+矩阵/视频/16 张 panel 与手工渲染 **md5 完全相同**）。
 
 ### 批量前置检查（建议每次先跑）
 
@@ -298,7 +298,7 @@ ffprobe -v error -select_streams v:0 \
   -show_entries stream=nb_frames,width,height,r_frame_rate -of default=nw=1 \
   <out>/<segment>/video2_2d_matrix.mp4  # 帧数应等于 manifest actual_length，5746×596 / 30 fps
 find <out>/<segment>/panels_2d -mindepth 1 -maxdepth 1 -type d | wc -l  # 5 个入选帧
-find <out>/<segment>/panels_2d -mindepth 2 -maxdepth 2 -name '*.png' | wc -l  # 75
+find <out>/<segment>/panels_2d -mindepth 2 -maxdepth 2 -name '*.png' | wc -l  # 80
 ```
 
 人工抽查：Dyn-HaMR 列在未注册窗口必须是 `unavailable` 瓦片；几何列的背面点线仍在
@@ -319,11 +319,11 @@ find <out>/<segment>/panels_2d -mindepth 2 -maxdepth 2 -name '*.png' | wc -l  # 
 
 ---
 
-## 8. 性能参考（ARCTIC 冒烟段，5 行大图 + 15 panel + 300 帧视频）
+## 8. 性能参考（ARCTIC 冒烟段，5 行大图 + 16 panel + 300 帧视频）
 
 | 配置 | 耗时 | 备注 |
 |---|---|---|
-| 单进程 | ~7 min | 15 列 / 帧 ≈ 0.75 s |
+| 单进程 | ~7 min | 历史 15 列 / 帧 ≈ 0.75 s；16 列应重新测量 |
 | `--jobs 8` | **44 s** | 视频帧 fork 并行，输出逐帧一致（md5 相同） |
 | 单帧审阅 `--stages fig2_frame` | ~10 s | 样式确认用 |
 

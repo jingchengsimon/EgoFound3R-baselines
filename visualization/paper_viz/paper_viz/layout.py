@@ -17,7 +17,7 @@ def compose_labeled_grid(cells: dict, labels: dict, rows: int, cols: int,
     """Compose a compact grid whose label belongs to each individual cell.
 
     Unlike :func:`compose_grid`, this is intended for video frames where a
-    narrow 3-column layout is more readable than a 15-column comparison row.
+    compact multi-row layout is more readable than a 16-column comparison row.
     """
     sample = next(iter(cells.values()))
     cw, ch = sample.size
