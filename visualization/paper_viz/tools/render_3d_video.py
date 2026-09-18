@@ -59,7 +59,8 @@ def _scene_frame(t: int, tile=None) -> "np.ndarray":
     scene = _SCENE
     renderer = scene["renderer"]
     annotations = (camera_overlay_parts(scene["camera"], [t], show_frustums=True, path_indices=(),
-                                        scale=scene["camera_scale"]) if scene["show_camera"] else [])
+                                        scale=scene["camera_scale"])
+                   + list(scene.get("extra_annotations", ())) if scene["show_camera"] else [])
     cells = {}
     from paper_viz.batch_render import batched_render
     with torch.no_grad():

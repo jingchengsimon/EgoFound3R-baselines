@@ -61,6 +61,23 @@ def _renderer(scene, cell, supersample):
     return cache[cell]
 
 
+def _path_parts(scene):
+    """Camera-trajectory tubes for the whole clip, built once per segment.
+
+    ``camera_overlay_parts`` only emits the path when ``path_indices`` has more
+    than one entry, and the result is independent of the frame being rendered, so
+    it is cached in the scene instead of being rebuilt 300 times.
+    """
+    from egohandmetric_prompt.inference_multiview import camera_overlay_parts
+    cached = scene.get("path_parts")
+    if cached is None:
+        cached = camera_overlay_parts(scene["camera"], [], show_frustums=False,
+                                      path_indices=np.arange(scene["frames_total"]),
+                                      scale=scene["camera_scale"]) if scene["show_camera"] else []
+        scene["path_parts"] = cached
+    return cached
+
+
 def _cell_parts(scene, keyframes):
     """Per-method parts for the summary (temporal gradient over the keyframes)."""
     from egohandmetric_prompt.inference_multiview import mesh_parts
@@ -81,9 +98,9 @@ def render_summary(scene, out_dir: Path, args) -> None:
     from egohandmetric_prompt.inference_multiview import camera_overlay_parts
     keyframes = np.rint(np.linspace(0, scene["frames_total"] - 1, args.keyframes)).astype(int)
     parts = _cell_parts(scene, keyframes)
-    annotations = camera_overlay_parts(scene["camera"], list(keyframes), show_frustums=True,
-                                       path_indices=(), scale=scene["camera_scale"]) \
-        if scene["show_camera"] else []
+    annotations = (camera_overlay_parts(scene["camera"], list(keyframes), show_frustums=True,
+                                        path_indices=(), scale=scene["camera_scale"])
+                   + _path_parts(scene)) if scene["show_camera"] else []
     items = [parts[n] + annotations for n in scene["drawn"]]
     shadows = [parts[n] for n in scene["drawn"]]
     cells = {}
@@ -145,6 +162,10 @@ def worker(device: str, tasks, out_root: str, args_dict: dict) -> None:
             start, stop = task[2], task[3]
             frames_dir = out_dir / "_frames"
             frames_dir.mkdir(parents=True, exist_ok=True)
+            if scene["show_camera"]:
+                # Keep the whole-clip trajectory in every video frame (same look as
+                # the figure); the frustums still follow the current time step.
+                scene["extra_annotations"] = _path_parts(scene)
             for t in range(start, stop, args.stride):
                 PILImage.fromarray(V._scene_frame(t)).save(frames_dir / f"{t:05d}.png")
 
