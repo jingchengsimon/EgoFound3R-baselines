@@ -102,6 +102,7 @@ def scene_state(args, inputs_dir: Path, device: str) -> dict:
 
 def worker(device: str, tasks, out_root: str, args_dict: dict) -> None:
     """Persistent worker: steal tasks, keep the current segment loaded."""
+    from concurrent.futures import ThreadPoolExecutor
     from PIL import Image as PILImage
     args = argparse.Namespace(**args_dict)
     current = None
@@ -116,8 +117,27 @@ def worker(device: str, tasks, out_root: str, args_dict: dict) -> None:
             current = segment_dir
         frames_dir = Path(out_root) / Path(segment_dir).name / "_frames"
         frames_dir.mkdir(parents=True, exist_ok=True)
-        for t in range(start, stop, args.stride):
-            PILImage.fromarray(V._scene_frame(t)).save(frames_dir / f"{t:05d}.png")
+        # Overlap the lossless PNG encode with the next frame's GPU work: PIL
+        # releases the GIL, so a small writer pool hides the ~0.3 s/frame it costs.
+        # ``compress_level=1`` is still lossless (identical pixels, smaller CPU).
+        # Prefetch the next frame's RGB tile on a helper thread (PIL/numpy release
+        # the GIL): the ~0.2 s decode+resize then overlaps the current frame's GPU
+        # work instead of stalling the render loop.  Pixels are untouched.
+        pool = ThreadPoolExecutor(max_workers=1)
+        index = list(range(start, stop, args.stride))
+        ahead = None
+        try:
+            for position, t in enumerate(index):
+                if position + 1 < len(index):
+                    ahead = pool.submit(V.rgb_tile, V._SCENE["windows"], index[position + 1],
+                                        args.cell)
+                tile = V.rgb_tile(V._SCENE["windows"], t, args.cell)
+                frame = V._scene_frame(t, rgb_tile=tile)
+                PILImage.fromarray(frame).save(frames_dir / f"{t:05d}.png")
+                if ahead is not None:
+                    ahead.result(); ahead = None
+        finally:
+            pool.shutdown()
 
 
 def main() -> None:

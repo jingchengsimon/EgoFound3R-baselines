@@ -37,7 +37,22 @@ from paper_viz.video import VideoWriter                            # noqa: E402
 _WORK: dict = {}
 
 
-def _scene_frame(t: int) -> "np.ndarray":
+def rgb_tile(windows, t: int, cell: int):
+    """Decoded + resized source RGB for one frame (letterboxed into a square cell)."""
+    from PIL import Image as PILImage
+    w_index, f_index = divmod(int(t), 60)
+    picture = PILImage.open(rgb_path(windows[w_index], f_index))
+    if picture.mode != "RGB":
+        picture = picture.convert("RGB")
+    scale = cell / picture.width
+    picture = picture.resize((cell, max(1, int(round(picture.height * scale)))),
+                             PILImage.Resampling.LANCZOS)
+    tile = PILImage.new("RGB", (cell, cell), (255, 255, 255))
+    tile.paste(picture, (0, max((cell - picture.height) // 2, 0)))
+    return np.asarray(tile)
+
+
+def _scene_frame(t: int, rgb_tile=None) -> "np.ndarray":
     """Compose the full matrix for one time step (used by every shard mode)."""
     import torch
     from egohandmetric_prompt.inference_multiview import camera_overlay_parts, mesh_parts
@@ -75,18 +90,9 @@ def _scene_frame(t: int) -> "np.ndarray":
                     if view == "top" and R.TOP_VIEW_ROT90_CCW:
                         rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
                     cells[(R.METHOD_LABELS_3D[name], view)] = rgb
-    from PIL import Image as PILImage
-    w_index, f_index = divmod(int(t), 60)
-    picture = PILImage.open(rgb_path(scene["windows"][w_index], f_index))
-    if picture.mode != "RGB":
-        picture = picture.convert("RGB")
-    scale = scene["cell"] / picture.width
-    picture = picture.resize((scene["cell"], max(1, int(round(picture.height * scale)))),
-                             PILImage.Resampling.LANCZOS)
-    tile = PILImage.new("RGB", (scene["cell"], scene["cell"]), (255, 255, 255))
-    tile.paste(picture, (0, max((scene["cell"] - picture.height) // 2, 0)))
+    tile = rgb_tile(scene["windows"], t, scene["cell"]) if rgb_tile is None else rgb_tile
     for view in scene["views"]:
-        cells[("Input RGB", view)] = np.asarray(tile)
+        cells[("Input RGB", view)] = tile
     camera_note = "with camera rig" if scene["show_camera"] else "hand-only (camera hidden)"
     return R.compose_matrix(cells, scene["columns"], list(scene["views"]),
                             title=f"{scene['segment_id']} | frame {int(t)} | world space | "
