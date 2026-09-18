@@ -60,6 +60,13 @@ def scene_state(args, inputs_dir: Path, device: str) -> dict:
             entry["vertices"] = np.einsum("ij,tsvj->tsvi", rotation, entry["vertices"])
         if "joints" in entry:
             entry["joints"] = np.einsum("ij,tsvj->tsvi", rotation, entry["joints"])
+        # The per-method camera bundle of commit b2d2a24 was missed by the levelling
+        # rotation: hands and the calibrated camera were levelled, the frustums kept
+        # the dataset world (151 deg off here), so every drawn rig landed ~2.7 m away
+        # from its hand.  Same rotation, same frame as the geometry above.
+        bundle = entry.get("camera")
+        if bundle is not None:
+            bundle["c2w"] = np.einsum("ij,tjk->tik", rotation4, bundle["c2w"])
 
     frames_total = len(windows) * 60
     times = np.arange(frames_total, dtype=float) / 30.0
