@@ -19,6 +19,14 @@
 | `panels_3d/<method>/<view>.png` | 每方法每视角单独一张（方便手动拼进论文） | `--panel-size` 指定，**`0` 表示不出 panel** |
 | `video1_3d_matrix.mp4` | 与图片同版式的视频，30 fps × 帧数（默认 300） | 与 `--cell` 一致 |
 
+**Input RGB 列的口径（大图 vs 视频不同，别搞混）**：
+
+- **大图**：行 = 视角，**第 r 行显示第 r 个时间样本**——默认 5 个样本均匀取自整段
+  `np.rint(np.linspace(0, T-1, keyframes))`，300 帧段即 **0 / 75 / 150 / 224 / 299**；
+  每格左上角标注 `frame NNN · T.TTs`，方便对着视频找时刻（因此大图里 5 行 RGB **是 5 张不同的图**）。
+- **视频**：RGB 格是**当前帧**，5 行相同、逐帧变化（标题里也写着当前 frame）。
+- 要求 `--keyframes` 与视角数相同（默认都是 5）；两者不等时按 `row % len(views)` 落格，多出的样本会覆盖。
+
 **列合同（左→右）**：
 
 ```
@@ -239,6 +247,7 @@ fx 均值 2090、逐帧 1996–2223），其余全部回落标定 K（fx 2319.9 
 | 项 | 设定 |
 |---|---|
 | 列 | `Input RGB` + 8 方法（WiLoR / PAD-Hand / EgoForce / Dyn-HaMR / HaWoR / ReViV4D / EgoFound3R / GT） |
+| Input RGB 列 | 大图：第 r 行 = 第 r 个时间样本（默认 0/75/150/224/299，格内标注帧号+时间）；视频：当前帧 |
 | 行 | front / right / back / left（40° 斜视）+ top（85° 俯视，**逆时针转 90°**，开关 `TOP_VIEW_ROT90_CCW`） |
 | 手部配色 | 参考 8fc061a 的 Morandi 左右手色 + 时间渐变 `SIDE_LIGHT→SIDE_DARK` |
 | ReViV4D | **只画 21 关节骨架**（细骨管 + 关节块），关节顺序必须过 `paper_viz.joint_order.joints_in_gt_order("reviv4d", ...)` |
@@ -382,4 +391,5 @@ rsync -a --delete --exclude '__pycache__' ./tools/     qingcang-0:/tmp/paper_viz
 | `viz-3d-first-20260918` | `03e4cdf` … `286f691` | 3D 世界系对比第一版（summary + video） |
 | `viz-3d-cams-20260918` | `b2d2a24` | 逐方法相机（pred/gt 配色）+ 视频累积轨迹 |
 | `viz-3d-cams2-20260918` | `50061f9` | `--fit-with-cameras` 开关 |
-| **`viz-3d-fixed-20260918`（当前）** | `cb806c3` → `ec9630a` → `6d4e624` | ① 相机 bundle 补做水平化（原来视锥离手 2.7 m、光轴偏 43°）；② 缺窗方法的相机不再被挪到片段开头；③ `level_in_place` 统一入口 + 每次渲染的世界系断言 + `check_3d_world_frame.py` 预检；④ 本文档重写 |
+| `viz-3d-fixed-20260918` | `cb806c3` → `ec9630a` → `6d4e624` → `9a8da7f` | ① 相机 bundle 补做水平化（原来视锥离手 2.7 m、光轴偏 43°）；② 缺窗方法的相机不再被挪到片段开头；③ `level_in_place` 统一入口 + 每次渲染的世界系断言 + `check_3d_world_frame.py` 预检；④ 本文档重写 |
+| **`viz-3d-rgb5-20260918`（当前）** | `viz-3d-fixed-20260918` 之后 | 大图 Input RGB 列改为**每行一个均匀采样帧**（改前 5 行是同一帧、且是最后一帧）并在格内标注帧号/时间 |

@@ -217,10 +217,14 @@ def render_summary(scene, out_dir: Path, args) -> None:
             if view == "top" and R.TOP_VIEW_ROT90_CCW:
                 rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
             cells[(METHOD_LABELS_3D[name], view)] = rgb
+    # Leftmost column: one *different*, uniformly sampled frame per view row (row r =
+    # keyframes[r]), labelled with its frame number so it can be matched against the
+    # video.  The old loop wrote the same key five times and collapsed to the last
+    # frame, which is why every row used to show an identical picture.
     for row, t in enumerate(keyframes):
-        tile = V.rgb_tile(scene["windows"], int(t), args.cell)
-        for view in scene["views"]:
-            cells[("Input RGB", view)] = tile
+        tile = R.caption_rgb_tile(V.rgb_tile(scene["windows"], int(t), args.cell),
+                                  int(t), args.fps)
+        cells[("Input RGB", scene["views"][row % len(scene["views"])])] = tile
     columns = ["Input RGB"] + [METHOD_LABELS_3D[m] for m in scene["drawn"]]
     camera_note = "with camera rig" if scene["show_camera"] else "hand-only (camera hidden)"
     grid = R.compose_matrix(cells, columns, list(scene["views"]),

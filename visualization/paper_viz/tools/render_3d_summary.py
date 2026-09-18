@@ -164,6 +164,21 @@ def label_font(size):
     return ImageFont.load_default()
 
 
+def caption_rgb_tile(tile, frame: int, fps: float = 30.0):
+    """Label one RGB tile of the summary's leftmost column with frame index and time.
+
+    The tile is a square cell with white bands above and below the (letterboxed)
+    source image, so the caption sits in the top band and the tile stays cell-sized.
+    """
+    from PIL import Image, ImageDraw
+    image = Image.fromarray(np.ascontiguousarray(tile))
+    draw = ImageDraw.Draw(image)
+    font = label_font(max(13, int(round(image.height * 0.062))))
+    draw.text((8, 7), f"frame {int(frame):03d} · {int(frame) / float(fps):.2f}s",
+              fill=(72, 74, 80), font=font)
+    return np.asarray(image)
+
+
 def compose_matrix(cells, methods, views, *, title, cell_px, temporal=True, camera_legend=True):
     """Rows = views, columns = methods (the reference grid wraps 3+2 instead)."""
     from PIL import Image, ImageDraw
@@ -530,7 +545,8 @@ def main() -> None:
                                       ), Image.Resampling.LANCZOS)
             tile = Image.new("RGB", (args.cell, args.cell), (255, 255, 255))
             tile.paste(picture, (0, max((args.cell - picture.height) // 2, 0)))
-            cells[("Input RGB", args.views[row % len(args.views)])] = np.asarray(tile)
+            cells[("Input RGB", args.views[row % len(args.views)])] = caption_rgb_tile(
+                np.asarray(tile), int(t))
     grid = compose_matrix(cells, columns, list(args.views),
                           title=f"{registry['segment_id']} | {len(keyframes)} time samples | "
                                 "world space | rows = views, columns = methods | "
