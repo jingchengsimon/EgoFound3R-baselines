@@ -25,6 +25,22 @@ from egohandmetric_prompt.inference_multiview import _box
 _RASTERIZERS: dict = {}
 
 
+def _rasterize(renderer, mesh, bin_size):
+    """Rasterize with the fast bin grid, falling back to the reference one.
+
+    pytorch3d caps the number of faces per bin (<22): at large cells (2048 px
+    panels) a 64-px bin grid becomes too fine for a dense hand mesh and raises, so
+    the reference rasterizer is used there instead.  Both produce the same option
+    of fragments; only the binning differs.
+    """
+    try:
+        return _rasterizer(renderer, bin_size)(meshes_world=mesh, cameras=renderer.cameras)
+    except ValueError as error:
+        if "faces per bin" not in str(error):
+            raise
+        return renderer.renderer.rasterizer(meshes_world=mesh, cameras=renderer.cameras)
+
+
 def _rasterizer(renderer, bin_size):
     if not bin_size:
         return renderer.renderer.rasterizer
@@ -93,7 +109,7 @@ def batched_render(renderer, parts_list, view, shadow_parts_list=None, bin_size=
     # own face layout.
     face_offsets = np.concatenate([[0], np.cumsum([len(f) for f in faces])[:-1]]).astype(np.int64)
 
-    fragments = _rasterizer(renderer, bin_size)(meshes_world=mesh, cameras=renderer.cameras)
+    fragments = _rasterize(renderer, mesh, bin_size)
     center_camera = center @ pose[:3, :3].T + pose[:3, 3]
     count = len(parts_list)
     size = renderer.render_size
@@ -139,9 +155,10 @@ def batched_render(renderer, parts_list, view, shadow_parts_list=None, bin_size=
             v_off += len(vertex)
             f_off += len(triangles)
         colours = [torch.ones_like(vertex) for vertex in verts]
-        projected = _rasterizer(renderer, bin_size)(
-            meshes_world=Meshes(verts=verts, faces=faces, textures=TexturesVertex(verts_features=colours)),
-            cameras=renderer.cameras)
+        projected = _rasterize(renderer,
+                               Meshes(verts=verts, faces=faces,
+                                      textures=TexturesVertex(verts_features=colours)),
+                               bin_size)
         masks = (projected.pix_to_face[..., 0] >= 0).float().cpu().numpy()
     else:
         masks = np.zeros((count, size, size), np.float32)
