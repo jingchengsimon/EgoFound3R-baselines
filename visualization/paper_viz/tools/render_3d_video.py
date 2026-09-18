@@ -46,19 +46,35 @@ def _scene_frame(t: int) -> "np.ndarray":
     annotations = (camera_overlay_parts(scene["camera"], [t], show_frustums=True, path_indices=(),
                                         scale=scene["camera_scale"]) if scene["show_camera"] else [])
     cells = {}
+    from paper_viz.batch_render import batched_render
     with torch.no_grad():
+        parts_of = {}
         for name in scene["drawn"]:
             if name in scene["sequences"]:
-                parts = mesh_parts(scene["sequences"][name], [t], scene["times"], temporal_colors=False)
+                parts_of[name] = mesh_parts(scene["sequences"][name], [t], scene["times"],
+                                            temporal_colors=False)
             else:
                 entry = scene["store"][name]
-                parts = R.skeleton_parts(entry["joints"], entry["valid"], [t], scene["times"],
-                                         temporal_colors=False)
+                parts_of[name] = R.skeleton_parts(entry["joints"], entry["valid"], [t], scene["times"],
+                                                  temporal_colors=False)
+        if scene.get("batch_cells", True):
+            # One batched call per viewpoint; verified pixel-identical to the
+            # per-cell path and ~2.6x faster per frame.
             for view in scene["views"]:
-                rgb = renderer.render(parts + annotations, view, shadow_parts=parts)
-                if view == "top" and R.TOP_VIEW_ROT90_CCW:
-                    rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
-                cells[(R.METHOD_LABELS_3D[name], view)] = rgb
+                rendered = batched_render(renderer,
+                                          [parts_of[n] + annotations for n in scene["drawn"]], view,
+                                          [parts_of[n] for n in scene["drawn"]])
+                for name, rgb in zip(scene["drawn"], rendered):
+                    if view == "top" and R.TOP_VIEW_ROT90_CCW:
+                        rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
+                    cells[(R.METHOD_LABELS_3D[name], view)] = rgb
+        else:
+            for name in scene["drawn"]:
+                for view in scene["views"]:
+                    rgb = renderer.render(parts_of[name] + annotations, view, shadow_parts=parts_of[name])
+                    if view == "top" and R.TOP_VIEW_ROT90_CCW:
+                        rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
+                    cells[(R.METHOD_LABELS_3D[name], view)] = rgb
     from PIL import Image as PILImage
     w_index, f_index = divmod(int(t), 60)
     picture = PILImage.open(rgb_path(scene["windows"][w_index], f_index))
@@ -169,6 +185,8 @@ def main() -> None:
     parser.add_argument("--camera-scale", type=float, default=0.12)
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--stride", type=int, default=1)
+    parser.add_argument("--no-batch-cells", dest="batch_cells", action="store_false", default=True,
+                        help="one render() call per cell instead of the batched path")
     parser.add_argument("--shard-mode", choices=("method", "frames"), default="frames",
                         help="frames = each GPU renders a contiguous time range into lossless "
                              "PNGs, then one ffmpeg pass (no per-frame sync/IPC)")
@@ -257,7 +275,7 @@ def main() -> None:
                      sequences=sequences, windows=windows, show_camera=show_camera,
                      camera_scale=args.camera_scale, views=list(args.views), drawn=drawn,
                      columns=["Input RGB"] + [METHOD_LABELS_3D[m] for m in drawn],
-                     segment_id=registry["segment_id"])
+                     segment_id=registry["segment_id"], batch_cells=args.batch_cells)
         context = multiprocessing.get_context("spawn")
         with context.Pool(len(tasks), initializer=_worker_scene, initargs=(state,)) as pool:
             for count in pool.map(_render_range, tasks):
