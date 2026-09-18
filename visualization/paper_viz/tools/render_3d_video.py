@@ -29,7 +29,8 @@ sys.path.insert(0, str(TOOLS))
 
 import render_3d_summary as R                                      # noqa: E402
 from paper_viz.inputs import rgb_path                              # noqa: E402
-from paper_viz.sequences3d import METHODS_3D, METHOD_LABELS_3D     # noqa: E402
+from paper_viz.sequences3d import (METHODS_3D, METHOD_LABELS_3D,  # noqa: E402
+                                   assert_camera_bundle_frame, level_in_place)
 from paper_viz.video import VideoWriter                            # noqa: E402
 
 # Worker state: the scene is built once in the parent and inherited by the forked
@@ -223,11 +224,8 @@ def main() -> None:
     rotation4 = np.eye(4)
     rotation4[:3, :3] = rotation
     camera.camera_to_display = np.einsum("ij,tjk->tik", rotation4, camera.camera_to_display)
-    for entry in store.values():
-        if "vertices" in entry:
-            entry["vertices"] = np.einsum("ij,tsvj->tsvi", rotation, entry["vertices"])
-        if "joints" in entry:
-            entry["joints"] = np.einsum("ij,tsvj->tsvi", rotation, entry["joints"])
+    level_in_place(store, rotation)
+    assert_camera_bundle_frame(store, camera)
 
     frames_total = len(windows) * 60
     times = np.arange(frames_total, dtype=float) / 30.0

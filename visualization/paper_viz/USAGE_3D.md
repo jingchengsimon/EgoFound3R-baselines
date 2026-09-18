@@ -147,6 +147,10 @@ python3 tools/batch_3d_render.py \
 ## 6. 验收清单
 
 ```bash
+# 世界系契约（手 / 相机锥 / 轨迹必须同系）——渲染前必跑，违反则退出码 1
+python3 tools/check_3d_world_frame.py --staged-root <staged> \
+  --src-dir ... --prepared-root ... --hawor-root ... --hawor-index ... \
+  --contact-root ... --mapping ... --device cpu
 ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames,width,height \
   -of default=nw=1 <out>/<segment>/video1_3d_matrix.mp4      # 300 帧
 ls <out>/<segment>/panels_3d/*/*.png | wc -l                 # 8 方法 × 5 视角 = 40
@@ -155,6 +159,21 @@ python3 -c "from PIL import Image;print(Image.open('<out>/<segment>/fig1_3d_summ
 
 人工抽查：`top` 行应为俯视且已逆时针旋转；ReViV4D 列是骨架不是 mesh；Dyn-HaMR 在无注册预测的
 窗口应为空（不要补值）；`--camera-overlay hide` 版本里不应出现相机锥/轨迹。
+
+### 6.1 世界坐标系契约（硬约束）
+
+手部几何、每方法的相机 bundle（视锥 + 坐标轴标 + 轨迹管）、标定显示相机，三者必须经过
+**同一个** `level_rotation` 刚体变换后一起送入渲染器；只转其中一部分就会把手和相机画到两个世界
+（2026-09-18 之前正是如此：视锥被画到离手 ~2.7 m 处、光轴偏 43°）。代码上现在有两道锁：
+
+1. `paper_viz/sequences3d.py::level_in_place(store, rotation)` 是**唯一**的坐标系变换入口，
+   三个 3D 工具都调它（不再各自写旋转循环）；
+2. `paper_viz/sequences3d.py::assert_camera_bundle_frame(store, camera)` 每次建场景都会执行：
+   利用"逐窗刚体重定位让每个方法的首帧相机与标定相机重合"这一恒等式，任何一处漏转/多转都会
+   在窗口起点暴露成米级偏移并**直接抛错终止渲染**（不是靠肉眼看图）。
+
+`tools/check_3d_world_frame.py` 是它的命令行外壳，可对任意 staged 段输出逐方法报告
+（相机-手距离、光轴夹角、图像锥角、窗口锚点误差），适合放进批量前的 preflight。
 
 ---
 
@@ -183,6 +202,7 @@ visualization/paper_viz/
     render_3d_video.py    单段视频（帧区间分片 / 方法分片；`--bin-size`、`--no-batch-cells`）
     batch_3d_render.py    批量：任务队列 = summary + video 帧块，常驻 worker，断点续跑  ← 常用
     batch_3d_video.py     仅视频的批量（更早的版本，保留）
+    check_3d_world_frame.py  预检：手 / 相机锥 / 轨迹是否同处一个世界系（违反退出码 1）
     relay_sources.py      （2D/3D 共用）冻结 GT/baseline → 逐窗 npz
     stage_ego_windows.py  （2D/3D 共用）权威 Ego 推理产物 → 逐窗输入
   USAGE_2D.md            2D 使用文档

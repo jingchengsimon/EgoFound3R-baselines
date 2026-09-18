@@ -34,7 +34,8 @@ sys.path.insert(0, str(TOOLS))
 
 import render_3d_video as V                                        # noqa: E402
 from render_3d_video import R                                      # noqa: E402
-from paper_viz.sequences3d import METHODS_3D, METHOD_LABELS_3D     # noqa: E402
+from paper_viz.sequences3d import (METHODS_3D, METHOD_LABELS_3D,  # noqa: E402
+                                   assert_camera_bundle_frame, level_in_place)
 
 _STATE: dict = {}
 
@@ -55,18 +56,9 @@ def scene_state(args, inputs_dir: Path, device: str) -> dict:
     rotation4 = np.eye(4)
     rotation4[:3, :3] = rotation
     camera.camera_to_display = np.einsum("ij,tjk->tik", rotation4, camera.camera_to_display)
-    for entry in store.values():
-        if "vertices" in entry:
-            entry["vertices"] = np.einsum("ij,tsvj->tsvi", rotation, entry["vertices"])
-        if "joints" in entry:
-            entry["joints"] = np.einsum("ij,tsvj->tsvi", rotation, entry["joints"])
-        # The per-method camera bundle of commit b2d2a24 was missed by the levelling
-        # rotation: hands and the calibrated camera were levelled, the frustums kept
-        # the dataset world (151 deg off here), so every drawn rig landed ~2.7 m away
-        # from its hand.  Same rotation, same frame as the geometry above.
-        bundle = entry.get("camera")
-        if bundle is not None:
-            bundle["c2w"] = np.einsum("ij,tjk->tik", rotation4, bundle["c2w"])
+    level_in_place(store, rotation)
+    # Hard contract: hands, frustums and trajectories are drawn in one world frame.
+    assert_camera_bundle_frame(store, camera)
 
     frames_total = len(windows) * 60
     times = np.arange(frames_total, dtype=float) / 30.0

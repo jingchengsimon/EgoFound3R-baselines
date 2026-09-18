@@ -31,7 +31,8 @@ sys.path.insert(0, str(PACKAGE_ROOT))
 from paper_viz.inputs import load_window                      # noqa: E402
 from paper_viz.mano import ManoAsset                          # noqa: E402
 from paper_viz.sequences3d import (METHODS_3D, METHOD_LABELS_3D,  # noqa: E402
-                                   SKELETON_METHODS, build_segment_sequences)
+                                   SKELETON_METHODS, assert_camera_bundle_frame,
+                                   build_segment_sequences, level_in_place)
 
 REFERENCE_ROOT = Path("/mnt/workspace/sjc/EgoFound3R_viz_8fc061a_20260917")
 if str(REFERENCE_ROOT) not in sys.path:
@@ -377,11 +378,8 @@ def main() -> None:
     rotation4 = np.eye(4)
     rotation4[:3, :3] = rotation
     camera.camera_to_display = np.einsum("ij,tjk->tik", rotation4, camera.camera_to_display)
-    for method, entry in store.items():
-        if "vertices" in entry:
-            entry["vertices"] = np.einsum("ij,tsvj->tsvi", rotation, entry["vertices"])
-        if "joints" in entry:
-            entry["joints"] = np.einsum("ij,tsvj->tsvi", rotation, entry["joints"])
+    level_in_place(store, rotation)
+    assert_camera_bundle_frame(store, camera)
     # Every hand row carries the same calibrated camera trajectory: the rows are
     # different hands in one shared GT world, so the frustums/trajectory must match.
     sequences = []

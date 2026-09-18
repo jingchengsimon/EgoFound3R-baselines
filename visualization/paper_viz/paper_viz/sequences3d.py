@@ -39,6 +39,9 @@ METHOD_LABELS_3D = {
 SKELETON_METHODS = ("reviv4d",)
 MESH_METHODS = tuple(method for method in METHODS_3D if method not in SKELETON_METHODS)
 
+# One window is 60 frames; every method is rigidly rebased into GT world per window.
+WINDOW_FRAMES = 60
+
 
 def world_from_camera(vertices_camera: np.ndarray, c2w: np.ndarray) -> np.ndarray:
     """(T,2,N,3) camera-space points -> world, per-frame ``c2w`` (T,4,4)."""
@@ -224,3 +227,142 @@ def build_segment_sequences(segment, mano) -> dict:
             entry["camera"] = concatenate_cameras(store["camera"], len(valid_frames))
         result[method] = entry
     return result
+
+
+def level_in_place(store: dict, rotation: np.ndarray) -> None:
+    """Move every method's hands **and** camera rig into the renderer's y-up world.
+
+    The dataset world from ``camera_c2w`` has +y pointing down, so the renderer
+    levels everything it draws with one rigid transform.  Hands, joints *and* the
+    per-method camera bundles have to go through that same transform: rotating only
+    the geometry (the state until 2026-09-18) drew every frustum, axis triad and
+    trajectory tube ~2.7 m away from its hand, in a world 151 deg from the hands'.
+    """
+    rotation = np.asarray(rotation, float)
+    rotation4 = np.eye(4)
+    rotation4[:3, :3] = rotation
+    for entry in store.values():
+        if "vertices" in entry:
+            entry["vertices"] = np.einsum("ij,tsvj->tsvi", rotation, entry["vertices"])
+        if "joints" in entry:
+            entry["joints"] = np.einsum("ij,tsvj->tsvi", rotation, entry["joints"])
+        bundle = entry.get("camera")
+        if bundle is not None:
+            bundle["c2w"] = np.einsum("ij,tjk->tik", rotation4, bundle["c2w"])
+
+
+def _hand_centroids(entry: dict, total: int) -> np.ndarray:
+    """Mean hand position per frame, ``(T, 3)`` with NaN where the method is empty."""
+    points = entry.get("vertices")
+    if points is None:
+        points = entry.get("joints")
+    out = np.full((total, 3), np.nan)
+    if points is None:
+        return out
+    points = np.asarray(points, float)
+    valid = np.asarray(entry["valid"], bool)
+    if valid.ndim == 3:
+        valid = valid.any(axis=-1)
+    finite = np.isfinite(points).all(-1) & valid[:, :, None]
+    for frame in range(min(total, points.shape[0])):
+        mask = finite[frame]
+        if mask.any():
+            out[frame] = points[frame][mask].mean(0)
+    return out
+
+
+def _cone_angle_deg(K, size_hw) -> float:
+    """Half-angle of the image diagonal, i.e. the widest direction the camera sees."""
+    height, width = (int(v) for v in size_hw)
+    fx, fy = float(np.asarray(K, float)[0, 0]), float(np.asarray(K, float)[1, 1])
+    if not np.isfinite(fx) or not np.isfinite(fy) or fx <= 0 or fy <= 0:
+        return float("nan")
+    return float(np.degrees(np.arctan(np.hypot(0.5 * (width - 1) / fx,
+                                               0.5 * (height - 1) / fy))))
+
+
+def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRAMES,
+                         anchor_tol: float = 1e-3, distance_band=(0.02, 5.0),
+                         hard_angle_deg: float = 90.0) -> dict:
+    """Audit that hands, frustums and trajectories live in one world frame.
+
+    Three independent, dataset-independent checks:
+
+    * ``anchor`` - the per-window rebasing makes every method's camera coincide with
+      the calibrated camera at the first frame of its window, so both must match
+      there to float precision.  Any frame mismatch (one levelled, the other not)
+      shows up at once; before the 2026-09-18 fix this error was ~2.66 m.
+    * ``up`` - the calibrated display camera is levelled, i.e. its up axis is +y.
+    * ``hand`` - each method's hand sits in front of that method's own camera, at a
+      plausible capture distance and (as a warning) inside its projected image cone.
+    """
+    calib = np.asarray(camera.camera_to_display, float)
+    calib_valid = np.asarray(camera.camera_valid, bool) & np.isfinite(calib).all(axis=(1, 2))
+    total = len(calib)
+    rows, violations, warnings = [], [], []
+    up = -np.mean(calib[calib_valid][:, :3, 1], axis=0) if calib_valid.any() else np.zeros(3)
+    up_error = float(np.linalg.norm(up - np.array([0.0, 1.0, 0.0])))
+    if not calib_valid.any():
+        warnings.append("calibrated camera has no valid frame")
+    elif up_error > anchor_tol:
+        violations.append(f"calibrated camera is not levelled: |up - +y| = {up_error:.4f}")
+    starts = list(range(0, total, window_frames))
+    for method in METHODS_3D:
+        entry = store.get(method)
+        if entry is None or entry.get("camera") is None:
+            continue
+        bundle = entry["camera"]
+        c2w = np.asarray(bundle["c2w"], float)
+        valid = np.asarray(bundle["valid"], bool) & np.isfinite(c2w).all(axis=(1, 2))
+        centres, axes = c2w[:, :3, 3], c2w[:, :3, 2]
+        hands = _hand_centroids(entry, total)
+        both = np.flatnonzero(valid & np.isfinite(hands).all(axis=1))
+        distances, angles = [], []
+        for frame in both:
+            delta = hands[frame] - centres[frame]
+            norm = float(np.linalg.norm(delta))
+            distances.append(norm)
+            if norm > 1e-9:
+                cos = float(np.clip(axes[frame] @ delta / norm, -1.0, 1.0))
+                angles.append(float(np.degrees(np.arccos(cos))))
+        anchor = [float(np.linalg.norm(centres[s] - calib[s, :3, 3]))
+                  for s in starts if valid[s] and calib_valid[s]]
+        anchor_rot = [float(np.degrees(np.arccos(np.clip(
+            (np.trace(axes[s][:, None] * calib[s, :3, :3]) - 1) / 2, -1.0, 1.0))))
+            for s in starts if valid[s] and calib_valid[s]]
+        cone = _cone_angle_deg(bundle["K"][both[0]] if len(both) else bundle["K"][0],
+                               bundle["size_hw"])
+        row = {"method": method, "source": bundle["source"],
+               "camera_frames": int(valid.sum()), "paired_frames": int(len(both)),
+               "distance_median": float(np.median(distances)) if distances else float("nan"),
+               "distance_max": float(np.max(distances)) if distances else float("nan"),
+               "angle_max": float(np.max(angles)) if angles else float("nan"),
+               "cone_angle": cone,
+               "anchor_max": float(np.max(anchor)) if anchor else float("nan"),
+               "anchor_rot_max": float(np.max(anchor_rot)) if anchor_rot else float("nan")}
+        rows.append(row)
+        label = METHOD_LABELS_3D[method]
+        if anchor and max(anchor) > anchor_tol:
+            violations.append(f"{label}: camera rig is not in the hands' frame - window-start "
+                              f"offset vs the calibrated camera is {max(anchor):.4f} m")
+        if not len(both):
+            warnings.append(f"{label}: no frame has both a hand and a camera")
+        if distances and (min(distances) < distance_band[0] or max(distances) > distance_band[1]):
+            violations.append(f"{label}: camera-to-hand distance {min(distances):.3f}-"
+                              f"{max(distances):.3f} m is outside {distance_band}")
+        if angles and max(angles) > hard_angle_deg:
+            violations.append(f"{label}: frustum axis misses the hand by {max(angles):.1f} deg "
+                              f"(>= {hard_angle_deg:.0f})")
+        elif angles and np.isfinite(cone) and max(angles) > cone:
+            warnings.append(f"{label}: hand is outside its own image cone "
+                            f"({max(angles):.1f} deg > {cone:.1f} deg)")
+    return {"up_error": up_error, "rows": rows, "violations": violations, "warnings": warnings}
+
+
+def assert_camera_bundle_frame(store: dict, camera, **kwargs) -> dict:
+    """Raise when the drawn rig does not share the hands' world frame."""
+    report = camera_bundle_report(store, camera, **kwargs)
+    if report["violations"]:
+        raise RuntimeError("3D world-frame contract violated (hands / frustums / trajectory): "
+                           + "; ".join(report["violations"]))
+    return report
