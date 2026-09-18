@@ -133,7 +133,7 @@ def worker(device: str, tasks, out_root: str, args_dict: dict) -> None:
                     ahead = pool.submit(V.rgb_tile, V._SCENE["windows"], index[position + 1],
                                         args.cell)
                 tile = V.rgb_tile(V._SCENE["windows"], t, args.cell)
-                frame = V._scene_frame(t, rgb_tile=tile)
+                frame = V._scene_frame(t, tile=tile)
                 PILImage.fromarray(frame).save(frames_dir / f"{t:05d}.png")
                 if ahead is not None:
                     ahead.result(); ahead = None

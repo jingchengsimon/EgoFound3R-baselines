@@ -52,7 +52,7 @@ def rgb_tile(windows, t: int, cell: int):
     return np.asarray(tile)
 
 
-def _scene_frame(t: int, rgb_tile=None) -> "np.ndarray":
+def _scene_frame(t: int, tile=None) -> "np.ndarray":
     """Compose the full matrix for one time step (used by every shard mode)."""
     import torch
     from egohandmetric_prompt.inference_multiview import camera_overlay_parts, mesh_parts
@@ -91,7 +91,7 @@ def _scene_frame(t: int, rgb_tile=None) -> "np.ndarray":
                     if view == "top" and R.TOP_VIEW_ROT90_CCW:
                         rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
                     cells[(R.METHOD_LABELS_3D[name], view)] = rgb
-    tile = rgb_tile(scene["windows"], t, scene["cell"]) if rgb_tile is None else rgb_tile
+    tile = rgb_tile(scene["windows"], t, scene["cell"]) if tile is None else tile
     for view in scene["views"]:
         cells[("Input RGB", view)] = tile
     camera_note = "with camera rig" if scene["show_camera"] else "hand-only (camera hidden)"
