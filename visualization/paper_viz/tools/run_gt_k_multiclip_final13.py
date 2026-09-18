@@ -69,7 +69,8 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--ego-repo", type=Path, required=True)
     parser.add_argument("--python", type=Path, required=True)
-    parser.add_argument("--gpus", nargs="+", type=int, required=True)
+    parser.add_argument("--gpus", required=True,
+                        help="comma-separated physical GPU indices selected by taskctl")
     args = parser.parse_args()
 
     wanted = set(args.only_file.read_text().split())
@@ -81,7 +82,10 @@ def main() -> None:
     progress = args.output_root / "progress.jsonl"
     progress_lock = threading.Lock()
     gpu_queue: queue.Queue[int] = queue.Queue()
-    for gpu in args.gpus:
+    gpus = [int(value) for value in args.gpus.split(",") if value]
+    if not gpus:
+        raise ValueError("at least one GPU is required")
+    for gpu in gpus:
         gpu_queue.put(gpu)
 
     def emit(record: dict) -> None:
@@ -149,7 +153,7 @@ def main() -> None:
             gpu_queue.put(gpu)
 
     results = []
-    with ThreadPoolExecutor(max_workers=len(args.gpus)) as pool:
+    with ThreadPoolExecutor(max_workers=len(gpus)) as pool:
         futures = {pool.submit(process, item): item[0] for item in chosen}
         for future in as_completed(futures):
             result = future.result()
