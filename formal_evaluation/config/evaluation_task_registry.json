@@ -83907,7 +83907,9 @@
           "pred_root": "/mnt/cpfs/paper_viz_2d_infer_8fc061a_frozen114_20260917_r1",
           "python": "/mnt/workspace/sjc/envs/egofound3r/bin/python",
           "runtime_root": "/mnt/cpfs/paper_viz_2d_final13_5x16_4x5_true_gtk_20260918_v2/runtime"
-        }
+        },
+        "worktree": "/mnt/workspace/sjc/EgoFound3R_viz_8fc061a_20260917",
+        "worktree_commit": "8fc061a615895bd3b5a556f7387bae306e32d9db"
       },
       "logical_task_id": "visualization:five:2d-final13:true-gt-k-multiclip:5000:20260918:v2",
       "method_root_output": false,
