@@ -25,8 +25,14 @@ def camera_points(data: dict, field_name: str) -> np.ndarray:
     return np.einsum("tji,tsvj->tsvi", pose[:, :3, :3], data[world_key] - pose[:, None, None, :3, 3])
 
 
-def native_windows_in_gt_world(native_world, native_c2w, gt_c2w, camera_valid=None):
-    """Rigidly place each native-SLAM 60-frame window in common GT world at its first camera."""
+def stitch_window_anchor(previous_pred_c2w, previous_gt_c2w, current_gt_c2w):
+    """Advance the previous predicted pose by the GT motion across a clip boundary."""
+    return previous_pred_c2w @ np.linalg.inv(previous_gt_c2w) @ current_gt_c2w
+
+
+def native_windows_in_gt_world(native_world, native_c2w, gt_c2w, camera_valid=None,
+                               anchor_c2w=None):
+    """Place native-SLAM geometry in GT world, optionally at a stitched first pose."""
     world = np.empty_like(native_world, dtype=float)
     cameras = np.empty_like(native_c2w, dtype=float)
     camera_valid = np.ones(len(native_c2w), bool) if camera_valid is None else np.asarray(camera_valid, bool)
@@ -36,7 +42,8 @@ def native_windows_in_gt_world(native_world, native_c2w, gt_c2w, camera_valid=No
             world[start:stop] = np.nan
             cameras[start:stop] = np.nan
             continue
-        transform = gt_c2w[start] @ np.linalg.inv(native_c2w[start])
+        anchor = anchor_c2w if start == 0 and anchor_c2w is not None else gt_c2w[start]
+        transform = anchor @ np.linalg.inv(native_c2w[start])
         world[start:stop] = np.einsum("ij,tsvj->tsvi", transform[:3, :3], native_world[start:stop]) + transform[:3, 3]
         cameras[start:stop] = np.einsum("ij,tjk->tik", transform, native_c2w[start:stop])
     return world, cameras

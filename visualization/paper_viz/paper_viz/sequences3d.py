@@ -5,8 +5,9 @@ summary/video are directly comparable:
 
 * GT / WiLoR / PAD-Hand / EgoForce / ReViV4D live in the calibrated camera frame,
   so they are lifted with the window's calibrated ``camera_c2w``;
-* HaWoR / Dyn-HaMR are native-SLAM world: each 60-frame window is rigidly placed
-  in GT world at its first camera (``native_windows_in_gt_world``);
+* HaWoR / Dyn-HaMR are native-SLAM world: the first 60-frame window is placed in
+  GT world, then later windows inherit the previous predicted drift and advance by
+  the GT camera motion across each boundary;
 * EgoFound3R is predicted in its own camera frame: its vertices are lifted with
   the predicted ``camera_c2w`` and the window is rigidly aligned to GT world the
   same way, so the comparison keeps the model's own geometry without pretending
@@ -19,7 +20,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .inputs import WindowSources, native_windows_in_gt_world
+from .inputs import WindowSources, native_windows_in_gt_world, stitch_window_anchor
 from .joint_order import joints_in_gt_order
 
 # Column order follows the 2D contract: baselines first, then EgoFound3R, then GT.
@@ -39,7 +40,7 @@ METHOD_LABELS_3D = {
 SKELETON_METHODS = ("reviv4d",)
 MESH_METHODS = tuple(method for method in METHODS_3D if method not in SKELETON_METHODS)
 
-# One window is 60 frames; every method is rigidly rebased into GT world per window.
+# One source window is 60 frames; predicted-camera windows are stitched in order.
 WINDOW_FRAMES = 60
 
 
@@ -57,7 +58,8 @@ def per_vertex_valid(hand_valid: np.ndarray, vertices: np.ndarray) -> np.ndarray
     return np.asarray(hand_valid, bool)[:, :, None] & finite
 
 
-def _window_world(method: str, window: WindowSources, mano, vertices_camera=None):
+def _window_world(method: str, window: WindowSources, mano, vertices_camera=None,
+                  anchor_c2w=None):
     """World-space geometry **and** camera of one window, or None when absent.
 
     Returns ``(vertices, joints, valid, camera)`` where ``camera`` is a dict with
@@ -99,8 +101,9 @@ def _window_world(method: str, window: WindowSources, mano, vertices_camera=None
             own_c2w = np.asarray(data["camera_c2w"], float)
             own_valid = np.asarray(data.get("camera_valid", np.ones(len(own_c2w), bool)), bool)
             own_world = world_from_camera(joints, own_c2w)
-            aligned, aligned_c2w = native_windows_in_gt_world(own_world, own_c2w, gt_c2w,
-                                                              camera_valid=own_valid)
+            aligned, aligned_c2w = native_windows_in_gt_world(
+                own_world, own_c2w, gt_c2w, camera_valid=own_valid,
+                anchor_c2w=anchor_c2w)
             camera = {"c2w": aligned_c2w, "valid": np.isfinite(aligned_c2w).all(axis=(1, 2)),
                       "K": gt_K, "K_valid": gt_K_valid, "size_hw": size_hw, "source": "pred",
                       "frames": None}
@@ -117,8 +120,9 @@ def _window_world(method: str, window: WindowSources, mano, vertices_camera=None
         c2w = np.asarray(data["camera_c2w"], float)
         predicted_world = world_from_camera(camera, c2w)
         valid = np.asarray(data["hand_valid"], bool)
-        aligned, aligned_c2w = native_windows_in_gt_world(predicted_world, c2w, gt_c2w,
-                                                          camera_valid=valid.any(axis=1))
+        aligned, aligned_c2w = native_windows_in_gt_world(
+            predicted_world, c2w, gt_c2w, camera_valid=valid.any(axis=1),
+            anchor_c2w=anchor_c2w)
         K = gt_K
         K_valid = gt_K_valid
         pred_size = size_hw
@@ -144,8 +148,9 @@ def _window_world(method: str, window: WindowSources, mano, vertices_camera=None
     native_world = np.asarray(data["hand_vertices_world"], float)
     native_c2w = np.asarray(data["camera_c2w"], float)
     valid = np.asarray(data["hand_valid"], bool)
-    aligned, aligned_c2w = native_windows_in_gt_world(native_world, native_c2w, gt_c2w,
-                                                      camera_valid=valid.any(axis=1))
+    aligned, aligned_c2w = native_windows_in_gt_world(
+        native_world, native_c2w, gt_c2w, camera_valid=valid.any(axis=1),
+        anchor_c2w=anchor_c2w)
     camera = {"c2w": aligned_c2w, "valid": np.isfinite(aligned_c2w).all(axis=(1, 2)),
               "K": gt_K, "K_valid": gt_K_valid, "size_hw": size_hw, "source": "pred",
               "frames": None}
@@ -203,10 +208,29 @@ def build_segment_sequences(segment, mano) -> dict:
     vertex_count = int(mano.faces.max()) + 1
     out = {method: {"vertices": [], "joints": [], "valid": [], "camera": []} for method in METHODS_3D}
     kinds = {}
+    stitch_state = {}
     for window in segment.windows:
         frames = len(window.frame_ids)
+        gt = window.methods.get("gt")
+        gt_c2w = np.asarray(gt["camera_c2w"], float) if gt is not None else None
+        gt_valid = (np.asarray(gt.get("camera_valid", np.ones(frames, bool)), bool)
+                    if gt is not None else np.zeros(frames, bool))
         for method in METHODS_3D:
-            vertices, joints, valid, camera = _window_world(method, window, mano)
+            anchor = None
+            if method in PREDICTED_EXTRINSICS and method in stitch_state and gt_valid[0]:
+                previous_pred, previous_gt = stitch_state[method]
+                if np.isfinite(gt_c2w[0]).all():
+                    anchor = stitch_window_anchor(previous_pred, previous_gt, gt_c2w[0])
+            vertices, joints, valid, camera = _window_world(
+                method, window, mano, anchor_c2w=anchor)
+            if method in PREDICTED_EXTRINSICS:
+                camera_valid = (np.asarray(camera["valid"], bool) if camera is not None
+                                else np.zeros(frames, bool))
+                if (camera is not None and camera_valid[-1] and gt_valid[-1]
+                        and np.isfinite(gt_c2w[-1]).all()):
+                    stitch_state[method] = (np.asarray(camera["c2w"][-1], float), gt_c2w[-1])
+                else:
+                    stitch_state.pop(method, None)
             # One slot per window, ``None`` when this window has no prediction, so the
             # stacked rig keeps the segment's time axis.
             out[method]["camera"].append(camera)
@@ -310,10 +334,10 @@ def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRA
 
     Three independent, dataset-independent checks:
 
-    * ``anchor`` - the per-window rebasing makes every method's camera coincide with
-      the calibrated camera at the first frame of its window, so both must match
-      there to float precision.  Any frame mismatch (one levelled, the other not)
-      shows up at once; before the 2026-09-18 fix this error was ~2.66 m.
+    * ``anchor`` - the first predicted window (and any window after a missing one)
+      starts on the calibrated camera; contiguous windows must instead advance the
+      previous predicted pose by the calibrated camera's boundary motion.  This
+      catches both coordinate-frame mistakes and 60-frame camera resets.
     * ``up`` - the calibrated display camera is levelled, i.e. its up axis is +y.
     * ``hand`` - each method's hand sits in front of that method's own camera, at a
       plausible capture distance and (as a warning) inside its projected image cone.
@@ -347,11 +371,18 @@ def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRA
             if norm > 1e-9:
                 cos = float(np.clip(axes[frame] @ delta / norm, -1.0, 1.0))
                 angles.append(float(np.degrees(np.arccos(cos))))
-        anchor = [float(np.linalg.norm(centres[s] - calib[s, :3, 3]))
-                  for s in starts if valid[s] and calib_valid[s]]
-        anchor_rot = [float(np.degrees(np.arccos(np.clip(
-            (np.trace(axes[s][:, None] * calib[s, :3, :3]) - 1) / 2, -1.0, 1.0))))
-            for s in starts if valid[s] and calib_valid[s]]
+        anchor, anchor_rot = [], []
+        for start in starts:
+            if not (valid[start] and calib_valid[start]):
+                continue
+            if start == 0 or not (valid[start - 1] and calib_valid[start - 1]):
+                expected = calib[start]
+            else:
+                expected = c2w[start - 1] @ np.linalg.inv(calib[start - 1]) @ calib[start]
+            anchor.append(float(np.linalg.norm(c2w[start, :3, 3] - expected[:3, 3])))
+            relative = expected[:3, :3].T @ c2w[start, :3, :3]
+            anchor_rot.append(float(np.degrees(np.arccos(np.clip(
+                (np.trace(relative) - 1) / 2, -1.0, 1.0)))))
         cone = _cone_angle_deg(bundle["K"][both[0]] if len(both) else bundle["K"][0],
                                bundle["size_hw"])
         row = {"method": method, "source": bundle["source"],
@@ -365,8 +396,8 @@ def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRA
         rows.append(row)
         label = METHOD_LABELS_3D[method]
         if anchor and max(anchor) > anchor_tol:
-            violations.append(f"{label}: camera rig is not in the hands' frame - window-start "
-                              f"offset vs the calibrated camera is {max(anchor):.4f} m")
+            violations.append(f"{label}: camera rig violates the window-stitch contract by "
+                              f"{max(anchor):.4f} m")
         if not len(both):
             warnings.append(f"{label}: no frame has both a hand and a camera")
         if distances and (min(distances) < distance_band[0] or max(distances) > distance_band[1]):

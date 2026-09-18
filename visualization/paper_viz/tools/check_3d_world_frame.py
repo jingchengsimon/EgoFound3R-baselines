@@ -9,9 +9,8 @@ ended up ~2.7 m away from their hands until 2026-09-18.
 This tool rebuilds the scene through the *production* assembly
 (``batch_3d_video.scene_state``, which itself asserts the contract) and then audits it:
 
-* window-start anchor: the per-window rebasing puts every method's camera exactly on
-  the calibrated camera at the first frame of its window, so any frame mismatch shows
-  up as a large offset;
+* window stitch: the first present predicted window anchors to GT; each contiguous
+  next window advances the previous prediction by the GT boundary motion;
 * the calibrated camera is levelled (up axis = +y);
 * each hand sits in front of its own camera at a plausible capture distance.
 
@@ -74,7 +73,7 @@ def main() -> None:
         print(f"\n=== {segment.name} ({'OK' if ok else 'VIOLATION'}) ===")
         print(f"  display camera up-axis error |up-+y| = {report['up_error']:.2e}")
         print(f"  {'method':11s} {'src':5s} {'cam/hand':>9s} {'|C-H| med':>10s} {'|C-H| max':>10s} "
-              f"{'axis max':>9s} {'cone':>6s} {'anchor':>9s}")
+              f"{'axis max':>9s} {'cone':>6s} {'stitch':>9s}")
         for row in report["rows"]:
             print(f"  {row['method']:11s} {row['source']:5s} "
                   f"{row['camera_frames']:4d}/{row['paired_frames']:<4d} "

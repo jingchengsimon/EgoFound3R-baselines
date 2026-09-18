@@ -180,11 +180,13 @@ python3 tools/batch_3d_render.py \
 **内参**：只有 EgoFound3R 用自己的 `intrinsics_pred`（经 keep_aspect 仿射逆映射，本段实测
 fx 均值 2090、逐帧 1996–2223），其余全部回落标定 K（fx 2319.9 / fy 2367.2，图 2000×2800）。
 
-**逐窗刚体重定位（必读的三个推论）**：native / pred 世界的方法，每个 60 帧窗口都用
-`T = gt_c2w[s] · inv(cam_c2w[s])` 把**手和相机一起**搬到 GT world。
+**跨窗刚体拼接（必读的三个推论）**：native / pred 世界的方法仅在第一个有效 60 帧窗口用
+`T = gt_c2w[0] · inv(cam_c2w[0])` 把**手和相机一起**搬到 GT world。后续连续窗口不再
+重新贴回 GT；其首帧目标位姿由上一窗口末帧预测位姿与相邻 GT 帧的运动增量给出：
+`pred_start = pred_prev · inv(gt_prev) · gt_start`。若中间缺窗，则下一有效窗口重新锚定 GT。
 
-1. 窗口首帧该方法的相机与标定相机**严格重合**，之后才逐渐漂移——这正是第 5 节断言的依据；
-2. 因此"pred 相机"展示的是**窗口内的相机漂移**，不是绝对位姿差：ARCTIC 这类固定机位段实测只有
+1. 首个有效窗口首帧与标定相机严格重合；59→60、119→120 等连续边界保持累计漂移，不会每 2 秒闪回 GT；
+2. 因此"pred 相机"展示的是**整段累计的相机漂移**：ARCTIC 这类固定机位段实测只有
    0.5–4.3 cm，8 行视锥看上去几乎重合；要看出差别得用自移动机位的数据集；
 3. 某方法只在部分窗口有预测时（例如 Dyn-HaMR 1/5 窗口），它的**手和相机必须落在同一段帧区间**，
    空窗口在原地补 NaN（不要把它挪到片段开头——见第 5 节坑 ②）。
@@ -204,11 +206,11 @@ fx 均值 2090、逐帧 1996–2223），其余全部回落标定 K（fx 2319.9 
 | 机制 | 位置 | 作用 |
 |---|---|---|
 | `level_in_place(store, rotation)` | `paper_viz/sequences3d.py` | **唯一**的坐标系变换入口：手、关节、相机 bundle 一起转；三个 3D 工具都调它 |
-| `assert_camera_bundle_frame(store, camera)` | 同上，被 `batch_3d_video.scene_state` 调用 | 每次建场景即断言，违反**直接抛错终止渲染** |
+| `assert_camera_bundle_frame(store, camera)` | 同上，被 `batch_3d_video.scene_state` 调用 | 每次建场景即断言首窗锚点与跨窗 GT-delta 拼接，违反**直接抛错终止渲染** |
 | `tools/check_3d_world_frame.py` | 预检 CLI | 逐段输出逐方法报告（相机-手距离 / 光轴夹角 / 图像锥角 / 窗口锚点误差），违反退出码 1 |
 
-断言依据的恒等式：逐窗重定位让每个方法在**自己窗口首帧**与标定相机重合，所以任何漏转/多转
-都会在窗口起点暴露成米级偏移。
+断言依据的恒等式：首个有效窗口锚定标定相机；连续边界满足
+`pred[s] = pred[s-1] · inv(gt[s-1]) · gt[s]`。因此漏转、多转或逐窗复位都会在边界检查中暴露。
 
 ### 5.2 已经踩过的两个坑（务必不要再引入）
 
@@ -222,7 +224,7 @@ fx 均值 2090、逐帧 1996–2223），其余全部回落标定 K（fx 2319.9 
 1. 相机位姿是否来自 `store[method]["camera"]["c2w"]`（已由 `level_in_place` 处理过）；
 2. 是否用 `camera_frustum_vertices()` / `camera_overlay_parts()`（顶点=相机中心、开口沿 +Z 光轴）；
 3. 是否按 `camera_valid` 门控（缺窗 / 无效帧不画）；
-4. 跑一次 `tools/check_3d_world_frame.py`，锚点误差必须是 0（float 级）。
+4. 跑一次 `tools/check_3d_world_frame.py`，跨窗拼接误差必须是 0（float 级）。
 
 ---
 
@@ -397,3 +399,4 @@ rsync -a --delete --exclude '__pycache__' ./tools/     qingcang-0:/tmp/paper_viz
 | `viz-3d-fixed-20260918` | `cb806c3` → `ec9630a` → `6d4e624` → `9a8da7f` | ① 相机 bundle 补做水平化（原来视锥离手 2.7 m、光轴偏 43°）；② 缺窗方法的相机不再被挪到片段开头；③ `level_in_place` 统一入口 + 每次渲染的世界系断言 + `check_3d_world_frame.py` 预检；④ 本文档重写 |
 | `viz-3d-rgb5-20260918` | `2b5c882` | 大图 Input RGB 列改为**每行一个均匀采样帧**（改前 5 行是同一帧、且是最后一帧）并在格内标注帧号/时间 |
 | **`viz-3d-r3-20260918`（当前）** | 其上 doc-only 提交 | 刷新本文档的版本号与交付物 md5 表（代码与 `viz-3d-rgb5-20260918` 相同） |
+| `r3-window-stitch-fix` | 本次修复 | pred 外参用相邻 GT 帧 delta 累计拼接；增加 59→60、119→120 回归检查 |
