@@ -123,6 +123,35 @@ class WindowStitchTest(unittest.TestCase):
         self.assertTrue(isolated["warnings"])
         self.assertTrue(systemic["violations"])
 
+    def test_calibrated_baseline_behind_camera_is_marked_invalid(self):
+        gt_hand = np.zeros((60, 2, 1, 3))
+        gt_hand[..., 2] = 1.0
+        baseline_hand = gt_hand.copy()
+        baseline_hand[..., 2] = -1.0
+        rig = np.stack([pose(frame * 0.01) for frame in range(60)])
+        window = WindowSources(
+            cache_id="0", window_id="0", frame_ids=list(range(60)),
+            rgb_dir=None, geometry_dir=None, record={"image_size_hw": [10, 10]},
+            methods={
+                "gt": {
+                    "camera_c2w": rig,
+                    "intrinsics": np.eye(3),
+                    "hand_vertices_camera": gt_hand,
+                    "hand_valid": np.ones((60, 2), bool),
+                },
+                "egoforce": {
+                    "hand_vertices_camera": baseline_hand,
+                    "hand_valid": np.ones((60, 2), bool),
+                },
+            },
+        )
+        mano = SimpleNamespace(faces=np.zeros((1, 3), dtype=int))
+
+        store = build_segment_sequences(SimpleNamespace(windows=[window]), mano)
+
+        self.assertFalse(store["egoforce"]["valid"].any())
+        self.assertTrue(store["gt"]["valid"].all())
+
 
 if __name__ == "__main__":
     unittest.main()

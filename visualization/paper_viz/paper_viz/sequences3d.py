@@ -110,7 +110,13 @@ def _window_world(method: str, window: WindowSources, mano, vertices_camera=None
                       "frames": None}
             return None, aligned, valid, camera
         camera = np.asarray(data["hand_vertices_camera"], float)
-        return (world_from_camera(camera, gt_c2w), None, np.asarray(data["hand_valid"], bool),
+        valid = np.asarray(data["hand_valid"], bool)
+        # Formal calibrated-camera baselines occasionally mark a prediction valid
+        # even though its full hand is behind the image plane.  Such geometry is
+        # not renderable and must be hidden, never rotated or otherwise repaired.
+        in_front = np.nanmedian(camera[..., 2], axis=2) > 0.0
+        valid = valid & in_front
+        return (world_from_camera(camera, gt_c2w), None, valid,
                 calibrated(None))
 
     if method == "ego":
