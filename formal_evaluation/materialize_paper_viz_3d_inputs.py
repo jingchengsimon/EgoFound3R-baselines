@@ -34,6 +34,14 @@ def digest(path: Path) -> str:
 
 def rewrite(path: str | Path, alignment: dict) -> Path:
     source = Path(path)
+    # The two allocations expose the same shared CPFS under different mount
+    # entrances.  Frozen 5000 records use /mnt/workspace/sjc, while 8093 mounts
+    # that namespace at /mnt/cpfs/sjc.
+    workspace = Path("/mnt/workspace/sjc")
+    try:
+        source = Path("/mnt/cpfs/sjc") / source.relative_to(workspace)
+    except ValueError:
+        pass
     alias = Path(alignment["cpfs_alias"])
     try:
         relative = source.relative_to(alias)
