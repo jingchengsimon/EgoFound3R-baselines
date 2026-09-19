@@ -337,6 +337,7 @@ def _cone_angle_deg(K, size_hw) -> float:
 def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRAMES,
                          anchor_tol: float = 1e-3, up_tol: float = 5e-3,
                          distance_band=(0.02, 5.0),
+                         distance_percentiles=(5.0, 95.0),
                          hard_angle_deg: float = 90.0,
                          hard_angle_percentile: float = 95.0) -> dict:
     """Audit that hands, frustums and trajectories live in one world frame.
@@ -401,6 +402,8 @@ def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRA
                "camera_frames": int(valid.sum()), "paired_frames": int(len(both)),
                "distance_median": float(np.median(distances)) if distances else float("nan"),
                "distance_max": float(np.max(distances)) if distances else float("nan"),
+               "distance_p05": float(np.percentile(distances, distance_percentiles[0])) if distances else float("nan"),
+               "distance_p95": float(np.percentile(distances, distance_percentiles[1])) if distances else float("nan"),
                "angle_max": float(np.max(angles)) if angles else float("nan"),
                "angle_p95": float(np.percentile(angles, hard_angle_percentile)) if angles else float("nan"),
                "cone_angle": cone,
@@ -413,9 +416,17 @@ def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRA
                               f"{max(anchor):.4f} m")
         if not len(both):
             warnings.append(f"{label}: no frame has both a hand and a camera")
-        if distances and (min(distances) < distance_band[0] or max(distances) > distance_band[1]):
-            violations.append(f"{label}: camera-to-hand distance {min(distances):.3f}-"
-                              f"{max(distances):.3f} m is outside {distance_band}")
+        low_distance = (float(np.percentile(distances, distance_percentiles[0]))
+                        if distances else float("nan"))
+        high_distance = (float(np.percentile(distances, distance_percentiles[1]))
+                         if distances else float("nan"))
+        if distances and (low_distance < distance_band[0] or high_distance > distance_band[1]):
+            violations.append(f"{label}: camera-to-hand distance is systematically outside "
+                              f"{distance_band}: p{distance_percentiles[0]:g}={low_distance:.3f}, "
+                              f"p{distance_percentiles[1]:g}={high_distance:.3f} m")
+        elif distances and (min(distances) < distance_band[0] or max(distances) > distance_band[1]):
+            warnings.append(f"{label}: isolated camera-to-hand distance reaches "
+                            f"{min(distances):.3f}-{max(distances):.3f} m")
         hard_angle = float(np.percentile(angles, hard_angle_percentile)) if angles else float("nan")
         if angles and hard_angle > hard_angle_deg:
             violations.append(f"{label}: frustum axis systematically misses the hand: "
