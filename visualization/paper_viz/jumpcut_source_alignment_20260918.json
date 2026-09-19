@@ -1,5 +1,8 @@
 {
   "h2o": {
+    "hawor_roots": [
+      "/mnt/cpfs/paper_viz_2d_hawor_jumpcut_infer_5000_20260918_v2/h2o/hawor/formal"
+    ],
     "gt_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/h2o/gt_cache",
     "method_roots": {
       "egoforce": [
@@ -19,6 +22,9 @@
     "hawor_output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/h2o"
   },
   "oakink_v2": {
+    "hawor_roots": [
+      "/mnt/cpfs/paper_viz_2d_hawor_jumpcut_infer_5000_20260918_v2/oakink_v2/hawor/formal"
+    ],
     "gt_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache",
     "method_roots": {
       "egoforce": [

@@ -135,6 +135,8 @@ def direct_candidates(alignment: dict, dataset: str, cache: str,
     spec = alignment[dataset]
     candidates = []
     if method == "hawor":
+        candidates.extend(Path(root) / cache / "predictions.npz"
+                          for root in spec.get("hawor_roots", []))
         candidates.extend((Path(spec.get("hawor_output_root", "")) / cache / "predictions.npz",
                            OLD_HAWOR / dataset / cache / "predictions.npz"))
     elif method == "gt":

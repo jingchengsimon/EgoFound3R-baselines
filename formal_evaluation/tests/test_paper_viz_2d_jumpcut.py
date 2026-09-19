@@ -1,5 +1,10 @@
 from formal_evaluation.audit_paper_viz_2d_jumpcut import jump_blocks, stitched_entry
 from formal_evaluation.rank_paper_viz_2d_relative import BASELINES, add_relative_scores
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
 
 
 def axis(length=360, gap_after=179):
@@ -67,3 +72,25 @@ def test_relative_ranking_requires_ego_to_beat_best_baseline():
     assert [row["window_id"] for row in ranked] == ["a", "b"]
     assert ranked[0]["ego_beats_all_baselines"] is True
     assert ranked[1]["ego_beats_all_baselines"] is False
+
+
+def test_hawor_materializer_copies_only_old_missing_file():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        source = root / "source" / "h2o" / "cache-new" / "predictions.npz"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(b"prediction")
+        entry = {"dataset": "h2o", "frame_refs": [
+            {"cache_id": "cache-new", "index": 0, "window_id": "seq:0-59"}
+        ]}
+        manifest = root / "stitched.jsonl"
+        manifest.write_text("".join(json.dumps(entry) + "\n" for _ in range(114)))
+        output = root / "output"
+        subprocess.run([
+            sys.executable, "formal_evaluation/materialize_paper_viz_2d_hawor.py",
+            "--stitched-manifest", str(manifest), "--source-root", str(root / "source"),
+            "--old-root", str(root / "old"), "--output-root", str(output),
+            "--expected-missing", "1", "--reserve-gib", "0",
+        ], check=True, capture_output=True, text=True)
+        assert (output / "files/h2o/cache-new/predictions.npz").read_bytes() == b"prediction"
+        assert json.loads((output / "report.json").read_text())["copied_files"] == 1
