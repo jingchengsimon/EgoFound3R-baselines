@@ -87,6 +87,42 @@ class WindowStitchTest(unittest.TestCase):
         self.assertFalse(report["violations"])
         self.assertTrue(strict["violations"])
 
+    def test_frustum_gate_rejects_systemic_not_isolated_outliers(self):
+        frames = 100
+        rig = np.repeat(np.diag([1.0, -1.0, 1.0, 1.0])[None], frames, axis=0)
+        intrinsics = np.repeat(np.diag([100.0, 100.0, 1.0])[None], frames, axis=0)
+        valid = np.ones((frames, 2, 1), bool)
+        camera = SimpleNamespace(
+            camera_to_display=rig,
+            camera_valid=np.ones(frames, bool),
+        )
+
+        def report(bad_frames):
+            vertices = np.zeros((frames, 2, 1, 3))
+            vertices[..., 2] = 1.0
+            vertices[:bad_frames, ..., 2] = -1.0
+            return camera_bundle_report({
+                "egoforce": {
+                    "vertices": vertices,
+                    "valid": valid,
+                    "camera": {
+                        "c2w": rig,
+                        "valid": np.ones(frames, bool),
+                        "K": intrinsics,
+                        "K_valid": np.ones(frames, bool),
+                        "size_hw": (100, 100),
+                        "source": "gt",
+                    },
+                },
+            }, camera)
+
+        isolated = report(1)
+        systemic = report(20)
+
+        self.assertFalse(isolated["violations"])
+        self.assertTrue(isolated["warnings"])
+        self.assertTrue(systemic["violations"])
+
 
 if __name__ == "__main__":
     unittest.main()

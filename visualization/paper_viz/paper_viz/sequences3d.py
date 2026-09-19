@@ -331,7 +331,8 @@ def _cone_angle_deg(K, size_hw) -> float:
 def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRAMES,
                          anchor_tol: float = 1e-3, up_tol: float = 5e-3,
                          distance_band=(0.02, 5.0),
-                         hard_angle_deg: float = 90.0) -> dict:
+                         hard_angle_deg: float = 90.0,
+                         hard_angle_percentile: float = 95.0) -> dict:
     """Audit that hands, frustums and trajectories live in one world frame.
 
     Three independent, dataset-independent checks:
@@ -392,6 +393,7 @@ def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRA
                "distance_median": float(np.median(distances)) if distances else float("nan"),
                "distance_max": float(np.max(distances)) if distances else float("nan"),
                "angle_max": float(np.max(angles)) if angles else float("nan"),
+               "angle_p95": float(np.percentile(angles, hard_angle_percentile)) if angles else float("nan"),
                "cone_angle": cone,
                "anchor_max": float(np.max(anchor)) if anchor else float("nan"),
                "anchor_rot_max": float(np.max(anchor_rot)) if anchor_rot else float("nan")}
@@ -405,9 +407,14 @@ def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRA
         if distances and (min(distances) < distance_band[0] or max(distances) > distance_band[1]):
             violations.append(f"{label}: camera-to-hand distance {min(distances):.3f}-"
                               f"{max(distances):.3f} m is outside {distance_band}")
-        if angles and max(angles) > hard_angle_deg:
-            violations.append(f"{label}: frustum axis misses the hand by {max(angles):.1f} deg "
+        hard_angle = float(np.percentile(angles, hard_angle_percentile)) if angles else float("nan")
+        if angles and hard_angle > hard_angle_deg:
+            violations.append(f"{label}: frustum axis systematically misses the hand: "
+                              f"p{hard_angle_percentile:g}={hard_angle:.1f} deg "
                               f"(>= {hard_angle_deg:.0f})")
+        elif angles and max(angles) > hard_angle_deg:
+            warnings.append(f"{label}: isolated frustum miss reaches {max(angles):.1f} deg; "
+                            f"p{hard_angle_percentile:g}={hard_angle:.1f} deg")
         elif angles and np.isfinite(cone) and max(angles) > cone:
             warnings.append(f"{label}: hand is outside its own image cone "
                             f"({max(angles):.1f} deg > {cone:.1f} deg)")
