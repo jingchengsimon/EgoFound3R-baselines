@@ -2371,6 +2371,47 @@ def merged_run(registry: dict[str, Any], run_id: str, *, allow_shared_reader: bo
             },
         })
         merged["launch"].update(worktree_source)
+    if identity.get("pipeline") == "paper-viz-3d-r3-materialize-full104":
+        root = str(merged["output_root"])
+        runtime = str(identity["runtime_root"])
+        manifest_relative = str(identity["manifest_relative"])
+        alignment_relative = str(identity["alignment_relative"])
+        merged.update({
+            "artifact_audit": False,
+            "completion_artifacts": [
+                {"path": root + "/summary.json", "min_bytes": 1},
+                {"path": root + "/COMPLETE", "min_bytes": 1},
+            ],
+            "progress_log": True,
+            "launch": {
+                "command": (
+                    "exec python3 -u {runtime}/formal_evaluation/materialize_paper_viz_3d_inputs.py "
+                    "--manifest {runtime}/{manifest_relative} --alignment {runtime}/{alignment_relative} "
+                    "--output-root {output_root} --workers 8"
+                ),
+                "controller_path": runtime + "/formal_evaluation/remote_task_control.py",
+                "deploy_before_preflight": True,
+                "handle_path": runtime + "/handle.json",
+                "log_path": runtime + "/run.log",
+                "method": "sources",
+                "node_candidates": [int(identity["node"])],
+                "preflight_paths": ["/mnt/oss/pre-train/ego/eval_artifacts", str(Path(root).parent)],
+                "resource": "coverage",
+                "runtime_root": runtime,
+                "support_files": [
+                    "formal_evaluation/materialize_paper_viz_3d_inputs.py",
+                    "formal_evaluation/remote_task_control.py",
+                    manifest_relative,
+                    alignment_relative,
+                ],
+                "values": {
+                    "alignment_relative": alignment_relative,
+                    "manifest_relative": manifest_relative,
+                    "output_root": root,
+                    "runtime": runtime,
+                },
+            },
+        })
     if identity.get("pipeline") == "registered-report-read-v1":
         report_paths = [value for value in str(identity.get("report_paths", "")).split(",") if value]
         merged.update({

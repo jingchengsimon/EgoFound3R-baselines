@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 from collections import Counter
@@ -17,8 +18,7 @@ EXPECTED_COUNTS = {"arctic": 48, "h2o": 5, "hot3d": 44, "oakink_v2": 7}
 
 
 def segment_id(entry: dict) -> str:
-    frames = entry["frame_ids"]
-    return f"{entry['dataset']}__{frames[0]}-{frames[-1]}"
+    return str(entry["gallery_stem"])
 
 
 def cache_ids(entry: dict) -> list[str]:
@@ -83,16 +83,13 @@ def main() -> None:
         }
     for entry in entries:
         dataset, name = entry["dataset"], segment_id(entry)
-        infer = args.ego_infer_root / dataset / name
-        npz = sorted((infer / "viz_inputs").glob("*_plus.npz")) or sorted((infer / "viz_inputs").glob("ego_infer_*f.npz"))
-        if not (infer / "inference_output.pt").is_file() or not npz:
-            missing.append(("ego_infer", str(infer)))
         for window in entry["windows"]:
             cache = window["gt"]["cache_id"]
             window_id = window["window_id"]
             prepared = prepared_roots[dataset] / cache
             required = {
                 "prepared": prepared / "window_input.json",
+                "ego": args.src_dir / cache / "ego.npz",
                 "gt": args.src_dir / cache / "gt.npz",
                 "wilor": args.src_dir / cache / "wilor.npz",
                 "pad_hand": args.src_dir / cache / "pad_hand.npz",
@@ -115,11 +112,18 @@ def main() -> None:
         dataset, name, caches = entry["dataset"], segment_id(entry), cache_ids(entry)
         staged = staged_root / dataset / name
         if not (staged / "selection.json").is_file():
-            infer = args.ego_infer_root / dataset / name
-            npz = sorted((infer / "viz_inputs").glob("*_plus.npz")) or sorted((infer / "viz_inputs").glob("ego_infer_*f.npz"))
-            run([python, str(tools / "stage_ego_windows.py"), "--infer-dir", str(infer),
-                 "--npz", str(npz[0]), "--prepared-root", str(prepared_roots[dataset]),
-                 "--dataset", dataset, "--caches", *caches, "--out", str(staged)])
+            incoming = staged.with_name(staged.name + ".incoming")
+            incoming.mkdir(parents=True)
+            windows = []
+            for index, (cache, window) in enumerate(zip(caches, entry["windows"])):
+                os.symlink(args.src_dir / cache / "ego.npz", incoming / f"{index}_ego.npz")
+                windows.append({"index": index, "window_id": window["window_id"],
+                                "cache_id": cache, "gt": {"cache_id": cache},
+                                "frame_ids": window["gt"]["frame_ids"]})
+            selection = {"dataset": dataset, "sequence_id": entry["sequence_id"],
+                         "segment_id": name, "windows": windows}
+            (incoming / "selection.json").write_text(json.dumps(selection, indent=2) + "\n")
+            incoming.replace(staged)
         print(f"STAGED {number}/104 {name}", flush=True)
 
     for dataset in EXPECTED_COUNTS:
