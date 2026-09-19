@@ -167,6 +167,37 @@ class WindowStitchTest(unittest.TestCase):
         self.assertFalse(store["egoforce"]["valid"].any())
         self.assertTrue(store["gt"]["valid"].all())
 
+    def test_reviv4d_behind_its_predicted_camera_is_marked_invalid(self):
+        gt_hand = np.zeros((60, 2, 1, 3))
+        gt_hand[..., 2] = 1.0
+        reviv_joints = np.repeat(gt_hand, 21, axis=2)
+        reviv_joints[:30, ..., 2] = -1.0
+        rig = np.stack([pose(frame * 0.01) for frame in range(60)])
+        window = WindowSources(
+            cache_id="0", window_id="0", frame_ids=list(range(60)),
+            rgb_dir=None, geometry_dir=None, record={"image_size_hw": [10, 10]},
+            methods={
+                "gt": {
+                    "camera_c2w": rig,
+                    "intrinsics": np.eye(3),
+                    "hand_vertices_camera": gt_hand,
+                    "hand_valid": np.ones((60, 2), bool),
+                },
+                "reviv4d": {
+                    "camera_c2w": rig,
+                    "hand_joints_camera": reviv_joints,
+                    "hand_valid": np.ones((60, 2), bool),
+                },
+            },
+        )
+        mano = SimpleNamespace(faces=np.zeros((1, 3), dtype=int))
+
+        store = build_segment_sequences(SimpleNamespace(windows=[window]), mano)
+
+        self.assertFalse(store["reviv4d"]["valid"][:30].any())
+        self.assertTrue(store["reviv4d"]["valid"][30:].all())
+        self.assertTrue(store["reviv4d"]["camera"]["valid"].all())
+
     def test_distance_gate_rejects_systemic_not_isolated_outliers(self):
         frames = 100
         rig = np.repeat(np.diag([1.0, -1.0, 1.0, 1.0])[None], frames, axis=0)

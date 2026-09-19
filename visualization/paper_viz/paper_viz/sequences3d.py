@@ -3,11 +3,11 @@
 Every method is expressed in the **same GT world frame** so the rows of the
 summary/video are directly comparable:
 
-* GT / WiLoR / PAD-Hand / EgoForce / ReViV4D live in the calibrated camera frame,
-  so they are lifted with the window's calibrated ``camera_c2w``;
-* HaWoR / Dyn-HaMR are native-SLAM world: the first 60-frame window is placed in
-  GT world, then later windows inherit the previous predicted drift and advance by
-  the GT camera motion across each boundary;
+* GT / WiLoR / PAD-Hand / EgoForce live in the calibrated camera frame, so they
+  are lifted with the window's calibrated ``camera_c2w``;
+* HaWoR / Dyn-HaMR / ReViV4D use their predicted camera: the first 60-frame
+  window is placed in GT world, then later windows inherit the previous predicted
+  drift and advance by the GT camera motion across each boundary;
 * EgoFound3R is predicted in its own camera frame: its vertices are lifted with
   the predicted ``camera_c2w`` and the window is rigidly aligned to GT world the
   same way, so the comparison keeps the model's own geometry without pretending
@@ -98,7 +98,8 @@ def _window_world(method: str, window: WindowSources, mano, vertices_camera=None
             # rebased into GT world exactly like the native-world methods; only the
             # intrinsics fall back to the calibrated K (ReViV4D predicts none).
             joints = joints_in_gt_order("reviv4d", np.asarray(data["hand_joints_camera"], float))
-            valid = np.asarray(data["hand_valid"], bool)
+            valid = np.asarray(data["hand_valid"], bool) \
+                & (np.nanmedian(joints[..., 2], axis=2) > 0.0)
             own_c2w = np.asarray(data["camera_c2w"], float)
             own_valid = np.asarray(data.get("camera_valid", np.ones(len(own_c2w), bool)), bool)
             own_world = world_from_camera(joints, own_c2w)
