@@ -61,14 +61,20 @@ def method_source(window: dict, spec: dict, method: str, alignment: dict) -> Pat
 
 def metadata_path(window: dict, source: Path, method: str, alignment: dict) -> Path:
     if method == "gt":
-        return rewrite(window["gt"]["metadata_path"], alignment)
+        # The published GT cache is self-contained on OSS: each ``.npz`` has an
+        # adjacent ``.json``.  The frozen manifest still records the historical
+        # workspace metadata path, which is deliberately not mounted on 8093.
+        return source.with_suffix(".json")
     return source.with_name("metadata.json")
 
 
 def validate_identity(path: Path, dataset: str, method: str, frame_ids: list[str]) -> None:
     payload = json.loads(path.read_text())
     expected_method = "egofound3r" if method == "ego" else method
-    if payload.get("dataset") != dataset or payload.get("method") != expected_method:
+    method_ok = payload.get("method") == expected_method
+    if method == "gt":
+        method_ok = payload.get("method") in (None, "gt")
+    if payload.get("dataset") != dataset or not method_ok:
         raise ValueError(f"METADATA_IDENTITY_MISMATCH:{method}:{path}")
     if [str(value) for value in payload.get("frame_ids", [])] != frame_ids:
         raise ValueError(f"METADATA_FRAME_IDS_MISMATCH:{method}:{path}")
