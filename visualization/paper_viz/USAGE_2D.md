@@ -253,6 +253,21 @@ python3 tools/relay_sources.py --dataset arctic \
 
 输出里的 `missing` 就是还缺的 baseline 源（通常因为 `/mnt/oss` 掉挂载）。
 
+### 冻结 114 段的跳切与重排合同（2026-09-18）
+
+* H2O、OakInk-v2：只在同一 `dataset + sequence_id` 内按注册时间轴取帧；以冻结窗口的
+  `frame_id` 为锚点，最多取 300 帧，不跨 sequence、不重复帧。源帧号不连续的位置必须写入
+  `jump_stitch.blocks`，推理/平滑按 block 独立执行，最后只拼接渲染结果。
+* TACO：保持冻结窗口不变，不跨 episode 拼接；ARCTIC/HOT3D 也保持原 300 帧。
+* 排序锚定原 114 个冻结窗口，不用后来补入的跳切帧改变入选身份。对所有方法使用相同帧、
+  GT 和相机合同，先算
+  `E = .60*(1-IoU) + .25*(1-BoundaryF) + .10*center_norm + .05*area_norm`，再算
+  `ego_advantage = min(E_baseline) - E_ego`，按 `ego_advantage` 降序。正值表示 Ego 的误差
+  小于固定 baseline roster 中的每一种方法。缺方法的窗口不得把缺失列当作胜出，必须先按
+  全 114 段的共同覆盖确定固定 roster。
+* 先运行已注册的 source audit。只有报告中 `render_ready=true` 才能提交推理、打分和渲染；
+  不能从 PID、部分清单或现有 PNG 推断 source 已齐。
+
 ---
 
 ## 5. 样式合同（锁定，改动需用户确认）

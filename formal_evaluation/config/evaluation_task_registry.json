@@ -6804,6 +6804,13 @@
       "phase": "formal",
       "protocol": "60f"
     },
+    "visualization:five:paper-viz-2d:jumpcut-audit:5000:20260918:v1": {
+      "dataset": "five",
+      "latest": "visualization-five-paper-viz-2d-jumpcut-audit-5000-20260918-v1",
+      "method_set": "paper_viz_2d_jumpcut_audit_v1",
+      "phase": "visualization",
+      "protocol": "frozen114-h2o-oakink-jumpcut-taco-unchanged-relative-alignment-v1"
+    },
     "visualization:four:10s-gallery:endpoint104:5000:auxmethods-hawor-native-handzoom-panels:pilot_arctic_auxmethods_handzoom_panels_v1:20260915": {
       "dataset": "four",
       "latest": "visualization-four-10s-gallery-endpoint104-5000-auxmethods-hawor-native-handzoom-panels-pilot_arctic_auxmethods_handzoom_panels_v1-20260915",
@@ -7459,6 +7466,15 @@
     ],
     "pad_temporal": [
       "pad_hand"
+    ],
+    "paper_viz_2d_jumpcut_audit_v1": [
+      "egofound3r",
+      "wilor",
+      "pad_hand",
+      "egoforce",
+      "reviv4d",
+      "hawor",
+      "gt"
     ],
     "pi3-depth-fixed-mask": [
       "pi3"
@@ -83714,6 +83730,29 @@
       "state_section": "jobs",
       "target_windows_per_method": 1,
       "task_type": "visualization"
+    },
+    "visualization-five-paper-viz-2d-jumpcut-audit-5000-20260918-v1": {
+      "created_at_epoch": 1789781514,
+      "identity": {
+        "alignment_relative": "visualization/paper_viz/jumpcut_source_alignment_20260918.json",
+        "instance_id": "dsw-454648-7b77454858-ts5zm",
+        "manifest_relative": "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+        "manifest_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+        "node": "5000",
+        "pipeline": "paper-viz-2d-jumpcut-audit-v1"
+      },
+      "job_keys": [
+        "five::jumpcut-audit"
+      ],
+      "logical_task_id": "visualization:five:paper-viz-2d:jumpcut-audit:5000:20260918:v1",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_jumpcut_audit_frozen114_20260918_v1",
+      "registration_key": "bf9d97859ac09439ccca84e7c0371495266e401f52dc7b2d75221fce4025a383",
+      "scheduler_id": "manual:paper-viz-2d-jumpcut-audit-5000-20260918-v1",
+      "state_file": ".auto_scheduler/paper_viz_2d_jumpcut_20260918/audit_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 114,
+      "task_type": "artifact-audit"
     },
     "visualization-four-10s-gallery-endpoint104-5000-auxmethods-hawor-native-handzoom-panels-pilot_arctic_auxmethods_handzoom_panels_v1-20260915": {
       "created_at_epoch": 1789529809,

@@ -2322,6 +2322,50 @@ def merged_run(registry: dict[str, Any], run_id: str, *, allow_shared_reader: bo
                 "node": int(identity.get("node", 5001)),
             },
         })
+    if identity.get("pipeline") == "paper-viz-2d-jumpcut-audit-v1":
+        root = str(merged["output_root"])
+        runtime = root + "/runtime"
+        manifest_relative = str(identity["manifest_relative"])
+        alignment_relative = str(identity["alignment_relative"])
+        node = int(identity.get("node", 5000))
+        merged.update({
+            "artifact_audit": False,
+            "progress_log": True,
+            "completion_artifacts": [
+                {"path": root + "/report.json", "min_bytes": 1},
+                {"path": root + "/stitched_manifest.jsonl", "min_lines": 114, "min_bytes": 1},
+                {"path": root + "/COMPLETE", "min_bytes": 1},
+            ],
+            "launch": {
+                "command": (
+                    "exec python3 -u '{runtime}/formal_evaluation/audit_paper_viz_2d_jumpcut.py' "
+                    "--manifest '{runtime}/{manifest}' --manifest-sha256 '{manifest_sha256}' "
+                    "--alignment '{runtime}/{alignment}' --output-root '{output_root}'"
+                ),
+                "controller_path": runtime + "/formal_evaluation/remote_task_control.py",
+                "deploy_before_preflight": True,
+                "handle_path": runtime + "/handle.json",
+                "log_path": runtime + "/run.log",
+                "method": "jumpcut-audit",
+                "node_candidates": [node],
+                "preflight_paths": ["/mnt/cpfs/sjc/DATA/eval_artifacts"],
+                "resource": "coverage",
+                "runtime_root": runtime,
+                "support_files": [
+                    "formal_evaluation/remote_task_control.py",
+                    "formal_evaluation/audit_paper_viz_2d_jumpcut.py",
+                    manifest_relative,
+                    alignment_relative,
+                ],
+                "values": {
+                    "alignment": alignment_relative,
+                    "manifest": manifest_relative,
+                    "manifest_sha256": str(identity["manifest_sha256"]),
+                    "output_root": root,
+                    "runtime": runtime,
+                },
+            },
+        })
     if identity.get("pipeline") == "derive-v7-visibility-manifest-v1":
         root = str(merged["output_root"])
         runtime = root + "/runtime"

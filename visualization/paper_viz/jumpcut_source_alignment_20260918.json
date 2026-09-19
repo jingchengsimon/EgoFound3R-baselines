@@ -1,0 +1,39 @@
+{
+  "h2o": {
+    "gt_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/h2o/gt_cache",
+    "method_roots": {
+      "egoforce": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/hand_ready_20260914T010000Z/egoforce/h2o/egoforce/formal"
+      ],
+      "pad_hand": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g5_h2o_hoi4d_v2/h2o/pad_hand/formal"
+      ],
+      "reviv4d": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_60f_20260822T112000Z_continuation/reviv4d/reviv4d/formal",
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_hot3d_backfill_20260824T074500Z/reviv4d/reviv4d/formal"
+      ],
+      "wilor": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_h2o_60f_20260822T112000Z_continuation/wilor/wilor/formal"
+      ]
+    },
+    "hawor_output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/h2o"
+  },
+  "oakink_v2": {
+    "gt_root": "/mnt/oss/pre-train/ego/eval_artifacts/formal_standard_reports_10methods_20260824/oakink_v2/gt_cache",
+    "method_roots": {
+      "egoforce": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/hand_ready_20260914T010000Z/egoforce/oakink_v2/egoforce/formal"
+      ],
+      "pad_hand": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/p95_table_freeze_20260915/result3_direct/pad_hand_bimanual_6e443a67_20260914/lane_g7_oakink_taco_v2/oakink_v2/pad_hand/formal"
+      ],
+      "reviv4d": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_oakink_v2_60f_20260820T0022Z_e6c4a5e/reviv4d/reviv4d/formal"
+      ],
+      "wilor": [
+        "/mnt/oss/pre-train/ego/eval_artifacts/formal_oakink_v2_60f_20260820T0022Z_e6c4a5e/wilor/wilor/formal"
+      ]
+    },
+    "hawor_output_root": "/mnt/workspace/sjc/DATA/eval_artifacts/hawor_native_camera_repair_20260915_v9_5000/datasets/oakink_v2"
+  }
+}
