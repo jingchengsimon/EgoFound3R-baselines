@@ -87,6 +87,21 @@ class WindowStitchTest(unittest.TestCase):
         self.assertFalse(report["violations"])
         self.assertTrue(strict["violations"])
 
+    def test_level_check_measures_direction_not_mean_length(self):
+        camera_to_display = np.repeat(np.eye(4)[None], 2, axis=0)
+        camera_to_display[:, 1, 1] = -np.sqrt(1.0 - 0.1 ** 2)
+        camera_to_display[0, 2, 1] = 0.1
+        camera_to_display[1, 2, 1] = -0.1
+        camera = SimpleNamespace(
+            camera_to_display=camera_to_display,
+            camera_valid=np.ones(2, bool),
+        )
+
+        report = camera_bundle_report({}, camera, up_tol=1e-6)
+
+        self.assertLess(report["up_error"], 1e-12)
+        self.assertFalse(report["violations"])
+
     def test_frustum_gate_rejects_systemic_not_isolated_outliers(self):
         frames = 100
         rig = np.repeat(np.diag([1.0, -1.0, 1.0, 1.0])[None], frames, axis=0)

@@ -356,6 +356,9 @@ def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRA
     total = len(calib)
     rows, violations, warnings = [], [], []
     up = -np.mean(calib[calib_valid][:, :3, 1], axis=0) if calib_valid.any() else np.zeros(3)
+    up_norm = float(np.linalg.norm(up))
+    if up_norm > 0.0:
+        up = up / up_norm
     up_error = float(np.linalg.norm(up - np.array([0.0, 1.0, 0.0])))
     if not calib_valid.any():
         warnings.append("calibrated camera has no valid frame")
