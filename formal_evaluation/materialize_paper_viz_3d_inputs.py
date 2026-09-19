@@ -22,6 +22,7 @@ EGO_KEYS = {
     "camera_c2w.npy", "camera_valid.npy",
 }
 GT_KEYS = {"hand_valid.npy", "hand_vertices_camera.npy", "camera_c2w.npy", "intrinsics.npy"}
+INDEX_CACHE: dict[str, dict[str, str]] = {}
 
 
 def digest(path: Path) -> str:
@@ -60,10 +61,36 @@ def method_source(window: dict, spec: dict, method: str, alignment: dict) -> Pat
         candidates.extend(Path(root) / f"{cache}.npz" for root in roots)
     elif method == "dyn_hamr":
         root = spec.get("dyn_hamr_formal_root")
-        candidates = [Path(root) / cache / "predictions.npz"] if root else []
+        candidates = [rewrite(root, alignment) / cache / "predictions.npz"] if root else []
     else:
-        candidates = [Path(root) / cache / "predictions.npz"
-                      for root in spec.get("method_roots", {}).get(method, [])]
+        roots = [rewrite(root, alignment)
+                 for root in spec.get("method_roots", {}).get(method, [])]
+        candidates = [root / cache / "predictions.npz"
+                      for root in roots]
+        direct = next((path for path in candidates
+                       if path.is_file() and path.stat().st_size > 0), None)
+        if direct is not None:
+            return direct
+        # Repair runs preserve a canonical predictions.jsonl whose rows point to
+        # the mixture of reused, retried, and remaining formal directories.
+        wanted = str(window["window_id"])
+        for root in roots:
+            for parent in (root, *root.parents[:4]):
+                index = parent / "predictions.jsonl"
+                if not index.is_file():
+                    continue
+                index_key = str(index)
+                if index_key not in INDEX_CACHE:
+                    INDEX_CACHE[index_key] = {
+                        str(row["window_id"]): str(row["prediction_dir"])
+                        for row in (json.loads(line) for line in index.read_text().splitlines() if line)
+                    }
+                rows = INDEX_CACHE[index_key]
+                if wanted in rows:
+                    prediction = rewrite(rows[wanted], alignment) / "predictions.npz"
+                    if prediction.is_file() and prediction.stat().st_size > 0:
+                        return prediction
+        return None
     return next((path for path in candidates if path.is_file() and path.stat().st_size > 0), None)
 
 
