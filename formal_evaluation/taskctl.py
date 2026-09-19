@@ -2366,6 +2366,56 @@ def merged_run(registry: dict[str, Any], run_id: str, *, allow_shared_reader: bo
                 },
             },
         })
+    if identity.get("pipeline") == "paper-viz-2d-relative-ranking-v1":
+        root = str(merged["output_root"])
+        runtime = root + "/runtime"
+        manifest_relative = str(identity["manifest_relative"])
+        node = int(identity.get("node", 8093))
+        merged.update({
+            "artifact_audit": False,
+            "progress_log": True,
+            "completion_artifacts": [
+                {"path": root + "/report.json", "min_bytes": 1},
+                {"path": root + "/ranking.jsonl", "min_lines": 114, "min_bytes": 1},
+                {"path": root + "/COMPLETE", "min_bytes": 1},
+            ],
+            "launch": {
+                "command": (
+                    "exec env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 "
+                    "MKL_NUM_THREADS=1 PYTHONPATH='{runtime}' python3 -u "
+                    "'{runtime}/formal_evaluation/rank_paper_viz_2d_relative.py' "
+                    "--manifest '{runtime}/{manifest}' --manifest-sha256 '{manifest_sha256}' "
+                    "--source-root '{source_root}' --prepared-root '{prepared_root}' "
+                    "--hawor-root '{hawor_root}' --staged-root '{staged_root}' "
+                    "--output-root '{output_root}'"
+                ),
+                "controller_path": runtime + "/formal_evaluation/remote_task_control.py",
+                "deploy_before_preflight": True,
+                "handle_path": runtime + "/handle.json",
+                "log_path": runtime + "/run.log",
+                "method": "relative-ranking",
+                "node_candidates": [node],
+                "preflight_paths": [str(identity[key]) for key in
+                                    ("source_root", "prepared_root", "hawor_root", "staged_root")],
+                "resource": "coverage",
+                "runtime_root": runtime,
+                "support_files": [
+                    "formal_evaluation/remote_task_control.py",
+                    "formal_evaluation/rank_paper_viz_2d_relative.py",
+                    manifest_relative,
+                ],
+                "values": {
+                    "hawor_root": str(identity["hawor_root"]),
+                    "manifest": manifest_relative,
+                    "manifest_sha256": str(identity["manifest_sha256"]),
+                    "output_root": root,
+                    "prepared_root": str(identity["prepared_root"]),
+                    "runtime": runtime,
+                    "source_root": str(identity["source_root"]),
+                    "staged_root": str(identity["staged_root"]),
+                },
+            },
+        })
     if identity.get("pipeline") == "derive-v7-visibility-manifest-v1":
         root = str(merged["output_root"])
         runtime = root + "/runtime"

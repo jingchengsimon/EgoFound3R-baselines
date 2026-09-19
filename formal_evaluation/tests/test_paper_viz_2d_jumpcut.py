@@ -1,4 +1,5 @@
 from formal_evaluation.audit_paper_viz_2d_jumpcut import jump_blocks, stitched_entry
+from formal_evaluation.rank_paper_viz_2d_relative import BASELINES, add_relative_scores
 
 
 def axis(length=360, gap_after=179):
@@ -51,3 +52,18 @@ def test_jump_blocks_uses_registered_sampling_step():
         {"start": 0, "end_exclusive": 3, "first_frame_id": "0", "last_frame_id": "8"},
         {"start": 3, "end_exclusive": 5, "first_frame_id": "40", "last_frame_id": "44"},
     ]
+
+
+def test_relative_ranking_requires_ego_to_beat_best_baseline():
+    def metrics(error):
+        return {"joint_error_normalized": error}
+    stronger = {"dataset": "h2o", "window_id": "a", "original_ego_score": .5,
+                "methods": {"ego": metrics(.1),
+                            **{method: metrics(.3) for method in BASELINES}}}
+    weaker = {"dataset": "h2o", "window_id": "b", "original_ego_score": .9,
+              "methods": {"ego": metrics(.4),
+                          **{method: metrics(.2) for method in BASELINES}}}
+    ranked = add_relative_scores([weaker, stronger])
+    assert [row["window_id"] for row in ranked] == ["a", "b"]
+    assert ranked[0]["ego_beats_all_baselines"] is True
+    assert ranked[1]["ego_beats_all_baselines"] is False

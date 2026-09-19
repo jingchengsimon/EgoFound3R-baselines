@@ -6811,6 +6811,34 @@
       "phase": "visualization",
       "protocol": "frozen114-h2o-oakink-jumpcut-taco-unchanged-relative-alignment-v1"
     },
+    "visualization:five:paper-viz-2d:jumpcut-audit:8093:20260918:v1": {
+      "dataset": "five",
+      "latest": "visualization-five-paper-viz-2d-jumpcut-audit-8093-20260918-v1",
+      "method_set": "paper_viz_2d_jumpcut_audit_v1",
+      "phase": "visualization",
+      "protocol": "frozen114-h2o-oakink-jumpcut-taco-unchanged-relative-alignment-v1"
+    },
+    "visualization:five:paper-viz-2d:relative-joint-ranking-core4:8093:20260918:v1": {
+      "dataset": "five",
+      "latest": "visualization-five-paper-viz-2d-relative-ranking-8093-20260918-v6",
+      "method_set": "paper_viz_2d_relative_ranking_core4_v1",
+      "phase": "visualization",
+      "protocol": "frozen114-anchor-joint2d-relative-core4-v1"
+    },
+    "visualization:five:paper-viz-2d:relative-joint-ranking:8093:20260918:v1": {
+      "dataset": "five",
+      "latest": "visualization-five-paper-viz-2d-relative-ranking-8093-20260918-v5",
+      "method_set": "paper_viz_2d_relative_ranking_v1",
+      "phase": "visualization",
+      "protocol": "frozen114-anchor-joint2d-relative-v1"
+    },
+    "visualization:five:paper-viz-2d:relative-ranking:8093:20260918:v1": {
+      "dataset": "five",
+      "latest": "visualization-five-paper-viz-2d-relative-ranking-8093-20260918-v2",
+      "method_set": "paper_viz_2d_relative_ranking_v1",
+      "phase": "visualization",
+      "protocol": "frozen114-anchor-relative-alignment-v1"
+    },
     "visualization:four:10s-gallery:endpoint104:5000:auxmethods-hawor-native-handzoom-panels:pilot_arctic_auxmethods_handzoom_panels_v1:20260915": {
       "dataset": "four",
       "latest": "visualization-four-10s-gallery-endpoint104-5000-auxmethods-hawor-native-handzoom-panels-pilot_arctic_auxmethods_handzoom_panels_v1-20260915",
@@ -7474,6 +7502,23 @@
       "egoforce",
       "reviv4d",
       "hawor",
+      "gt"
+    ],
+    "paper_viz_2d_relative_ranking_core4_v1": [
+      "egofound3r",
+      "wilor",
+      "pad_hand",
+      "hawor",
+      "reviv4d",
+      "gt"
+    ],
+    "paper_viz_2d_relative_ranking_v1": [
+      "egofound3r",
+      "wilor",
+      "pad_hand",
+      "egoforce",
+      "hawor",
+      "reviv4d",
       "gt"
     ],
     "pi3-depth-fixed-mask": [
@@ -83753,6 +83798,192 @@
       "state_section": "jobs",
       "target_windows_per_method": 114,
       "task_type": "artifact-audit"
+    },
+    "visualization-five-paper-viz-2d-jumpcut-audit-8093-20260918-v1": {
+      "created_at_epoch": 1789781812,
+      "identity": {
+        "alignment_relative": "visualization/paper_viz/jumpcut_source_alignment_20260918.json",
+        "instance_id": "user-confirmed-port-8093-20260918",
+        "manifest_relative": "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+        "manifest_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+        "node": "8093",
+        "pipeline": "paper-viz-2d-jumpcut-audit-v1"
+      },
+      "job_keys": [
+        "five::jumpcut-audit-8093"
+      ],
+      "logical_task_id": "visualization:five:paper-viz-2d:jumpcut-audit:8093:20260918:v1",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_jumpcut_audit_frozen114_8093_20260918_v1",
+      "registration_key": "4e6b4fc53fdfb9fab659aebbdc0a952b462db64587b3a76af6c34b4c03666a45",
+      "scheduler_id": "manual:paper-viz-2d-jumpcut-audit-8093-20260918-v1",
+      "state_file": ".auto_scheduler/paper_viz_2d_jumpcut_20260918/audit_8093_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 114,
+      "task_type": "artifact-audit"
+    },
+    "visualization-five-paper-viz-2d-relative-ranking-8093-20260918-v1": {
+      "created_at_epoch": 1789782149,
+      "identity": {
+        "hawor_root": "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor",
+        "instance_id": "user-confirmed-port-8093-20260918",
+        "manifest_relative": "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+        "manifest_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+        "mapping": "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/mano_195_to_778.npz",
+        "node": "8093",
+        "pipeline": "paper-viz-2d-relative-ranking-v1",
+        "prepared_root": "/mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared",
+        "source_root": "/mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/src",
+        "staged_root": "/mnt/cpfs/paper_viz_2d_screening_frozen114_5x15_3x5_20260917_r2/_staged"
+      },
+      "job_keys": [
+        "five::relative-ranking-8093"
+      ],
+      "logical_task_id": "visualization:five:paper-viz-2d:relative-ranking:8093:20260918:v1",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_relative_ranking_frozen114_8093_20260918_v1",
+      "registration_key": "0e03a6b82b0ce060be8d6e0fa8fa5d4167adf2db880d0e788bae0de4da7bd4cc",
+      "scheduler_id": "manual:paper-viz-2d-relative-ranking-8093-20260918-v1",
+      "state_file": ".auto_scheduler/paper_viz_2d_jumpcut_20260918/ranking_8093_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 114,
+      "task_type": "metrics-recompute"
+    },
+    "visualization-five-paper-viz-2d-relative-ranking-8093-20260918-v2": {
+      "created_at_epoch": 1789782475,
+      "identity": {
+        "hawor_root": "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor",
+        "implementation": "numpy-pillow-morphology-v2",
+        "instance_id": "user-confirmed-port-8093-20260918",
+        "manifest_relative": "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+        "manifest_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+        "mapping": "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/mano_195_to_778.npz",
+        "node": "8093",
+        "pipeline": "paper-viz-2d-relative-ranking-v1",
+        "prepared_root": "/mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared",
+        "source_root": "/mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/src",
+        "staged_root": "/mnt/cpfs/paper_viz_2d_screening_frozen114_5x15_3x5_20260917_r2/_staged"
+      },
+      "job_keys": [
+        "five::relative-ranking-8093-v2"
+      ],
+      "logical_task_id": "visualization:five:paper-viz-2d:relative-ranking:8093:20260918:v1",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_relative_ranking_frozen114_8093_20260918_v2",
+      "registration_key": "141447d8546051f2c826d071a74caa9ca3e26caa6d15760363f3acf5a05a1e6c",
+      "scheduler_id": "manual:paper-viz-2d-relative-ranking-8093-20260918-v2",
+      "state_file": ".auto_scheduler/paper_viz_2d_jumpcut_20260918/ranking_8093_v2_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 114,
+      "task_type": "metrics-recompute"
+    },
+    "visualization-five-paper-viz-2d-relative-ranking-8093-20260918-v3": {
+      "created_at_epoch": 1789782684,
+      "identity": {
+        "hawor_root": "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor",
+        "implementation": "joint2d-common-hands-v3",
+        "instance_id": "user-confirmed-port-8093-20260918",
+        "manifest_relative": "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+        "manifest_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+        "node": "8093",
+        "pipeline": "paper-viz-2d-relative-ranking-v1",
+        "prepared_root": "/mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared",
+        "source_root": "/mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/src",
+        "staged_root": "/mnt/cpfs/paper_viz_2d_screening_frozen114_5x15_3x5_20260917_r2/_staged"
+      },
+      "job_keys": [
+        "five::relative-ranking-8093-v3"
+      ],
+      "logical_task_id": "visualization:five:paper-viz-2d:relative-joint-ranking:8093:20260918:v1",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_relative_ranking_frozen114_8093_20260918_v3",
+      "registration_key": "2e5df9430c7a4e0c79208ec9d33496726a3bf95aebb98acd0ae841a4907b6f1c",
+      "scheduler_id": "manual:paper-viz-2d-relative-ranking-8093-20260918-v3",
+      "state_file": ".auto_scheduler/paper_viz_2d_jumpcut_20260918/ranking_8093_v3_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 114,
+      "task_type": "metrics-recompute"
+    },
+    "visualization-five-paper-viz-2d-relative-ranking-8093-20260918-v4": {
+      "created_at_epoch": 1789782827,
+      "identity": {
+        "hawor_root": "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor",
+        "implementation": "joint2d-cpfs-rgb-v4",
+        "instance_id": "user-confirmed-port-8093-20260918",
+        "manifest_relative": "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+        "manifest_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+        "node": "8093",
+        "pipeline": "paper-viz-2d-relative-ranking-v1",
+        "prepared_root": "/mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared",
+        "source_root": "/mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/src",
+        "staged_root": "/mnt/cpfs/paper_viz_2d_screening_frozen114_5x15_3x5_20260917_r2/_staged"
+      },
+      "job_keys": [
+        "five::relative-ranking-8093-v4"
+      ],
+      "logical_task_id": "visualization:five:paper-viz-2d:relative-joint-ranking:8093:20260918:v1",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_relative_ranking_frozen114_8093_20260918_v4",
+      "registration_key": "0d916e4dd65fccf5f5f2037c188d80355f527ea8a4f0a9025ca03cdefe12bfd0",
+      "scheduler_id": "manual:paper-viz-2d-relative-ranking-8093-20260918-v4",
+      "state_file": ".auto_scheduler/paper_viz_2d_jumpcut_20260918/ranking_8093_v4_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 114,
+      "task_type": "metrics-recompute"
+    },
+    "visualization-five-paper-viz-2d-relative-ranking-8093-20260918-v5": {
+      "created_at_epoch": 1789783016,
+      "identity": {
+        "hawor_root": "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor",
+        "implementation": "joint2d-positive-depth-v5",
+        "instance_id": "user-confirmed-port-8093-20260918",
+        "manifest_relative": "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+        "manifest_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+        "node": "8093",
+        "pipeline": "paper-viz-2d-relative-ranking-v1",
+        "prepared_root": "/mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared",
+        "source_root": "/mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/src",
+        "staged_root": "/mnt/cpfs/paper_viz_2d_screening_frozen114_5x15_3x5_20260917_r2/_staged"
+      },
+      "job_keys": [
+        "five::relative-ranking-8093-v5"
+      ],
+      "logical_task_id": "visualization:five:paper-viz-2d:relative-joint-ranking:8093:20260918:v1",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_relative_ranking_frozen114_8093_20260918_v5",
+      "registration_key": "2d46aba38b906b96ec67d7998000e8dcef814e8021ce8e3a4f64be99ad02c4cd",
+      "scheduler_id": "manual:paper-viz-2d-relative-ranking-8093-20260918-v5",
+      "state_file": ".auto_scheduler/paper_viz_2d_jumpcut_20260918/ranking_8093_v5_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 114,
+      "task_type": "metrics-recompute"
+    },
+    "visualization-five-paper-viz-2d-relative-ranking-8093-20260918-v6": {
+      "created_at_epoch": 1789783210,
+      "identity": {
+        "hawor_root": "/mnt/cpfs/paper_viz_2d_stage_6001_frozen114_20260917_r1/hawor",
+        "implementation": "joint2d-core4-full114-v6",
+        "instance_id": "user-confirmed-port-8093-20260918",
+        "manifest_relative": "visualization/overlay_2d_top100_visibility60_maxnonoverlap114_fill8_20260914/selected_manifest.jsonl",
+        "manifest_sha256": "6a95a1c01288fbe91589345e013bd7c96bcb038ebef2414bea140240824f4d2f",
+        "node": "8093",
+        "pipeline": "paper-viz-2d-relative-ranking-v1",
+        "prepared_root": "/mnt/cpfs/paper_viz_2d_stage_8093_frozen114_20260917_r1/prepared",
+        "source_root": "/mnt/cpfs/paper_viz_2d_render_sources_frozen114_20260917_r1/src",
+        "staged_root": "/mnt/cpfs/paper_viz_2d_screening_frozen114_5x15_3x5_20260917_r2/_staged"
+      },
+      "job_keys": [
+        "five::relative-ranking-8093-v6"
+      ],
+      "logical_task_id": "visualization:five:paper-viz-2d:relative-joint-ranking-core4:8093:20260918:v1",
+      "method_root_output": false,
+      "output_root": "/mnt/cpfs/paper_viz_2d_relative_ranking_frozen114_8093_20260918_v6",
+      "registration_key": "1493f99f4c9c12de48b42a6ff9129e4366ce56a755121f729d1f51158e81379a",
+      "scheduler_id": "manual:paper-viz-2d-relative-ranking-8093-20260918-v6",
+      "state_file": ".auto_scheduler/paper_viz_2d_jumpcut_20260918/ranking_8093_v6_state.json",
+      "state_section": "jobs",
+      "target_windows_per_method": 114,
+      "task_type": "metrics-recompute"
     },
     "visualization-four-10s-gallery-endpoint104-5000-auxmethods-hawor-native-handzoom-panels-pilot_arctic_auxmethods_handzoom_panels_v1-20260915": {
       "created_at_epoch": 1789529809,
