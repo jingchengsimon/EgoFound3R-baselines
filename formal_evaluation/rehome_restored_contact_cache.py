@@ -19,6 +19,9 @@ CPFS_ROOTS = (
     Path("/mnt/cpfs/sjc/eval_artifacts"),
 )
 OSS_ROOT = Path("/mnt/oss/pre-train/ego/eval_artifacts")
+LOCAL_REHOME_SOURCE = Path("/mnt/cpfs/sjc/eval_artifacts/result3_completion_20260910_v1/contact_cache_restore")
+LOCAL_REHOME_TARGET = Path("/mnt/workspace/sjc/DATA/result3_contact_geometry_cache_restore_20260910_v1")
+LOCAL_DELETE_REPORT = Path("/mnt/workspace/sjc/DATA/eval_artifacts/result3_contact_geometry_cache_restore_delete_20260918_v1")
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -170,6 +173,84 @@ def process_references(source_root: Path) -> list[dict[str, object]]:
     return matches
 
 
+def move_local(source_root: Path, target_root: Path) -> dict[str, object]:
+    if source_root != LOCAL_REHOME_SOURCE or target_root != LOCAL_REHOME_TARGET:
+        raise RuntimeError("LOCAL_REHOME_PATH_MISMATCH")
+    if source_root.is_symlink():
+        if source_root.resolve() != target_root.resolve():
+            raise RuntimeError("SOURCE_LINK_TARGET_MISMATCH")
+        return json.loads((target_root / "local_rehome_manifest.json").read_text())
+    if not source_root.is_dir() or target_root.exists():
+        raise RuntimeError("LOCAL_REHOME_SOURCE_OR_TARGET_INVALID")
+    for name in ("report.json", "summary.json", "restored_files.jsonl", "COMPLETE"):
+        if not (source_root / name).is_file():
+            raise RuntimeError("MISSING_SOURCE_ARTIFACT:" + name)
+    if source_root.stat().st_dev != target_root.parent.stat().st_dev:
+        raise RuntimeError("LOCAL_REHOME_CROSS_DEVICE")
+    matches = process_references(source_root)
+    if matches:
+        raise RuntimeError("ACTIVE_SOURCE_REFERENCES:" + json.dumps(matches[:20]))
+    stats = tree_stats(source_root)
+    placeholder = source_root.with_name(source_root.name + ".local_rehome_link")
+    if placeholder.exists() or placeholder.is_symlink():
+        raise RuntimeError("LOCAL_REHOME_SIBLING_CONFLICT")
+    source_root.rename(target_root)
+    try:
+        placeholder.symlink_to(target_root, target_is_directory=True)
+        placeholder.rename(source_root)
+    except Exception:
+        target_root.rename(source_root)
+        placeholder.unlink(missing_ok=True)
+        raise
+    result = {
+        "status": "complete",
+        "source_link": str(source_root),
+        "target_root": str(target_root),
+        **stats,
+        "completed_at_epoch": int(time.time()),
+    }
+    atomic_json(target_root / "local_rehome_manifest.json", result)
+    (target_root / "LOCAL_REHOME_COMPLETE").write_text("complete\n")
+    return result
+
+
+def delete_local(source_root: Path, report_root: Path) -> dict[str, object]:
+    if source_root != LOCAL_REHOME_TARGET or report_root != LOCAL_DELETE_REPORT:
+        raise RuntimeError("LOCAL_DELETE_PATH_MISMATCH")
+    if not source_root.exists():
+        LOCAL_REHOME_SOURCE.unlink(missing_ok=True)
+        if (report_root / "summary.json").is_file():
+            return json.loads((report_root / "summary.json").read_text())
+        raise RuntimeError("LOCAL_DELETE_TARGET_ALREADY_MISSING")
+    if source_root.is_symlink() or not source_root.is_dir():
+        raise RuntimeError("LOCAL_DELETE_TARGET_INVALID")
+    for name in ("COMPLETE", "LOCAL_REHOME_COMPLETE", "local_rehome_manifest.json"):
+        if not (source_root / name).is_file():
+            raise RuntimeError("MISSING_DELETE_GATE:" + name)
+    if not LOCAL_REHOME_SOURCE.is_symlink() or LOCAL_REHOME_SOURCE.resolve() != source_root.resolve():
+        raise RuntimeError("LOCAL_DELETE_COMPATIBILITY_LINK_MISMATCH")
+    matches = process_references(source_root)
+    if matches:
+        raise RuntimeError("ACTIVE_SOURCE_REFERENCES:" + json.dumps(matches[:20]))
+    stats = tree_stats(source_root)
+    before = os.statvfs("/mnt/cpfs")
+    shutil.rmtree(source_root)
+    LOCAL_REHOME_SOURCE.unlink()
+    after = os.statvfs("/mnt/cpfs")
+    result = {
+        "status": "complete",
+        "deleted_root": str(source_root),
+        "deleted_compatibility_link": str(LOCAL_REHOME_SOURCE),
+        **stats,
+        "cpfs_available_before": before.f_bavail * before.f_frsize,
+        "cpfs_available_after": after.f_bavail * after.f_frsize,
+        "completed_at_epoch": int(time.time()),
+    }
+    atomic_json(report_root / "summary.json", result)
+    (report_root / "COMPLETE").write_text("complete\n")
+    return result
+
+
 def release(source_root: Path, target_root: Path, report_root: Path) -> dict[str, object]:
     oss_preflight(target_root)
     manifest = json.loads((target_root / "rehome_manifest.json").read_text())
@@ -227,7 +308,7 @@ def release(source_root: Path, target_root: Path, report_root: Path) -> dict[str
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("stage", "release"))
+    parser.add_argument("mode", choices=("stage", "release", "move-local", "delete-local"))
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--target-root", type=Path, required=True)
     parser.add_argument("--report-root", type=Path)
@@ -236,8 +317,14 @@ def main() -> None:
     args.lock.parent.mkdir(parents=True, exist_ok=True)
     with args.lock.open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        result = (stage(args.source_root, args.target_root) if args.mode == "stage" else
-                  release(args.source_root, args.target_root, args.report_root))
+        if args.mode == "stage":
+            result = stage(args.source_root, args.target_root)
+        elif args.mode == "release":
+            result = release(args.source_root, args.target_root, args.report_root)
+        elif args.mode == "move-local":
+            result = move_local(args.source_root, args.target_root)
+        else:
+            result = delete_local(args.source_root, args.report_root)
     print(json.dumps(result, sort_keys=True), flush=True)
 
 

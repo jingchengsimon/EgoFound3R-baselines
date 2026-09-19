@@ -2310,6 +2310,67 @@ def merged_run(registry: dict[str, Any], run_id: str, *, allow_shared_reader: bo
         })
         if kind == 'pi3':
             merged['launch']['command'] = ('{python} {worktree}/formal_evaluation/validate_runtime_registry.py --method pi3 --strict && ' + merged['launch']['command'])
+    if identity.get("pipeline") == "paper-viz-3d-r3-full104":
+        root = str(merged["output_root"])
+        runtime = str(identity["runtime_root"])
+        worktree = str(identity["worktree"])
+        bundle_relative = identity.get("worktree_bundle_relative")
+        support_files = [
+            "formal_evaluation/run_paper_viz_3d_batch.py",
+            "formal_evaluation/remote_task_control.py",
+        ]
+        if bundle_relative:
+            support_files.append(str(bundle_relative))
+        worktree_source = {
+            "worktree_bundle": runtime + "/" + str(bundle_relative),
+            "worktree_base_commit": str(identity["worktree_base_commit"]),
+            "worktree_source": str(identity["worktree_source"]),
+        } if bundle_relative else {
+            "worktree_clone_url": "https://github.com/jingchengsimon/EgoFound3R-baselines.git",
+            "worktree_clone_ref": "codex/viz-3d-window-stitch-20260918",
+        }
+        merged.update({
+            "artifact_audit": False,
+            "completion_artifacts": [
+                {"path": root + "/summary.json", "min_bytes": 1},
+                {"path": root + "/COMPLETE", "min_bytes": 1},
+            ],
+            "progress_log": True,
+            "launch": {
+                "command": (
+                    "exec {python} -u {runtime}/formal_evaluation/run_paper_viz_3d_batch.py "
+                    "--worktree {worktree} --output-root {output_root} "
+                    "--ego-infer-root {ego_infer_root} --src-dir {src_dir} "
+                    "--prepared-root {prepared_root} --hawor-root {hawor_root} "
+                    "--contact-root {contact_root} --mapping {mapping} --smoke-root {smoke_root} "
+                    "--devices cuda:0 cuda:1 cuda:3 cuda:4 cuda:5 cuda:6 cuda:7"
+                ),
+                "controller_path": runtime + "/formal_evaluation/remote_task_control.py",
+                "deploy_before_preflight": True,
+                "handle_path": runtime + "/handle.json",
+                "log_path": runtime + "/run.log",
+                "method": "paper_viz_3d",
+                "node_candidates": [5000],
+                "preflight_paths": [
+                    str(identity["ego_infer_root"]), str(identity["src_dir"]),
+                    str(identity["prepared_root"]), str(identity["hawor_root"]),
+                    str(identity["contact_root"]), str(identity["mapping"]), str(identity["smoke_root"]),
+                ],
+                "resource": "cpu",
+                "runtime_root": runtime,
+                "support_files": support_files,
+                "worktree": worktree,
+                "worktree_commit": str(identity["commit"]),
+                "values": {
+                    "python": str(identity["python"]), "runtime": runtime, "worktree": worktree,
+                    "output_root": root, "ego_infer_root": str(identity["ego_infer_root"]),
+                    "src_dir": str(identity["src_dir"]), "prepared_root": str(identity["prepared_root"]),
+                    "hawor_root": str(identity["hawor_root"]), "contact_root": str(identity["contact_root"]),
+                    "mapping": str(identity["mapping"]), "smoke_root": str(identity["smoke_root"]),
+                },
+            },
+        })
+        merged["launch"].update(worktree_source)
     if identity.get("pipeline") == "registered-report-read-v1":
         report_paths = [value for value in str(identity.get("report_paths", "")).split(",") if value]
         merged.update({
@@ -2680,6 +2741,79 @@ def merged_run(registry: dict[str, Any], run_id: str, *, allow_shared_reader: bo
                     "runtime": runtime,
                     "source_root": str(identity["source_root"]),
                     "target_root": str(identity["target_root"]),
+                },
+            },
+        })
+    if merged.get("task_type") == "artifact-migration" and identity.get("direction") == "cpfs-local-rehome":
+        root = str(merged["output_root"])
+        runtime = str(identity["runtime_root"])
+        merged.update({
+            "artifact_audit": False,
+            "completion_artifacts": [
+                {"path": root + "/local_rehome_manifest.json", "min_bytes": 1},
+                {"path": root + "/LOCAL_REHOME_COMPLETE", "min_bytes": 1},
+            ],
+            "progress_log": True,
+            "launch": {
+                "command": (
+                    "set -euo pipefail\nexec python3 '{runtime}/formal_evaluation/rehome_restored_contact_cache.py' "
+                    "move-local --source-root '{source_root}' --target-root '{output_root}' --lock '{lock_path}'"
+                ),
+                "controller_path": runtime + "/formal_evaluation/remote_task_control.py",
+                "deploy_before_preflight": True,
+                "handle_path": runtime + "/handle.json",
+                "log_path": runtime + "/run.log",
+                "method": "bundle",
+                "node_candidates": [int(identity.get("node", 5000))],
+                "preflight_paths": [str(identity["source_root"]), str(Path(root).parent)],
+                "resource": "io",
+                "runtime_root": runtime,
+                "support_files": [
+                    "formal_evaluation/rehome_restored_contact_cache.py",
+                    "formal_evaluation/remote_task_control.py",
+                ],
+                "values": {
+                    "lock_path": str(identity["lock_path"]),
+                    "output_root": root,
+                    "runtime": runtime,
+                    "source_root": str(identity["source_root"]),
+                },
+            },
+        })
+    if merged.get("task_type") == "artifact-migration" and identity.get("direction") == "cpfs-local-delete":
+        root = str(merged["output_root"])
+        runtime = str(identity["runtime_root"])
+        merged.update({
+            "artifact_audit": False,
+            "completion_artifacts": [
+                {"path": root + "/summary.json", "min_bytes": 1},
+                {"path": root + "/COMPLETE", "min_bytes": 1},
+            ],
+            "progress_log": True,
+            "launch": {
+                "command": (
+                    "set -euo pipefail\nexec python3 '{runtime}/formal_evaluation/rehome_restored_contact_cache.py' "
+                    "delete-local --source-root '{source_root}' --target-root '{source_root}' "
+                    "--report-root '{output_root}' --lock '{lock_path}'"
+                ),
+                "controller_path": runtime + "/formal_evaluation/remote_task_control.py",
+                "deploy_before_preflight": True,
+                "handle_path": runtime + "/handle.json",
+                "log_path": runtime + "/run.log",
+                "method": "bundle",
+                "node_candidates": [int(identity.get("node", 5000))],
+                "preflight_paths": [str(identity["source_root"]), str(Path(root).parent)],
+                "resource": "io",
+                "runtime_root": runtime,
+                "support_files": [
+                    "formal_evaluation/rehome_restored_contact_cache.py",
+                    "formal_evaluation/remote_task_control.py",
+                ],
+                "values": {
+                    "lock_path": str(identity["lock_path"]),
+                    "output_root": root,
+                    "runtime": runtime,
+                    "source_root": str(identity["source_root"]),
                 },
             },
         })
@@ -4855,7 +4989,8 @@ print(json.dumps({'ok':all(checks.values()),'checks':checks}))'''
 from pathlib import Path
 destination = Path(sys.argv[1])
 direction = sys.argv[2]
-allowed = Path("/mnt/cpfs/sjc/eval_artifacts" if direction in {"oss-to-cpfs", "direct-oss-metrics"} else "/mnt/oss/pre-train/ego/eval_artifacts")
+local_cpfs = direction in {"cpfs-local-rehome", "cpfs-local-delete"}
+allowed = Path("/mnt/workspace/sjc/DATA" if local_cpfs else "/mnt/cpfs/sjc/eval_artifacts" if direction in {"oss-to-cpfs", "direct-oss-metrics"} else "/mnt/oss/pre-train/ego/eval_artifacts")
 source = Path("/mnt/oss/pre-train/ego/eval_artifacts")
 try:
     destination.relative_to(allowed)
