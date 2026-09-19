@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from .inputs import WindowSources, native_windows_in_gt_world, stitch_window_anchor
+from .inputs import (WindowSources, method_vertices_camera,
+                     native_windows_in_gt_world, stitch_window_anchor)
 from .joint_order import joints_in_gt_order
 
 # Column order follows the 2D contract: baselines first, then EgoFound3R, then GT.
@@ -116,7 +117,7 @@ def _window_world(method: str, window: WindowSources, mano, vertices_camera=None
         data = window.methods.get("ego")
         if data is None:
             return None, None, None, None
-        camera = np.asarray(data["hand_vertices_camera"], float)
+        camera = method_vertices_camera(data, mano)
         c2w = np.asarray(data["camera_c2w"], float)
         predicted_world = world_from_camera(camera, c2w)
         valid = np.asarray(data["hand_valid"], bool)

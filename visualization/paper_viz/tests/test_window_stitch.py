@@ -42,6 +42,36 @@ class WindowStitchTest(unittest.TestCase):
             np.testing.assert_allclose(camera[boundary], expected, atol=1e-12)
             self.assertGreater(abs(camera[boundary, 0, 3] - gt[boundary, 0, 3]), 0.1)
 
+    def test_formal_ego_markers_are_upsampled_for_rendering(self):
+        hand_markers = np.zeros((60, 2, 1, 3))
+        hand_markers[..., 2] = 1.0
+        window = WindowSources(
+            cache_id="0", window_id="0", frame_ids=list(range(60)),
+            rgb_dir=None, geometry_dir=None, record={"image_size_hw": [10, 10]},
+            methods={
+                "gt": {
+                    "camera_c2w": np.stack([pose(frame * 0.01) for frame in range(60)]),
+                    "intrinsics": np.eye(3),
+                    "hand_vertices_camera": np.repeat(hand_markers, 2, axis=2),
+                    "hand_valid": np.ones((60, 2), bool),
+                },
+                "ego": {
+                    "camera_c2w": np.stack([pose(frame * 0.012) for frame in range(60)]),
+                    "hand_markers_camera": hand_markers,
+                    "hand_valid": np.ones((60, 2), bool),
+                },
+            },
+        )
+        mano = SimpleNamespace(
+            faces=np.array([[0, 1, 1]], dtype=int),
+            upsample=lambda value: np.repeat(value, 2, axis=2),
+        )
+
+        vertices = build_segment_sequences(SimpleNamespace(windows=[window]), mano)["ego"]["vertices"]
+
+        self.assertEqual(vertices.shape, (60, 2, 2, 3))
+        np.testing.assert_allclose(vertices[..., 2], 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()
