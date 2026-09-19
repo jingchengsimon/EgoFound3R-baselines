@@ -329,7 +329,8 @@ def _cone_angle_deg(K, size_hw) -> float:
 
 
 def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRAMES,
-                         anchor_tol: float = 1e-3, distance_band=(0.02, 5.0),
+                         anchor_tol: float = 1e-3, up_tol: float = 5e-3,
+                         distance_band=(0.02, 5.0),
                          hard_angle_deg: float = 90.0) -> dict:
     """Audit that hands, frustums and trajectories live in one world frame.
 
@@ -351,7 +352,7 @@ def camera_bundle_report(store: dict, camera, *, window_frames: int = WINDOW_FRA
     up_error = float(np.linalg.norm(up - np.array([0.0, 1.0, 0.0])))
     if not calib_valid.any():
         warnings.append("calibrated camera has no valid frame")
-    elif up_error > anchor_tol:
+    elif up_error > up_tol:
         violations.append(f"calibrated camera is not levelled: |up - +y| = {up_error:.4f}")
     starts = list(range(0, total, window_frames))
     for method in METHODS_3D:

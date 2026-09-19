@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from paper_viz.inputs import WindowSources
-from paper_viz.sequences3d import build_segment_sequences
+from paper_viz.sequences3d import build_segment_sequences, camera_bundle_report
 
 
 def pose(x):
@@ -71,6 +71,21 @@ class WindowStitchTest(unittest.TestCase):
 
         self.assertEqual(vertices.shape, (60, 2, 2, 3))
         np.testing.assert_allclose(vertices[..., 2], 1.0)
+
+    def test_level_tolerance_is_independent_from_stitch_tolerance(self):
+        camera_to_display = np.repeat(np.eye(4)[None], 2, axis=0)
+        camera_to_display[:, 1, 1] = -np.sqrt(1.0 - 0.0018 ** 2)
+        camera_to_display[:, 2, 1] = 0.0018
+        camera = SimpleNamespace(
+            camera_to_display=camera_to_display,
+            camera_valid=np.ones(2, bool),
+        )
+
+        report = camera_bundle_report({}, camera)
+        strict = camera_bundle_report({}, camera, up_tol=1e-3)
+
+        self.assertFalse(report["violations"])
+        self.assertTrue(strict["violations"])
 
 
 if __name__ == "__main__":
