@@ -6,7 +6,8 @@ from types import SimpleNamespace
 import numpy as np
 
 from paper_viz.inputs import WindowSources, resolve_prediction_file
-from paper_viz.sequences3d import build_segment_sequences, camera_bundle_report
+from paper_viz.sequences3d import (build_segment_sequences, camera_bundle_report,
+                                   camera_inset_reference)
 
 
 def pose(x):
@@ -251,6 +252,30 @@ class WindowStitchTest(unittest.TestCase):
         self.assertFalse(isolated["violations"])
         self.assertTrue(isolated["warnings"])
         self.assertTrue(systemic["violations"])
+
+    def test_camera_inset_keeps_true_camera_and_hand_geometry(self):
+        frames = 4
+        rig = np.stack([pose(frame * 0.1) for frame in range(frames)])
+        vertices = np.zeros((frames, 2, 1, 3))
+        vertices[..., 0] = np.arange(frames)[:, None, None] * 0.1
+        vertices[..., 2] = 0.6
+        entry = {
+            "vertices": vertices,
+            "valid": np.ones((frames, 2, 1), bool),
+        }
+        bundle = {"c2w": rig, "valid": np.ones(frames, bool)}
+
+        reference = camera_inset_reference(entry, bundle)
+
+        np.testing.assert_allclose(reference["camera_centres"], rig[:, :3, 3])
+        np.testing.assert_allclose(reference["hand_centres"], vertices.mean(axis=(1, 2)))
+        delta = reference["hand_centres"] - reference["camera_centres"]
+        np.testing.assert_allclose(np.linalg.norm(delta, axis=1), 0.6)
+        low, high = reference["bounds"]
+        self.assertTrue((low < np.minimum(reference["camera_centres"],
+                                          reference["hand_centres"]).min(axis=0)).all())
+        self.assertTrue((high > np.maximum(reference["camera_centres"],
+                                           reference["hand_centres"]).max(axis=0)).all())
 
 
 if __name__ == "__main__":

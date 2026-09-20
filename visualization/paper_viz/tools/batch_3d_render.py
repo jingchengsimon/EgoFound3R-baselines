@@ -40,7 +40,8 @@ import render_3d_video as V                                        # noqa: E402
 from batch_3d_video import scene_state                             # noqa: E402
 from render_3d_video import R                                      # noqa: E402
 from paper_viz.batch_render import batched_render                  # noqa: E402
-from paper_viz.sequences3d import METHOD_LABELS_3D                 # noqa: E402
+from paper_viz.sequences3d import (METHOD_LABELS_3D,              # noqa: E402
+                                   camera_inset_reference)
 
 _W: dict = {}
 
@@ -201,6 +202,89 @@ def _cell_parts(scene, keyframes):
     return parts
 
 
+def _camera_inset_parts(scene, method, keyframes):
+    """Camera frustums/path plus the matching hand-centre path, at true geometry."""
+    from egohandmetric_prompt.inference_multiview import _box, _tube_part, camera_overlay_parts
+
+    camera = _camera_sequences(scene).get(method)
+    entry = scene["store"].get(method)
+    if camera is None or entry is None or entry.get("camera") is None:
+        return [], None
+    reference = camera_inset_reference(entry, entry["camera"])
+    parts = camera_overlay_parts(camera, list(keyframes), show_frustums=True,
+                                 path_indices=np.arange(scene["frames_total"]),
+                                 scale=scene["camera_scale"])
+    points = reference["hand_centres"]
+    valid = reference["hand_valid"]
+    span = max(float(np.max(reference["bounds"][1] - reference["bounds"][0])), 0.05)
+    radius = max(span * 0.004, 0.0015)
+    hand_colour = np.array([0.30, 0.32, 0.35])
+    indices = np.arange(0, len(points), PATH_STEP)
+    for left, right in zip(indices[:-1], indices[1:]):
+        if valid[left] and valid[right]:
+            parts += _tube_part(np.stack([points[left], points[right]])[None],
+                                hand_colour, radius)
+    for frame in keyframes:
+        if frame < len(points) and valid[frame]:
+            parts.append(_box(points[frame], np.full(3, radius * 3.0), hand_colour))
+    vertices = [np.asarray(value, float).reshape(-1, 3) for value, _, _ in parts if len(value)]
+    if not vertices:
+        return [], None
+    cloud = np.concatenate(vertices + [reference["camera_centres"][reference["camera_valid"]],
+                                       reference["hand_centres"][reference["hand_valid"]]], axis=0)
+    low, high = cloud.min(axis=0), cloud.max(axis=0)
+    span = max(float(np.max(high - low)), 0.05)
+    pad = span * 0.08
+    reference["bounds"] = (low - pad, high + pad)
+    reference["cloud"] = cloud
+    return parts, reference
+
+
+def _render_camera_insets(scene, keyframes, args):
+    """Render one independently fitted camera+hand reference inset per method/view."""
+    output = {}
+    inset_cell = max(72, int(round(args.cell * args.camera_inset_fraction)))
+    for method in scene["drawn"]:
+        parts, reference = _camera_inset_parts(scene, method, keyframes)
+        if not parts:
+            continue
+        low, high = reference["bounds"]
+        center = 0.5 * (low + high)
+        fit_points = np.array(np.meshgrid(*zip(low, high))).T.reshape(-1, 3)
+        renderer = R.HandMultiviewRenderer(
+            reference["bounds"], cell_size=inset_cell, device=scene["device"], ground=False,
+            supersample=args.supersample, framing_points=reference["cloud"])
+        for view, (yaw, pitch) in R.VIEWPOINTS.items():
+            renderer.view_poses[view] = R.turntable_pose(center, fit_points, yaw, pitch,
+                                                         margin=1.12)
+        for view in scene["views"]:
+            rgb = renderer.render(parts, view, shadow_parts=[])
+            if view == "top" and R.TOP_VIEW_ROT90_CCW:
+                rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
+            output[(method, view)] = rgb
+    return output
+
+
+def _paste_camera_inset(rgb, inset):
+    """Composite a labelled, bordered inset without changing the hand rendering."""
+    from PIL import Image as PILImage, ImageDraw
+
+    image = PILImage.fromarray(np.ascontiguousarray(rgb))
+    inset_image = PILImage.fromarray(np.ascontiguousarray(inset))
+    pad = max(4, image.width // 64)
+    label_h = max(12, image.width // 24)
+    width = inset_image.width
+    x = image.width - width - pad
+    y = pad
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((x - 2, y - 2, x + width + 1, y + label_h + width + 1),
+                   fill=(255, 255, 255), outline=(158, 162, 170), width=1)
+    draw.text((x + 3, y), "camera+hand inset", fill=(70, 73, 80),
+              font=R.label_font(max(8, label_h - 3)))
+    image.paste(inset_image, (x, y + label_h))
+    return np.asarray(image)
+
+
 def render_summary(scene, out_dir: Path, args) -> None:
     """Matrix figure + one panel per method and viewpoint."""
     from egohandmetric_prompt.inference_multiview import camera_overlay_parts
@@ -217,6 +301,11 @@ def render_summary(scene, out_dir: Path, args) -> None:
             if view == "top" and R.TOP_VIEW_ROT90_CCW:
                 rgb = np.ascontiguousarray(np.rot90(rgb, k=1))
             cells[(METHOD_LABELS_3D[name], view)] = rgb
+    if scene.get("camera_overlay_mode") == "inset":
+        insets = _render_camera_insets(scene, keyframes, args)
+        for (name, view), inset in insets.items():
+            key = (METHOD_LABELS_3D[name], view)
+            cells[key] = _paste_camera_inset(cells[key], inset)
     # Leftmost column: one *different*, uniformly sampled frame per view row (row r =
     # keyframes[r]), labelled with its frame number so it can be matched against the
     # video.  The old loop wrote the same key five times and collapsed to the last
@@ -226,12 +315,16 @@ def render_summary(scene, out_dir: Path, args) -> None:
                                   int(t), args.fps)
         cells[("Input RGB", scene["views"][row % len(scene["views"])])] = tile
     columns = ["Input RGB"] + [METHOD_LABELS_3D[m] for m in scene["drawn"]]
-    camera_note = "with camera rig" if scene["show_camera"] else "hand-only (camera hidden)"
+    mode = scene.get("camera_overlay_mode", "show" if scene["show_camera"] else "hide")
+    camera_note = ("with camera rig" if mode == "show" else
+                   "camera + hand-centre inset (independent auto-fit)" if mode == "inset" else
+                   "hand-only (camera hidden)")
     grid = R.compose_matrix(cells, columns, list(scene["views"]),
                             title=f"{scene['segment_id']} | {len(keyframes)} time samples | "
                                   f"world space | rows = views, columns = methods | {camera_note} | "
                                   "EgoFound3R = 8fc061a infer (default post-processing)",
-                            cell_px=args.cell, temporal=True, camera_legend=scene["show_camera"])
+                            cell_px=args.cell, temporal=True,
+                            camera_legend=mode in ("show", "inset"))
     from PIL import Image as PILImage
     out_dir.mkdir(parents=True, exist_ok=True)
     PILImage.fromarray(grid).save(out_dir / "fig1_3d_summary.png")
@@ -303,7 +396,9 @@ def main() -> None:
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--stride", type=int, default=1)
     parser.add_argument("--crf", type=int, default=20)
-    parser.add_argument("--camera-overlay", choices=("show", "hide"), default="show")
+    parser.add_argument("--camera-overlay", choices=("show", "hide", "inset"), default="show")
+    parser.add_argument("--camera-inset-fraction", type=float, default=0.34,
+                        help="inset side as a fraction of the hand cell (summary only)")
     parser.add_argument("--fit-margin", type=float, default=None)
     parser.add_argument("--camera-scale", type=float, default=0.12)
     parser.add_argument("--fit-with-cameras", action="store_true",
@@ -315,6 +410,12 @@ def main() -> None:
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
+    if args.camera_overlay == "inset" and "video" in args.stages:
+        parser.error("camera inset is a summary-preview mode; omit the video stage")
+    if args.camera_overlay == "inset" and args.panel_size:
+        parser.error("camera inset preview requires --panel-size 0")
+    if not 0.2 <= args.camera_inset_fraction <= 0.5:
+        parser.error("--camera-inset-fraction must be between 0.2 and 0.5")
     args.out_root.mkdir(parents=True, exist_ok=True)
 
     segments = sorted(p for p in args.staged_root.iterdir()

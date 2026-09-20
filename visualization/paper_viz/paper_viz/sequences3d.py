@@ -325,6 +325,39 @@ def _hand_centroids(entry: dict, total: int) -> np.ndarray:
     return out
 
 
+def camera_inset_reference(entry: dict, bundle: dict, *, pad_fraction: float = 0.08,
+                           minimum_span: float = 0.05) -> dict:
+    """Camera/hand reference geometry for an independently fitted overlay inset.
+
+    The main comparison deliberately frames only the hands.  Mixing camera centres
+    into that fit either clips the rig or makes the hands tiny, so the camera view is
+    rendered in a labelled inset instead.  This helper keeps the inset honest: its
+    bounds contain the method's camera centres and hand-centre trajectory in their
+    original shared world frame, with no translation, scaling or axis changes.
+    """
+    c2w = np.asarray(bundle["c2w"], float)
+    camera_valid = (np.asarray(bundle["valid"], bool)
+                    & np.isfinite(c2w).all(axis=(1, 2)))
+    camera_centres = c2w[:, :3, 3]
+    hand_centres = _hand_centroids(entry, len(c2w))
+    hand_valid = np.isfinite(hand_centres).all(axis=1)
+    clouds = [camera_centres[camera_valid], hand_centres[hand_valid]]
+    clouds = [cloud for cloud in clouds if len(cloud)]
+    if not clouds:
+        raise ValueError("camera inset has no finite camera or hand reference points")
+    cloud = np.concatenate(clouds, axis=0)
+    low, high = cloud.min(axis=0), cloud.max(axis=0)
+    span = max(float(np.max(high - low)), float(minimum_span))
+    pad = span * float(pad_fraction)
+    return {
+        "camera_centres": camera_centres,
+        "camera_valid": camera_valid,
+        "hand_centres": hand_centres,
+        "hand_valid": hand_valid,
+        "bounds": (low - pad, high + pad),
+    }
+
+
 def _cone_angle_deg(K, size_hw) -> float:
     """Half-angle of the image diagonal, i.e. the widest direction the camera sees."""
     height, width = (int(v) for v in size_hw)

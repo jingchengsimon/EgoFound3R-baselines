@@ -86,6 +86,8 @@ def scene_state(args, inputs_dir: Path, device: str) -> dict:
     show_camera = args.camera_overlay == "show"
     cloud = np.percentile(np.asarray(framing_all, float), [4, 96], axis=0)
     fit_points = np.array(np.meshgrid(*zip(cloud[0], cloud[1]))).T.reshape(-1, 3)
+    # ``inset`` uses the exact hand-only fit.  Only the legacy in-world overlay
+    # widens the margin; the separately fitted inset is composited afterwards.
     margin = args.fit_margin if args.fit_margin else (0.82 if show_camera else 0.72)
     scene_center = 0.5 * (bounds[0] + bounds[1])
     for name, (yaw, pitch) in R.VIEWPOINTS.items():
@@ -93,7 +95,8 @@ def scene_state(args, inputs_dir: Path, device: str) -> dict:
     return dict(bounds=bounds, framing=framing_all, fit_points=fit_points, scene_center=scene_center,
                 margin=margin, cell=args.cell, supersample=args.supersample, store=store,
                 camera=camera, times=times, sequences=sequences, windows=windows,
-                show_camera=show_camera, camera_scale=args.camera_scale, views=list(V.R.VIEWPOINTS),
+                show_camera=show_camera, camera_overlay_mode=args.camera_overlay,
+                camera_scale=args.camera_scale, views=list(V.R.VIEWPOINTS),
                 drawn=drawn, columns=["Input RGB"] + [METHOD_LABELS_3D[m] for m in drawn],
                 segment_id=registry["segment_id"], batch_cells=True, renderer=renderer,
                 bin_size=args.bin_size,
