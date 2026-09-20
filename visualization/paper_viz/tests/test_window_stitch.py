@@ -1,9 +1,11 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
 import numpy as np
 
-from paper_viz.inputs import WindowSources
+from paper_viz.inputs import WindowSources, resolve_prediction_file
 from paper_viz.sequences3d import build_segment_sequences, camera_bundle_report
 
 
@@ -14,6 +16,26 @@ def pose(x):
 
 
 class WindowStitchTest(unittest.TestCase):
+    def test_prediction_index_rebases_stale_dsw_path_to_formal_root(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            expected = root / "hawor" / "formal" / "cache" / "predictions.npz"
+            expected.parent.mkdir(parents=True)
+            expected.touch()
+
+            actual = resolve_prediction_file(
+                "/mnt/workspace/old-node/hawor/formal/cache", root, "cache", "hawor",
+                required=True)
+
+            self.assertEqual(actual, expected)
+
+    def test_required_prediction_reports_all_rebased_candidates(self):
+        with TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(FileNotFoundError, "missing hawor prediction"):
+                resolve_prediction_file(
+                    "/mnt/workspace/old-node/hawor/formal/cache", temporary,
+                    "cache", "hawor", required=True)
+
     def test_predicted_camera_keeps_drift_across_59_60_and_119_120(self):
         windows = []
         for index in range(3):

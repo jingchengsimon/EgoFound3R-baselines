@@ -9,7 +9,8 @@ from pathlib import Path
 import numpy as np
 
 from . import render2d, render3d, style
-from .inputs import SegmentSources, WindowSources, arrays, load_window
+from .inputs import (SegmentSources, WindowSources, arrays, load_window,
+                     resolve_prediction_file)
 from .mano import ManoAsset
 from .scene import build_scene, select_frames
 from .video import VideoWriter
@@ -37,13 +38,14 @@ def build_registry(args) -> dict:
     for index, window in enumerate(selection["windows"]):
         cache = window["gt"]["cache_id"]
         src = Path(args.src_dir) / cache
-        hawor_dir = Path(hawor_index.get(window["window_id"], Path(args.hawor_root) / cache))
+        hawor_file = resolve_prediction_file(
+            hawor_index.get(window["window_id"]), args.hawor_root, cache, "hawor", required=True)
         methods = {
             "gt": src / "gt.npz",
             "ego": Path(args.inputs_dir) / f"{index}_ego.npz",
             "ego_full": src / "ego_full.npz",
             "wilor": src / "wilor.npz",
-            "hawor": hawor_dir / "predictions.npz",
+            "hawor": hawor_file,
             "reviv4d": src / "reviv4d.npz",
             "pad_hand": src / "pad_hand.npz",
             "egoforce": src / "egoforce.npz",

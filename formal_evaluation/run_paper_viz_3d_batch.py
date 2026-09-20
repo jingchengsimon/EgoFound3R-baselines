@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -47,6 +48,8 @@ def main() -> None:
     parser.add_argument("--smoke-root", type=Path, required=True)
     parser.add_argument("--devices", nargs="+", required=True)
     args = parser.parse_args()
+    sys.path.insert(0, str(args.worktree / "visualization/paper_viz"))
+    from paper_viz.inputs import resolve_prediction_file
 
     relative = Path("visualization/batch_10s_104_endpoint_renderable_p95_wmpjpe_20260914")
     manifest = args.worktree / relative / "selected_manifest_hydrated.jsonl"
@@ -95,7 +98,9 @@ def main() -> None:
                 "pad_hand": args.src_dir / cache / "pad_hand.npz",
                 "egoforce": args.src_dir / cache / "egoforce.npz",
                 "reviv4d": args.src_dir / cache / "reviv4d.npz",
-                "hawor": hawor_indexes[dataset].get(window_id, Path("/missing")) / "predictions.npz",
+                "hawor": resolve_prediction_file(
+                    hawor_indexes[dataset].get(window_id), hawor_roots[dataset], cache,
+                    "hawor", required=False),
             }
             missing.extend((kind, str(path)) for kind, path in required.items() if not path.is_file())
     if missing:

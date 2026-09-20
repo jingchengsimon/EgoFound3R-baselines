@@ -10,6 +10,37 @@ import numpy as np
 from .mano import ManoAsset
 
 
+def resolve_prediction_file(indexed_dir: str | Path | None, root: str | Path,
+                            cache_id: str, method: str, *, required: bool = False) -> Path:
+    """Resolve an indexed formal prediction after moving it between DSW mounts.
+
+    Prediction indexes record absolute paths from the node that created them.  The
+    same artifact is commonly read through ``/mnt/cpfs`` on another allocation,
+    so an existing index file does not imply that its ``prediction_dir`` entries
+    are usable there.  Prefer the recorded path when it is live, then fall back to
+    the formal layout below the caller-provided dataset root.
+    """
+    base = Path(root)
+    candidates = []
+    if indexed_dir:
+        candidates.append(Path(indexed_dir) / "predictions.npz")
+    candidates.extend([
+        base / method / "formal" / cache_id / "predictions.npz",
+        base / "formal" / cache_id / "predictions.npz",
+        base / cache_id / "predictions.npz",
+    ])
+    unique = list(dict.fromkeys(candidates))
+    for candidate in unique:
+        if candidate.is_file():
+            return candidate
+    if required:
+        raise FileNotFoundError(
+            f"missing {method} prediction for cache {cache_id}; tried "
+            + ", ".join(str(path) for path in unique)
+        )
+    return unique[0]
+
+
 def arrays(path: Path) -> dict:
     with np.load(path, allow_pickle=False) as archive:
         return {key: archive[key] for key in archive.files}

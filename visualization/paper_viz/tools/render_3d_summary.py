@@ -287,6 +287,8 @@ def level_rotation(c2w) -> np.ndarray:
     return np.eye(3) + sin_angle * skew + (1 - cos_angle) * skew @ skew
 
 def build_registry(inputs_dir: Path, args) -> dict:
+    from paper_viz.inputs import resolve_prediction_file
+
     selection = json.loads((inputs_dir / "selection.json").read_text())
     hawor_index = {}
     for line in Path(args.hawor_index).read_text().splitlines():
@@ -298,13 +300,14 @@ def build_registry(inputs_dir: Path, args) -> dict:
     for index, window in enumerate(selection["windows"]):
         cache = window["gt"]["cache_id"]
         src = Path(args.src_dir) / cache
-        hawor_dir = Path(hawor_index.get(window["window_id"], Path(args.hawor_root) / cache))
+        hawor_file = resolve_prediction_file(
+            hawor_index.get(window["window_id"]), args.hawor_root, cache, "hawor", required=True)
         methods = {
             "gt": src / "gt.npz",
             "ego": inputs_dir / f"{index}_ego.npz",
             "ego_full": src / "ego_full.npz",
             "wilor": src / "wilor.npz",
-            "hawor": hawor_dir / "predictions.npz",
+            "hawor": hawor_file,
             "reviv4d": src / "reviv4d.npz",
             "pad_hand": src / "pad_hand.npz",
             "egoforce": src / "egoforce.npz",
